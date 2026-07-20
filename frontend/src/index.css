@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* ---- Auréole design tokens ---- */
+
+  /* Surfaces — charcoal with a faint warm undertone, never pure black/blue-black */
+  --color-base: #0e0f13;
+  --color-surface: #16181f;
+  --color-surface-2: #1d1f28;
+  --color-surface-3: #262932;
+  --color-border: #2a2d38;
+  --color-border-soft: #21232c;
+
+  /* Text */
+  --color-ink: #f1eee4;
+  --color-ink-dim: #a7a9b4;
+  --color-ink-faint: #6b6e7a;
+
+  /* Halo accent — the school's signature warm gold, sampled from the actual logo */
+  --color-halo: #d9a75c;
+  --color-halo-bright: #f0c98a;
+  --color-halo-dim: #8a6a3c;
+  --color-halo-wash: #d9a75c1a;
+
+  /* Brand blue — the graduation cap in the logo, used as the secondary accent */
+  --color-brand-blue: #3f80a8;
+  --color-brand-blue-bright: #6bb0d1;
+  --color-brand-blue-dim: #244a63;
+  --color-brand-blue-wash: #3f80a81a;
+
+  /* Semantic — tuned toward the logo's globe (olive, blue, brown) rather than generic hues */
+  --color-success: #a3c05f;
+  --color-success-wash: #a3c05f1a;
+  --color-warning: #c98a4a;
+  --color-warning-wash: #c98a4a1a;
+  --color-danger: #e0707f;
+  --color-danger-wash: #e0707f1a;
+  --color-info: #5b9dc4;
+  --color-info-wash: #5b9dc41a;
+
+  /* Type */
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Radius scale — soft but not pill-shaped, keeps the admin-tool feel */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows: reserved for floating/elevated elements only */
+  --shadow-soft: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px -12px rgba(0,0,0,0.45);
+  --shadow-halo: 0 0 0 1px var(--color-halo-wash), 0 0 24px -4px var(--color-halo-wash);
+  --shadow-blue: 0 0 0 1px var(--color-brand-blue-wash), 0 0 24px -4px var(--color-brand-blue-wash);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-halo-wash);
+    color: var(--color-halo-bright);
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  /* Visible keyboard focus everywhere, styled to match the halo signature */
+  :focus-visible {
+    outline: 2px solid var(--color-halo);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 999px;
+    border: 2px solid var(--color-base);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* The signature: a soft radial halo, used sparingly (active nav, avatars, focal states) */
+  .halo-ring {
+    box-shadow: var(--shadow-halo);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

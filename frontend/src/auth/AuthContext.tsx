@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api, AUTH_EXPIRED_EVENT, extractErrorMessage, TOKEN_STORAGE_KEY } from '@/lib/api'
 import type { TokenResponse, Utilisateur } from '@/types'
-import { AuthContext } from './authContext'
+import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Utilisateur | null>(null)

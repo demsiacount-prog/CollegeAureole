@@ -2,7 +2,7 @@ from datetime import date as date_type
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, cast, String as SqlString
+from sqlalchemy import or_, cast, String as SqlString, func
 from database import get_db
 import models
 import schemas
@@ -17,6 +17,18 @@ def _mettre_a_jour_statut(echeance: models.Echeances):
         echeance.statut = "SOLDE"
     else:
         echeance.statut = "PARTIEL"
+
+
+def _generer_numero_recu(db, date_paiement) -> str:
+    """Numéro de reçu séquentiel par année : REC-<année>-<compteur>."""
+    annee = date_paiement.year
+    compteur = (
+        db.query(func.count(models.Paiements.id))
+        .filter(func.extract("year", models.Paiements.date) == annee)
+        .scalar()
+        or 0
+    )
+    return f"REC-{annee}-{compteur + 1:04d}"
 
 
 def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, numero_recu, observation) -> dict:
@@ -75,7 +87,8 @@ def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = 
     if inscription.annee_scolaire and inscription.annee_scolaire.cloturee:
         raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée.")
 
-    result = _distribuer_paiement(db, inscription, payload.montant, payload.date, payload.mode, payload.numero_recu, payload.observation)
+    numero_recu = (payload.numero_recu or "").strip() or _generer_numero_recu(db, payload.date)
+    result = _distribuer_paiement(db, inscription, payload.montant, payload.date, payload.mode, numero_recu, payload.observation)
     db.commit()
 
     for p in result["paiements_crees"]:
@@ -86,6 +99,7 @@ def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = 
 
     return {
         "nb_paiements_crees": len(result["paiements_crees"]),
+        "numero_recu": numero_recu,
         "echeances_mises_a_jour": [schemas.EcheanceResponse.model_validate(e) for e in result["echeances_mises_a_jour"]],
         "reste_global": result["reste_global"],
         "credit_disponible": inscription.credit_disponible,

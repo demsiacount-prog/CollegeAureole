@@ -23,6 +23,7 @@ export interface PaiementCreateInput {
 
 export interface PaiementResult {
   nb_paiements_crees: number
+  numero_recu: string
   echeances_mises_a_jour: Echeance[]
   reste_global: number
   credit_disponible: number

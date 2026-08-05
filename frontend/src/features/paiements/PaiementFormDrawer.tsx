@@ -21,7 +21,6 @@ export default function PaiementFormDrawer({ open, onClose }: { open: boolean; o
   const [montant, setMontant] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [mode, setMode] = useState('')
-  const [numeroRecu, setNumeroRecu] = useState('')
   const [observation, setObservation] = useState('')
   const [error, setError] = useState('')
 
@@ -31,7 +30,6 @@ export default function PaiementFormDrawer({ open, onClose }: { open: boolean; o
       setMontant('')
       setDate(new Date().toISOString().slice(0, 10))
       setMode('')
-      setNumeroRecu('')
       setObservation('')
       setError('')
     }
@@ -60,13 +58,12 @@ export default function PaiementFormDrawer({ open, onClose }: { open: boolean; o
       montant: Number(montant),
       date,
       mode: mode || null,
-      numero_recu: numeroRecu || null,
       observation: observation || null,
     }),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['paiements'] })
       qc.invalidateQueries({ queryKey: ['echeances'] })
-      toast(`Paiement enregistré — ${result.nb_paiements_crees} tranches, reste ${formatMontant(result.reste_global)}.`)
+      toast(`Paiement enregistré — reçu ${result.numero_recu} — ${result.nb_paiements_crees} tranche${result.nb_paiements_crees > 1 ? 's' : ''}, reste ${formatMontant(result.reste_global)}.`)
       onClose()
     },
     onError: (err) => setError(extractErrorMessage(err)),
@@ -144,13 +141,6 @@ export default function PaiementFormDrawer({ open, onClose }: { open: boolean; o
             <option value="">— Non spécifié —</option>
             {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
           </Select>
-
-          <Input
-            label="N° reçu"
-            value={numeroRecu}
-            onChange={(e) => setNumeroRecu(e.target.value)}
-            placeholder="ex. REC-2026-001"
-          />
 
           <Input
             label="Observation"

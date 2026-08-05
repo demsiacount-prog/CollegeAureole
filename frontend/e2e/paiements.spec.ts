@@ -26,4 +26,10 @@ test('paiements : nom de l’élève affiché, pas d’avatar, recherche dans le
   await page.getByRole('option').first().click()
 
   await expect(combobox).toHaveValue(/Breton/)
+
+  await expect(page.getByLabel('N° reçu')).toHaveCount(0)
+
+  await page.getByLabel('Montant (FCFA)').fill('1000')
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/reçu REC-\d+/)).toBeVisible()
 })

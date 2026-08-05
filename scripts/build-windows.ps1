@@ -30,7 +30,7 @@ if ($LASTEXITCODE -ne 0) { throw "PyInstaller a échoué" }
 $triple = "x86_64-pc-windows-msvc"
 $destDir = "$ROOT\frontend\src-tauri\binaries"
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-Copy-Item "dist\college-aureole-backend\college-aureole-backend.exe" `
+Copy-Item "dist\college-aureole-backend.exe" `
     "$destDir\college-aureole-backend-$triple.exe" -Force
 
 Write-Host "==> 2/3 Frontend"

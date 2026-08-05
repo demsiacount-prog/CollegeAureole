@@ -44,7 +44,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller a échoué" }
           $triple = "x86_64-pc-windows-msvc"
           New-Item -ItemType Directory -Force -Path ..\frontend\src-tauri\binaries | Out-Null
-          Copy-Item "dist\college-aureole-backend\college-aureole-backend.exe" "..\frontend\src-tauri\binaries\college-aureole-backend-$triple.exe" -Force
+          Copy-Item "dist\college-aureole-backend.exe" "..\frontend\src-tauri\binaries\college-aureole-backend-$triple.exe" -Force
 
       - name: Frontend dependencies
         working-directory: frontend

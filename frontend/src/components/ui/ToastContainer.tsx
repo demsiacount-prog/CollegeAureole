@@ -19,7 +19,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex flex-col items-end gap-2" role="status">
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex flex-col items-center gap-2" role="status">
       {toasts.map((t) => {
         const Icon = toneIcons[t.tone]
         return (

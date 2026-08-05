@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 import type { Role } from '@/types'
 import { Spinner } from '@/components/ui/Spinner'
 

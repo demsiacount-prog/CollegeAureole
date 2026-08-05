@@ -6,6 +6,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from bareme import bareme_niveau
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"], dependencies=[Depends(get_current_user)])
 
@@ -23,12 +24,20 @@ _EAGER = (
 def _verifier_references(note, db: Session):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == note.matricule_eleve).first():
         raise HTTPException(status_code=404, detail="Élève introuvable.")
-    if not db.query(models.Cours).filter(models.Cours.id == note.id_cours).first():
+    cours = db.query(models.Cours).filter(models.Cours.id == note.id_cours).first()
+    if not cours:
         raise HTTPException(status_code=404, detail="Cours introuvable.")
     if not db.query(models.Classes).filter(models.Classes.id == note.id_classe).first():
         raise HTTPException(status_code=404, detail="Classe introuvable.")
     if not db.query(models.Enseignants).filter(models.Enseignants.matricule == note.matricule_enseignant).first():
         raise HTTPException(status_code=404, detail="Enseignant introuvable.")
+    if not db.query(models.AffectationCoursClasse).filter(
+        models.AffectationCoursClasse.id_cours == note.id_cours,
+        models.AffectationCoursClasse.id_classe == note.id_classe,
+    ).first():
+        raise HTTPException(status_code=400, detail="Ce cours n'est pas affecté à cette classe.")
+    if cours.matricule_enseignant and cours.matricule_enseignant != note.matricule_enseignant:
+        raise HTTPException(status_code=400, detail="Cet enseignant n'enseigne pas ce cours.")
     if note.id_trimestre is not None:
         trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
         if not trimestre:
@@ -43,6 +52,10 @@ def _verifier_references(note, db: Session):
 @router.post("/", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
     _verifier_references(note, db)
+    classe = db.query(models.Classes).filter(models.Classes.id == note.id_classe).first()
+    bareme = bareme_niveau(classe.niveau) if classe else 20
+    if note.note > bareme:
+        raise HTTPException(status_code=422, detail=f"La note ne peut pas dépasser {bareme} pour cette classe.")
     data = note.model_dump()
     data["date"] = date.today().isoformat()
     nouvelle_note = models.Notes(**data)
@@ -89,6 +102,10 @@ def update_note(note_id: int, note_update: schemas.NoteCreate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Note introuvable")
 
     _verifier_references(note_update, db)
+    classe = db.query(models.Classes).filter(models.Classes.id == note_update.id_classe).first()
+    bareme = bareme_niveau(classe.niveau) if classe else 20
+    if note_update.note > bareme:
+        raise HTTPException(status_code=422, detail=f"La note ne peut pas dépasser {bareme} pour cette classe.")
 
     for key, value in note_update.model_dump().items():
         setattr(db_note, key, value)

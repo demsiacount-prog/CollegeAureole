@@ -17,8 +17,25 @@ def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = N
     cours = db.query(models.Cours).filter(models.Cours.id == payload.id_cours).first()
     if not cours:
         raise HTTPException(status_code=404, detail="Cours introuvable.")
-    if not db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first():
+    classe = db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first()
+    if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable.")
+
+    if payload.id_salle:
+        salle = db.query(models.Salles).filter(models.Salles.id == payload.id_salle).first()
+        if not salle:
+            raise HTTPException(status_code=404, detail="Salle introuvable.")
+        if salle.capacite is not None:
+            effectif = db.query(models.Eleves).filter(
+                models.Eleves.classe_id == payload.id_classe,
+                models.Eleves.statut == "actif",
+            ).count()
+            if effectif > salle.capacite:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Capacité insuffisante : la salle {salle.nom} ({salle.capacite} places) "
+                           f"ne peut pas accueillir la classe {classe.niveau} {classe.nom} ({effectif} élèves).",
+                )
 
     seances_du_jour = db.query(models.Seances).filter(
         models.Seances.id_annee_scolaire == payload.id_annee_scolaire,

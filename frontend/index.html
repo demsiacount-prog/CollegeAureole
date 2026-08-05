@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo-emblem.png" />
+    <script>
+      (function(){var t=localStorage.getItem('aureole-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t}else{var p=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',p);document.documentElement.style.colorScheme=p}})()
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Auréole — Gestion scolaire</title>
   </head>

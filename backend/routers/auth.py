@@ -1,11 +1,27 @@
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import timedelta
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from database import get_db
 from hashing import hash_password, verify_password
 from security import create_access_token, get_current_user
+from timeutils import now_utc
+from exceptions import (
+    UnauthorizedError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
+from validators import assert_found
 import models
 import schemas
+
+
+def _valider_mot_de_passe(mot_de_passe: str, *, champ: str) -> None:
+    if not mot_de_passe or len(mot_de_passe) < 8:
+        raise ValidationError(
+            champ.lower(),
+            f"{champ} doit contenir au moins 8 caractères.",
+        )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentification"])
 
@@ -15,25 +31,27 @@ DUREE_VERROUILLAGE_MINUTES = 15
 
 @router.post("/connexion", response_model=schemas.TokenResponse)
 def connexion(payload: schemas.UtilisateurConnexion, db: Session = Depends(get_db)):
+    _valider_mot_de_passe(payload.mot_de_passe, champ="Le mot de passe")
     utilisateur = db.query(models.Utilisateurs).filter(models.Utilisateurs.email == payload.email).first()
 
     if not utilisateur:
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect.")
+        raise UnauthorizedError("Email ou mot de passe incorrect.")
 
-    if utilisateur.verrouille_jusqua and utilisateur.verrouille_jusqua > datetime.utcnow():
-        minutes_restantes = int((utilisateur.verrouille_jusqua - datetime.utcnow()).total_seconds() // 60) + 1
-        raise HTTPException(status_code=403, detail=f"Compte temporairement verrouillé. Réessayez dans {minutes_restantes} min.")
+    now = now_utc()
+    if utilisateur.verrouille_jusqua and utilisateur.verrouille_jusqua.replace(tzinfo=None) > now.replace(tzinfo=None):
+        minutes_restantes = int((utilisateur.verrouille_jusqua - now.replace(tzinfo=None)).total_seconds() // 60) + 1
+        raise ForbiddenError(f"Compte temporairement verrouillé. Réessayez dans {minutes_restantes} min.")
 
     if not utilisateur.actif:
-        raise HTTPException(status_code=403, detail="Ce compte a été désactivé.")
+        raise ForbiddenError("Ce compte a été désactivé.")
 
     if not verify_password(payload.mot_de_passe, utilisateur.mot_de_passe):
         utilisateur.tentatives_echouees += 1
         if utilisateur.tentatives_echouees >= MAX_TENTATIVES:
-            utilisateur.verrouille_jusqua = datetime.utcnow() + timedelta(minutes=DUREE_VERROUILLAGE_MINUTES)
+            utilisateur.verrouille_jusqua = now_utc().replace(tzinfo=None) + timedelta(minutes=DUREE_VERROUILLAGE_MINUTES)
             utilisateur.tentatives_echouees = 0
         db.commit()
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect.")
+        raise UnauthorizedError("Email ou mot de passe incorrect.")
 
     utilisateur.tentatives_echouees = 0
     utilisateur.verrouille_jusqua = None
@@ -58,13 +76,16 @@ def changer_mot_de_passe(
 ):
     # Seul le titulaire du compte ou un admin peut changer ce mot de passe.
     if utilisateur_courant.id != utilisateur_id and utilisateur_courant.role.value != "admin":
-        raise HTTPException(status_code=403, detail="Vous ne pouvez modifier que votre propre mot de passe.")
+        raise ForbiddenError("Vous ne pouvez modifier que votre propre mot de passe.")
 
-    utilisateur = db.query(models.Utilisateurs).filter(models.Utilisateurs.id == utilisateur_id).first()
-    if not utilisateur:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    utilisateur = assert_found(
+        db.query(models.Utilisateurs).filter(models.Utilisateurs.id == utilisateur_id).first(),
+        "Utilisateur",
+        str(utilisateur_id),
+    )
     if not verify_password(payload.ancien_mot_de_passe, utilisateur.mot_de_passe):
-        raise HTTPException(status_code=401, detail="Ancien mot de passe incorrect.")
+        raise UnauthorizedError("Ancien mot de passe incorrect.")
+    _valider_mot_de_passe(payload.nouveau_mot_de_passe, champ="Le nouveau mot de passe")
     utilisateur.mot_de_passe = hash_password(payload.nouveau_mot_de_passe)
     db.commit()
     return None

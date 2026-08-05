@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -9,9 +9,8 @@ if TYPE_CHECKING:
 class ClasseBase(BaseModel):
     niveau: str
     nom: str
-    frais_inscription: float = 0.0
-    mensualite: float = 0.0
-    capacite_max: Optional[int] = None
+    frais_inscription: float = Field(default=0.0, ge=0)
+    mensualite: float = Field(default=0.0, ge=0)
 
 
 class ClasseCreate(ClasseBase):
@@ -20,6 +19,7 @@ class ClasseCreate(ClasseBase):
 
 class ClasseResponse(ClasseBase):
     id: int
+    code_classe: Optional[str] = None
     created_at: str
     updated_at: str
     model_config = {"from_attributes": True}
@@ -29,4 +29,3 @@ class ClasseDetailResponse(ClasseResponse):
     eleves: List["EleveResponse"] = []
     cours: List["CoursResponse"] = []
     effectif_actuel: int = 0
-    places_restantes: Optional[int] = None

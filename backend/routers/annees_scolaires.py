@@ -5,6 +5,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from periodes import generer_periodes_par_defaut
 
 router = APIRouter(prefix="/api/anneesScolaires", tags=["Années Scolaires"], dependencies=[Depends(get_current_user)])
 
@@ -19,6 +20,8 @@ def create_annee_scolaire(payload: schemas.AnneeScolaireCreate, db: Session = De
     db.add(nouvelle_annee)
     db.commit()
     db.refresh(nouvelle_annee)
+    generer_periodes_par_defaut(db, nouvelle_annee.id, nouvelle_annee.date_debut, nouvelle_annee.date_fin)
+    db.commit()
     return nouvelle_annee
 
 

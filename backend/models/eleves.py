@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, event, Integer, ForeignKey, select, func
+from sqlalchemy import Boolean, Column, String, event, Integer, ForeignKey, select
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -15,6 +15,10 @@ class Eleves(Base):
     sexe = Column(String, nullable=False)
     adresse = Column(String, nullable=False)
     statut = Column(String, nullable=False, default="actif")
+    acte_naissance = Column(Boolean, nullable=False, default=False)
+    carnet_sante = Column(Boolean, nullable=False, default=False)
+    jugement_tutelle = Column(Boolean, nullable=False, default=False)
+    photo_id = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(
         String,
@@ -38,10 +42,20 @@ class Eleves(Base):
     bulletins = relationship("Bulletins", back_populates="eleve", cascade="all, delete-orphan")
     absences = relationship("Absences", back_populates="eleve")
     inscriptions = relationship("Inscriptions", back_populates="eleve", cascade="all, delete-orphan")
+    documents = relationship("Documents", back_populates="eleve", cascade="all, delete-orphan")
 
 @event.listens_for(Eleves, "before_insert")
 def receive_before_insert(mapper, connection, target):
-    result = connection.execute(select(func.count()).select_from(Eleves.__table__))
-    compteur = result.scalar() + 1
-    annee = datetime.now().strftime("%y")
-    target.matricule = f"EL{annee}{compteur:05d}"
+    """Matricule EL{année scolaire d'inscription}{n°} — numérotation annuelle.
+
+    L'année provient de `target.annee_scolaire_id` (attribut transitoire posé
+    à la création), sinon de l'année scolaire active. Le compteur repart à 1
+    chaque année scolaire.
+    """
+    from sqlalchemy.orm import object_session
+    from identifiants import generer_code, resoudre_annee
+    annee = resoudre_annee(connection, getattr(target, "annee_scolaire_id", None))
+    target.matricule = generer_code(
+        connection, Eleves.__table__.c.matricule, "EL", annee,
+        session=object_session(target),
+    )

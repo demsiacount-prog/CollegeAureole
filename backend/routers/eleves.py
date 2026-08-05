@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from pydantic import BaseModel
 from database import get_db
@@ -11,25 +11,6 @@ from security import get_current_user, require_role
 router = APIRouter(prefix="/api/eleves", tags=["Élèves"], dependencies=[Depends(get_current_user)])
 
 
-def _verifier_capacite_classe(db: Session, id_classe: int, matricule_a_exclure: Optional[str] = None):
-    classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
-    if not classe:
-        raise HTTPException(status_code=404, detail="La classe spécifiée n'existe pas.")
-    if classe.capacite_max is None:
-        return  # pas de limite définie
-    effectif = db.query(models.Eleves).filter(
-        models.Eleves.classe_id == id_classe,
-        models.Eleves.statut == "actif",
-        models.Eleves.matricule != (matricule_a_exclure or ""),
-    ).count()
-    if effectif >= classe.capacite_max:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Capacité maximale atteinte pour la classe {classe.niveau} {classe.nom} "
-                   f"({effectif}/{classe.capacite_max}).",
-        )
-
-
 class EleveUpdate(BaseModel):
     nom: Optional[str] = None
     prenom: Optional[str] = None
@@ -38,17 +19,83 @@ class EleveUpdate(BaseModel):
     classe_id: Optional[int] = None
     statut: Optional[str] = None
     photo: Optional[str] = None
+    acte_naissance: Optional[bool] = None
+    carnet_sante: Optional[bool] = None
+    jugement_tutelle: Optional[bool] = None
+    photo_id: Optional[bool] = None
+
+
+def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -> int:
+    """Année scolaire pour une inscription : celle fournie (validée) sinon l'active."""
+    from models.annees_scolaires import AnneesScolaires
+
+    if annee_scolaire_id is not None:
+        annee = db.query(AnneesScolaires).filter(AnneesScolaires.id == annee_scolaire_id).first()
+        if not annee:
+            raise HTTPException(status_code=404, detail="Année scolaire introuvable.")
+        return annee.id
+    annee_active = (
+        db.query(AnneesScolaires)
+        .filter(AnneesScolaires.active.is_(True))
+        .order_by(AnneesScolaires.date_debut.desc())
+        .first()
+    )
+    if not annee_active:
+        raise HTTPException(status_code=400, detail="Aucune année scolaire active : impossible d'inscrire l'élève.")
+    return annee_active.id
+
+
+def _inscrire_eleve(db: Session, matricule: str, id_classe: int, annee_scolaire_id: Optional[int]):
+    """Crée l'inscription de l'année (avec échéancier) et synchronise la classe.
+
+    Idempotent : si une inscription existe déjà pour (élève, année), son
+    id_classe est simplement mis à jour pour éviter les doublons.
+    """
+    from routers.inscriptions import _generer_echeances, _synchroniser_classe_eleve
+
+    annee_id = _resoudre_annee_inscription(db, annee_scolaire_id)
+    existante = (
+        db.query(models.Inscriptions)
+        .filter(
+            models.Inscriptions.matricule_eleve == matricule,
+            models.Inscriptions.id_annee_scolaire == annee_id,
+        )
+        .first()
+    )
+    if existante:
+        if existante.id_classe != id_classe:
+            existante.id_classe = id_classe
+        return existante
+
+    inscription = models.Inscriptions(
+        matricule_eleve=matricule,
+        id_classe=id_classe,
+        id_annee_scolaire=annee_id,
+        statut="Inscrit",
+    )
+    db.add(inscription)
+    db.flush()
+    _generer_echeances(db, inscription)
+    _synchroniser_classe_eleve(db, matricule, inscription.statut, inscription.id_classe)
+    return inscription
 
 
 @router.post("/", response_model=schemas.EleveResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
     if not db.query(models.Tuteurs).filter(models.Tuteurs.id == eleve.tuteur_id).first():
         raise HTTPException(status_code=404, detail="Le tuteur spécifié n'existe pas.")
-    if eleve.classe_id:
-        _verifier_capacite_classe(db, eleve.classe_id)
-
-    nouveau_eleve = models.Eleves(**eleve.model_dump())
+    donnees = eleve.model_dump()
+    # Transitoire : utilisé par before_insert pour l'année du matricule, non persisté.
+    annee_scolaire_id = donnees.pop("annee_scolaire_id", None)
+    nouveau_eleve = models.Eleves(**donnees)
+    nouveau_eleve.annee_scolaire_id = annee_scolaire_id
     db.add(nouveau_eleve)
+    db.flush()  # before_insert génère le matricule
+
+    # Affecter une classe à la création équivaut à inscrire l'élève.
+    if donnees.get("classe_id") is not None:
+        _inscrire_eleve(db, nouveau_eleve.matricule, donnees["classe_id"], annee_scolaire_id)
+
     db.commit()
     db.refresh(nouveau_eleve)
     return nouveau_eleve
@@ -58,18 +105,46 @@ def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
 def get_all_eleves(
     skip: int = 0,
     limit: int = Query(default=100, le=500),
+    q: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     # joinedload évite le N+1 : sans lui, sérialiser N élèves déclenche
     # N requêtes supplémentaires (tuteur + classe) car EleveResponse imbrique ces relations.
+    query = db.query(models.Eleves).options(
+        joinedload(models.Eleves.tuteur),
+        joinedload(models.Eleves.classe_relation),
+    )
+    if q and q.strip():
+        motif = f"%{q.strip().lower()}%"
+        query = query.filter(or_(
+            func.lower(models.Eleves.nom).like(motif),
+            func.lower(models.Eleves.prenom).like(motif),
+            func.lower(models.Eleves.matricule).like(motif),
+        ))
     return (
-        db.query(models.Eleves)
-        .options(joinedload(models.Eleves.tuteur), joinedload(models.Eleves.classe_relation))
+        query
         .order_by(models.Eleves.matricule)
         .offset(skip)
         .limit(limit)
         .all()
     )
+
+
+@router.get("/compte")
+def compter_eleves(
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Total d'élèves (après filtre q) pour la pagination de la liste."""
+    query = db.query(func.count(models.Eleves.matricule))
+    if q and q.strip():
+        motif = f"%{q.strip().lower()}%"
+        query = query.filter(or_(
+            func.lower(models.Eleves.nom).like(motif),
+            func.lower(models.Eleves.prenom).like(motif),
+            func.lower(models.Eleves.matricule).like(motif),
+        ))
+    return {"total": query.scalar() or 0}
 
 
 @router.put("/{matricule}", response_model=schemas.EleveResponse, dependencies=[Depends(require_role("admin", "directeur"))])
@@ -79,11 +154,19 @@ def update_eleve(matricule: str, payload: EleveUpdate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Élève non trouvé")
 
     donnees = payload.model_dump(exclude_unset=True)
-    if "classe_id" in donnees and donnees["classe_id"] and donnees["classe_id"] != eleve.classe_id:
-        _verifier_capacite_classe(db, donnees["classe_id"], matricule_a_exclure=matricule)
-
     for key, value in donnees.items():
         setattr(eleve, key, value)
+
+    # Une classe affectée à l'édition vaut inscription : on synchronise
+    # l'inscription de l'année active (idempotent). Année absente → on ne
+    # bloque pas la modification, le module Inscriptions reste disponible.
+    if donnees.get("classe_id") is not None:
+        try:
+            _inscrire_eleve(db, eleve.matricule, donnees["classe_id"], None)
+        except HTTPException:
+            # Année scolaire absente : la résolution échoue avant toute écriture,
+            # on ne bloque pas la modification (module Inscriptions disponible).
+            pass
 
     db.commit()
     db.refresh(eleve)
@@ -119,8 +202,6 @@ def activer_eleve(matricule: str, db: Session = Depends(get_db)):
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule).first()
     if not eleve:
         raise HTTPException(status_code=404, detail="Élève non trouvé")
-    if eleve.classe_id:
-        _verifier_capacite_classe(db, eleve.classe_id, matricule_a_exclure=matricule)
     eleve.statut = "actif"
     db.commit()
     db.refresh(eleve)
@@ -280,16 +361,40 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
     )
     annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
 
-    # On valide d'abord l'élève seul (respecte le validation_alias classe_relation -> classe),
-    # puis on complète avec les listes déjà construites via model_copy plutôt que par des kwargs
-    # (passer classe=... directement au constructeur serait ignoré : le champ n'accepte que
-    # son alias de validation en entrée, pas son nom de champ, tant que populate_by_name n'est
-    # pas activé sur le schéma).
-    dossier = schemas.DossierEleveResponse.model_validate(eleve)
-    return dossier.model_copy(update={
-        "inscriptions": inscriptions_enrichies,
-        "notes": [schemas.NoteResponse.model_validate(n) for n in notes],
-        "absences": [schemas.AbsenceResponse.model_validate(a) for a in absences],
-        "bulletins": [schemas.BulletinResponse.model_validate(b) for b in bulletins],
-        "annee_scolaire": schemas.AnneeScolaireResponse.model_validate(annee_active) if annee_active else None,
-    })
+    documents = (
+        db.query(models.Documents)
+        .options(joinedload(models.Documents.eleve))
+        .filter(models.Documents.matricule_eleve == matricule)
+        .order_by(models.Documents.uploaded_at.desc())
+        .all()
+    )
+
+    # Construit la réponse explicitement plutôt que via model_validate(eleve)
+    # qui déclencherait des lazy loads sur toutes les relations (notes, bulletins,
+    # absences…) et ferait échouer toute la requête si UNE seule donnée associée
+    # est invalide ou incomplète.
+    return schemas.DossierEleveResponse(
+        matricule=eleve.matricule,
+        nom=eleve.nom,
+        prenom=eleve.prenom,
+        photo=eleve.photo,
+        date_de_naissance=eleve.date_de_naissance,
+        lieu_de_naissance=eleve.lieu_de_naissance,
+        sexe=eleve.sexe,
+        adresse=eleve.adresse,
+        statut=eleve.statut,
+        acte_naissance=eleve.acte_naissance,
+        carnet_sante=eleve.carnet_sante,
+        jugement_tutelle=eleve.jugement_tutelle,
+        photo_id=eleve.photo_id,
+        created_at=eleve.created_at,
+        updated_at=eleve.updated_at,
+        tuteur=schemas.TuteurResponse.model_validate(eleve.tuteur),
+        classe_relation=schemas.ClasseResponse.model_validate(eleve.classe_relation) if eleve.classe_relation else None,
+        inscriptions=inscriptions_enrichies,
+        notes=[schemas.NoteResponse.model_validate(n) for n in notes],
+        absences=[schemas.AbsenceResponse.model_validate(a) for a in absences],
+        bulletins=[schemas.BulletinResponse.model_validate(b) for b in bulletins],
+        documents=[schemas.DocumentResponse.model_validate(d) for d in documents],
+        annee_scolaire=schemas.AnneeScolaireResponse.model_validate(annee_active) if annee_active else None,
+    )

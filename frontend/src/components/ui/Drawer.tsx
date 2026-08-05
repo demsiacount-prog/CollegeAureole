@@ -7,12 +7,14 @@ export function Drawer({
   onClose,
   title,
   description,
+  footer,
   children,
 }: {
   open: boolean
   onClose: () => void
   title: string
   description?: string
+  footer?: ReactNode
   children: ReactNode
 }) {
   useEffect(() => {
@@ -40,7 +42,7 @@ export function Drawer({
       <div className="relative flex h-full w-full max-w-md flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)]">
         <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-5">
           <div>
-            <h2 className="font-[var(--font-display)] text-lg font-medium text-[var(--color-ink)]">{title}</h2>
+            <h2 className="text-lg font-semibold text-[var(--color-ink)]">{title}</h2>
             {description && <p className="mt-1 text-sm text-[var(--color-ink-dim)]">{description}</p>}
           </div>
           <button
@@ -52,6 +54,11 @@ export function Drawer({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-2 border-t border-[var(--color-border-soft)] px-6 py-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

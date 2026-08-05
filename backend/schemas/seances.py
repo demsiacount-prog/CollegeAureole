@@ -41,6 +41,8 @@ class SeanceUpdate(BaseModel):
 
 class SeanceResponse(SeanceBase):
     id: int
+    created_at: str
+    updated_at: str
     model_config = {"from_attributes": True}
 
 

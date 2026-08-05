@@ -1,34 +1,30 @@
-import re
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel
 from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from bareme import bareme_niveau, seuil_passage, niveau_ordre
 
 router = APIRouter(prefix="/api/resultats", tags=["Résultats de passage"], dependencies=[Depends(get_current_user)])
 
 
-def _niveau_ordre(niveau: str) -> Optional[int]:
-    match = re.match(r"^(\d+)", niveau or "")
-    return int(match.group(1)) if match else None
-
-
 def _moyenne_annuelle(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> Optional[float]:
-    bulletins = (
-        db.query(models.Bulletins)
+    result = (
+        db.query(func.avg(models.Bulletins.moyenne_generale))
         .join(models.Trimestres, models.Bulletins.id_trimestre == models.Trimestres.id)
         .filter(
             models.Bulletins.matricule_eleve == matricule_eleve,
             models.Trimestres.annee_scolaire_id == id_annee_scolaire,
         )
-        .all()
+        .scalar()
     )
-    if not bulletins:
+    if result is None:
         return None
-    return round(sum(b.moyenne_generale for b in bulletins) / len(bulletins), 2)
+    return round(float(result), 2)
 
 
 class EleveResultat(BaseModel):
@@ -76,22 +72,41 @@ def _annee_active(db: Session) -> models.AnneesScolaires:
     return annee
 
 
-@router.get("/{id_classe}", response_model=ResultatsClasseResponse)
+def _determiner_statut_passage(moyenne: float, seuil: float, est_fin_cycle: bool, ancien_statut: str) -> tuple[str, bool]:
+    """Détermine le statut de passage de manière cohérente pour une vraie scolarité.
+
+    - Les statuts manuels (ADMIS/RECALE/EXCLU) sont conservés.
+    - Les élèves sans bulletin généré restent en attente.
+    - En fin de cycle, l'admission marque le diplôme.
+    """
+    if ancien_statut in {"ADMIS", "RECALE", "EXCLU"}:
+        return ancien_statut, ancien_statut == "ADMIS" and est_fin_cycle
+    if moyenne >= seuil:
+        return "ADMIS", est_fin_cycle
+    return "RECALE", False
+
+
+@router.get("/{id_classe}", response_model=ResultatsClasseResponse, dependencies=[Depends(require_role("admin", "directeur"))])
 def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable.")
     annee = _annee_active(db)
 
-    inscriptions = db.query(models.Inscriptions).filter(
-        models.Inscriptions.id_classe == id_classe,
-        models.Inscriptions.id_annee_scolaire == annee.id,
-    ).all()
+    inscriptions = (
+        db.query(models.Inscriptions)
+        .options(joinedload(models.Inscriptions.eleve))
+        .filter(
+            models.Inscriptions.id_classe == id_classe,
+            models.Inscriptions.id_annee_scolaire == annee.id,
+        )
+        .all()
+    )
 
     compteurs = {"EN_ATTENTE": 0, "ADMIS": 0, "RECALE": 0, "EXCLU": 0}
     eleves_out = []
     for insc in inscriptions:
-        eleve = db.query(models.Eleves).filter(models.Eleves.matricule == insc.matricule_eleve).first()
+        eleve = insc.eleve
         if not eleve:
             continue
         compteurs[insc.statut_passage] = compteurs.get(insc.statut_passage, 0) + 1
@@ -102,7 +117,7 @@ def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
         ))
 
     return ResultatsClasseResponse(
-        classe=classe, niveau_ordre=_niveau_ordre(classe.niveau), effectif=len(inscriptions),
+        classe=classe, niveau_ordre=niveau_ordre(classe.niveau), effectif=len(inscriptions),
         compteurs=compteurs, eleves=eleves_out,
     )
 
@@ -113,23 +128,29 @@ def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable.")
     annee = _annee_active(db)
-    niveau_ordre = _niveau_ordre(classe.niveau)
-    if niveau_ordre is None:
+    n_ordre = niveau_ordre(classe.niveau)
+    if n_ordre is None:
         raise HTTPException(status_code=400, detail="Niveau de la classe non reconnu.")
 
-    est_fin_cycle = niveau_ordre == 9
-    seuil = 10.0  # moyenne toujours calculée /20 par les bulletins, quel que soit le niveau
+    est_fin_cycle = n_ordre == 9
+    bareme = bareme_niveau(classe.niveau)
+    seuil = seuil_passage(bareme)
 
-    inscriptions = db.query(models.Inscriptions).filter(
-        models.Inscriptions.id_classe == id_classe,
-        models.Inscriptions.id_annee_scolaire == annee.id,
-    ).all()
+    inscriptions = (
+        db.query(models.Inscriptions)
+        .options(joinedload(models.Inscriptions.eleve))
+        .filter(
+            models.Inscriptions.id_classe == id_classe,
+            models.Inscriptions.id_annee_scolaire == annee.id,
+        )
+        .all()
+    )
 
     admis = diplomes = recales = exclus_conserves = en_attente = 0
     detail = []
 
     for insc in inscriptions:
-        eleve = db.query(models.Eleves).filter(models.Eleves.matricule == insc.matricule_eleve).first()
+        eleve = insc.eleve
         if not eleve:
             continue
         ancien_statut = insc.statut_passage
@@ -147,16 +168,25 @@ def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
                                              moyenne=None, ancien_statut=ancien_statut, nouveau_statut="EN_ATTENTE"))
             continue
 
-        if moyenne >= seuil:
-            nouveau_statut = "ADMIS"
-            insc.diplome = est_fin_cycle
-            if est_fin_cycle:
-                diplomes += 1
-            else:
-                admis += 1
+        nouveau_statut, diplome = _determiner_statut_passage(moyenne, seuil, est_fin_cycle, ancien_statut)
+        if ancien_statut in {"ADMIS", "RECALE", "EXCLU"}:
+            insc.diplome = diplome
+            if ancien_statut == "ADMIS":
+                if est_fin_cycle:
+                    diplomes += 1
+                else:
+                    admis += 1
+            elif ancien_statut == "RECALE":
+                recales += 1
         else:
-            nouveau_statut = "RECALE"
-            recales += 1
+            insc.diplome = diplome
+            if nouveau_statut == "ADMIS":
+                if est_fin_cycle:
+                    diplomes += 1
+                else:
+                    admis += 1
+            else:
+                recales += 1
 
         insc.statut_passage = nouveau_statut
         detail.append(DetailRapportAuto(matricule=eleve.matricule, nom=f"{eleve.prenom} {eleve.nom}",
@@ -171,8 +201,11 @@ def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
     )
 
 
+from typing import Literal
+
+
 class StatutPassageRequest(BaseModel):
-    statut: str  # "EN_ATTENTE" | "EXCLU" (transitions manuelles autorisées côté front)
+    statut: Literal["EN_ATTENTE", "ADMIS", "RECALE", "EXCLU"]
 
 
 @router.put("/statut/{inscription_id}", response_model=schemas.InscriptionResponse, dependencies=[Depends(require_role("admin", "directeur"))])

@@ -1,14 +1,14 @@
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { NAV_SECTIONS } from '@/routes/nav'
-import { useAuth } from '@/auth/AuthContext'
+import { useAuth } from '@/auth/useAuth'
 
 export function Sidebar() {
   const { user } = useAuth()
   if (!user) return null
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-[var(--color-border-soft)] bg-[var(--color-surface)]">
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border-soft)] bg-[var(--color-surface)]">
       <div className="flex items-center gap-3 px-5 py-6">
         <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-halo-dim)]">
           <span className="absolute inset-0 rounded-full halo-ring" />

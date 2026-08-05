@@ -15,8 +15,8 @@ import {
   DoorOpen,
   Wallet,
   Receipt,
-  CalendarRange,
-  ShieldCheck,
+  Settings,
+  FlagTriangleRight,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +33,7 @@ export interface NavSection {
 }
 
 const ALL_ROLES: Role[] = ['admin', 'directeur', 'comptable']
+const DIRECTION: Role[] = ['admin', 'directeur']
 
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -40,34 +41,39 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [{ label: 'Tableau de bord', path: '/app', icon: LayoutDashboard, roles: ALL_ROLES }],
   },
   {
-    title: 'Pédagogie',
+    title: 'Pilotage',
     items: [
       { label: 'Élèves', path: '/app/eleves', icon: GraduationCap, roles: ALL_ROLES },
       { label: 'Enseignants', path: '/app/enseignants', icon: UserRound, roles: ALL_ROLES },
       { label: 'Tuteurs', path: '/app/tuteurs', icon: Users, roles: ALL_ROLES },
       { label: 'Classes', path: '/app/classes', icon: BookOpen, roles: ALL_ROLES },
-      { label: 'Cours', path: '/app/cours', icon: NotebookPen, roles: ALL_ROLES },
-      { label: 'Notes', path: '/app/notes', icon: FileText, roles: ALL_ROLES },
-      { label: 'Bulletins', path: '/app/bulletins', icon: ClipboardList, roles: ALL_ROLES },
-      { label: 'Résultats', path: '/app/resultats', icon: Award, roles: ALL_ROLES },
-      { label: 'Absences', path: '/app/absences', icon: CalendarCheck, roles: ALL_ROLES },
-      { label: 'Inscriptions', path: '/app/inscriptions', icon: UserPlus, roles: ALL_ROLES },
-      { label: 'Séances', path: '/app/seances', icon: CalendarClock, roles: ALL_ROLES },
       { label: 'Salles', path: '/app/salles', icon: DoorOpen, roles: ALL_ROLES },
+    ],
+  },
+  {
+    title: 'Pédagogie',
+    items: [
+      { label: 'Inscriptions', path: '/app/inscriptions', icon: UserPlus, roles: DIRECTION },
+      { label: 'Absences', path: '/app/absences', icon: CalendarCheck, roles: DIRECTION },
+      { label: 'Notes', path: '/app/notes', icon: FileText, roles: DIRECTION },
+      { label: 'Bulletins', path: '/app/bulletins', icon: ClipboardList, roles: DIRECTION },
+      { label: 'Résultats', path: '/app/resultats', icon: Award, roles: DIRECTION },
+      { label: 'Cours', path: '/app/cours', icon: NotebookPen, roles: DIRECTION },
+      { label: 'Emploi du temps', path: '/app/seances', icon: CalendarClock, roles: DIRECTION },
     ],
   },
   {
     title: 'Finances',
     items: [
-      { label: 'Paiements', path: '/app/paiements', icon: Wallet, roles: ALL_ROLES },
-      { label: 'Dépenses', path: '/app/depenses', icon: Receipt, roles: ALL_ROLES },
+      { label: 'Paiements', path: '/app/paiements', icon: Wallet, roles: ['admin', 'comptable'] },
+      { label: 'Dépenses', path: '/app/depenses', icon: Receipt, roles: ['admin', 'comptable'] },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { label: 'Années scolaires', path: '/app/annees-scolaires', icon: CalendarRange, roles: ['admin', 'directeur'] },
-      { label: 'Comptes', path: '/app/utilisateurs', icon: ShieldCheck, roles: ['admin'] },
+      { label: 'Clôture d’année', path: '/app/cloture-annee', icon: FlagTriangleRight, roles: DIRECTION },
+      { label: 'Paramètres', path: '/app/parametres', icon: Settings, roles: ['admin', 'directeur'] },
     ],
   },
 ]

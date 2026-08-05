@@ -1,6 +1,6 @@
 # schemas/depenses.py
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 CategorieDepense = Literal[
@@ -10,7 +10,7 @@ CategorieDepense = Literal[
 
 class DepenseBase(BaseModel):
     libelle:     str
-    montant:     float
+    montant:     float = Field(gt=0)
     categorie:   CategorieDepense = "AUTRE"
     date:        date
     description: Optional[str] = None
@@ -27,4 +27,5 @@ class DepenseUpdate(BaseModel):
 
 class DepenseResponse(DepenseBase):
     id: int
+    code_depense: Optional[str] = None
     model_config = {"from_attributes": True}

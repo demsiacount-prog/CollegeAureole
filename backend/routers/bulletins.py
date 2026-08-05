@@ -7,20 +7,9 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from bareme import appreciation_for_moyenne, bareme_niveau
 
 router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[Depends(get_current_user)])
-
-
-def _appreciation_pour_moyenne(moyenne: float) -> str:
-    if moyenne >= 16:
-        return "Excellent"
-    if moyenne >= 14:
-        return "Très bien"
-    if moyenne >= 12:
-        return "Bien"
-    if moyenne >= 10:
-        return "Passable"
-    return "Insuffisant"
 
 
 def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> dict:
@@ -103,12 +92,15 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
 
     moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else 0.0
 
+    classe = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
+    bareme = bareme_niveau(classe.niveau) if classe else 20
+
     return {
         "matricule_eleve": matricule_eleve,
         "id_trimestre": id_trimestre,
         "id_classe": eleve.classe_id,
         "moyenne_generale": moyenne_generale,
-        "appreciation": _appreciation_pour_moyenne(moyenne_generale),
+        "appreciation": appreciation_for_moyenne(moyenne_generale, bareme),
         "details": details,
     }
 
@@ -166,7 +158,11 @@ def _upsert_bulletin(db: Session, calcul: dict) -> models.Bulletins:
 def _calculer_rangs_classe(db: Session, id_classe: int, id_trimestre: int) -> None:
     bulletins = (
         db.query(models.Bulletins)
-        .filter(models.Bulletins.id_classe == id_classe, models.Bulletins.id_trimestre == id_trimestre)
+        .filter(
+            models.Bulletins.id_classe == id_classe,
+            models.Bulletins.id_trimestre == id_trimestre,
+            models.Bulletins.statut == "PUBLIE",
+        )
         .order_by(models.Bulletins.moyenne_generale.desc())
         .all()
     )
@@ -227,6 +223,8 @@ def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sessio
     for b in bulletins:
         b.statut = "PUBLIE"
         b.published_at = datetime.utcnow()
+    db.flush()
+    _calculer_rangs_classe(db, payload.id_classe, payload.id_trimestre)
     db.commit()
     for b in bulletins:
         db.refresh(b)
@@ -243,6 +241,7 @@ def depublier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sess
     for b in bulletins:
         b.statut = "BROUILLON"
         b.published_at = None
+        b.rang = None
     db.commit()
     for b in bulletins:
         db.refresh(b)
@@ -261,6 +260,7 @@ def get_all_bulletins(
     # BulletinResponse imbrique details -> cours_nom (via detail.cours) : sans
     # eager loading, chaque détail de bulletin déclenche une requête supplémentaire.
     query = db.query(models.Bulletins).options(
+        joinedload(models.Bulletins.eleve),
         joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours)
     )
     if matricule_eleve:

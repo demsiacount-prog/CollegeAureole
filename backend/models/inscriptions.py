@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from sqlalchemy import Column, Integer, String, Date, Float, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Date, Float, Boolean, ForeignKey, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -11,6 +11,7 @@ class Inscriptions(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    code_inscription = Column(String, nullable=True, unique=True, index=True)
     matricule_eleve = Column(String, ForeignKey("eleves.matricule", ondelete="CASCADE"), nullable=False, index=True)
     id_classe = Column(Integer, ForeignKey("classes.id", ondelete="SET NULL"), nullable=True, index=True)
     id_annee_scolaire = Column(Integer, ForeignKey("annees_scolaires.id", ondelete="RESTRICT"), nullable=False, index=True)
@@ -32,3 +33,21 @@ class Inscriptions(Base):
     annee_scolaire = relationship("AnneesScolaires", back_populates="inscriptions")
     paiements = relationship("Paiements", back_populates="inscription", cascade="all, delete-orphan")
     echeances = relationship("Echeances", back_populates="inscription", cascade="all, delete-orphan", order_by="Echeances.date_echeance")
+
+
+@event.listens_for(Inscriptions, "before_insert")
+def generer_code_inscription(mapper, connection, target):
+    """Génère l'identifiant INS{année}{n°} avec numérotation annuelle.
+
+    Format : INS suivi de l'année de début de l'année scolaire (2 chiffres)
+    et d'un compteur à 5 chiffres qui repart à 1 chaque année scolaire
+    (ex. 1ère inscription de l'année 2025-2026 → INS2500001).
+    """
+    from sqlalchemy.orm import object_session
+    from identifiants import generer_code, resoudre_annee
+
+    annee = resoudre_annee(connection, target.id_annee_scolaire)
+    target.code_inscription = generer_code(
+        connection, Inscriptions.__table__.c.code_inscription, "INS", annee,
+        session=object_session(target),
+    )

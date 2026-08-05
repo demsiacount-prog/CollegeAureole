@@ -1,14 +1,13 @@
 """Configuration Alembic : branchée sur les mêmes modèles SQLAlchemy et la
 même DATABASE_URL que l'application (voir database.py), pour ne jamais avoir
 deux définitions de schéma qui divergent."""
-import os
 import sys
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, ".")
 
 from database import Base, DATABASE_URL  # noqa: E402
 import models  # noqa: E402,F401  (importe tous les modèles pour peupler Base.metadata)

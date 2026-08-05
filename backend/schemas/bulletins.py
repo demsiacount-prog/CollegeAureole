@@ -36,6 +36,14 @@ class BulletinPublierRequest(BaseModel):
     id_trimestre: int
 
 
+class BulletinEleveResponse(BaseModel):
+    matricule: str
+    nom: str
+    prenom: str
+    photo: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
 class BulletinResponse(BaseModel):
     id: int
     matricule_eleve: str
@@ -50,6 +58,7 @@ class BulletinResponse(BaseModel):
     created_at: str
     updated_at: str
     details: List[BulletinDetailResponse] = []
+    eleve: Optional[BulletinEleveResponse] = None
     model_config = {"from_attributes": True}
 
 

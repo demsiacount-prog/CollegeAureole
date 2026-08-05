@@ -2,7 +2,7 @@
 # Nécessite : pip install pyjwt
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import jwt
 from fastapi import Depends, HTTPException
@@ -10,17 +10,22 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from database import get_db
+from exceptions import UnauthorizedError
 import models
+from timeutils import now_utc
 
 logger = logging.getLogger("college_aureole")
 
 _DEFAULT_SECRET = "changez-moi-en-production"
 # À définir en variable d'environnement en production (ne jamais committer la vraie valeur)
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", _DEFAULT_SECRET)
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", _DEFAULT_SECRET).strip()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8h
 
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
+
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY ne peut pas être vide.")
 
 if _ENVIRONMENT == "production" and (SECRET_KEY == _DEFAULT_SECRET or len(SECRET_KEY) < 32):
     # En production, un secret par défaut ou trop court rendrait les JWT
@@ -41,11 +46,12 @@ bearer_scheme = HTTPBearer()
 
 
 def create_access_token(utilisateur_id: int, role: str, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
+    now = now_utc()
     payload = {
         "sub": str(utilisateur_id),
         "role": role,
-        "exp": datetime.utcnow() + timedelta(minutes=expires_minutes),
-        "iat": datetime.utcnow(),
+        "exp": now + timedelta(minutes=expires_minutes),
+        "iat": now,
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -54,9 +60,9 @@ def decode_access_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Session expirée, veuillez vous reconnecter.")
+        raise UnauthorizedError("Session expirée, veuillez vous reconnecter.")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Token invalide.")
+        raise UnauthorizedError("Token invalide.")
 
 
 def get_current_user(
@@ -66,7 +72,7 @@ def get_current_user(
     payload = decode_access_token(credentials.credentials)
     utilisateur = db.query(models.Utilisateurs).filter(models.Utilisateurs.id == int(payload["sub"])).first()
     if not utilisateur or not utilisateur.actif:
-        raise HTTPException(status_code=401, detail="Utilisateur invalide ou désactivé.")
+        raise UnauthorizedError("Utilisateur invalide ou désactivé.")
     return utilisateur
 
 
@@ -75,7 +81,7 @@ def require_role(*roles_autorises: str):
     Exemple : @router.get(..., dependencies=[Depends(require_role("admin", "directeur"))])"""
 
     def dependance(utilisateur: models.Utilisateurs = Depends(get_current_user)):
-        if utilisateur.role.value not in roles_autorises and utilisateur.role not in roles_autorises:
+        if utilisateur.role.value not in roles_autorises:
             raise HTTPException(status_code=403, detail="Accès refusé pour ce rôle.")
         return utilisateur
 

@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, forwardRef, useId } from 'react'
+import { type InputHTMLAttributes, forwardRef, useId, useCallback } from 'react'
 import { clsx } from 'clsx'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -8,9 +8,31 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, id, className, ...rest }, ref) => {
+  ({ label, error, hint, id, className, onKeyDown, onPaste, ...rest }, ref) => {
     const generatedId = useId()
     const inputId = id ?? generatedId
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (rest.type === 'number') {
+        if (e.ctrlKey || e.metaKey) return
+        const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
+        if (allowed.includes(e.key)) return
+        if (!/^[\d.]$/.test(e.key)) {
+          e.preventDefault()
+        }
+      }
+      onKeyDown?.(e)
+    }, [rest.type, onKeyDown])
+
+    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+      if (rest.type === 'number') {
+        const data = e.clipboardData.getData('text')
+        if (!/^[\d.]+$/.test(data)) {
+          e.preventDefault()
+        }
+      }
+      onPaste?.(e)
+    }, [rest.type, onPaste])
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -24,6 +46,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           className={clsx(
             'h-10 rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)]',
             'placeholder:text-[var(--color-ink-faint)] transition-colors duration-150',

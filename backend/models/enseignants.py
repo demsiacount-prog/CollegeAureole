@@ -13,7 +13,7 @@ class Enseignants(Base):
     email = Column(String, nullable=False, unique=True)
     telephone = Column(String, nullable=False)
     adresse = Column(String, nullable=False)
-    profession = Column(String, nullable=False)
+    specialite = Column(String, nullable=False)
     heures_hebdo_max = Column(Float, nullable=True)  # None = pas de quota contrôlé
 
     created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())

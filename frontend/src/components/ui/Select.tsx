@@ -5,10 +5,12 @@ import { clsx } from 'clsx'
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
+  /** Alternative aux <option> passées en children. */
+  options?: { value: string | number; label: string }[]
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, id, className, children, ...rest }, ref) => {
+  ({ label, error, id, className, children, options, ...rest }, ref) => {
     const generatedId = useId()
     const selectId = id ?? generatedId
 
@@ -33,7 +35,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             )}
             {...rest}
           >
-            {children}
+            {options
+              ? options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))
+              : children}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
         </div>

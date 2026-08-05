@@ -8,7 +8,7 @@ class EnseignantBase(BaseModel):
     email: EmailStr
     telephone: str
     adresse: str
-    profession: str
+    specialite: str
     heures_hebdo_max: Optional[float] = None
 
 

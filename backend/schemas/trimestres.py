@@ -1,6 +1,6 @@
 from datetime import date
 from pydantic import BaseModel
-from typing import TYPE_CHECKING
+from typing import Literal, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from schemas.annees_scolaires import AnneeScolaireResponse
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 class TrimestreBase(BaseModel):
     nom: str
+    type: Literal["TRIMESTRE", "COMPOSITION"] = "TRIMESTRE"
     date_debut: date
     date_fin: date
 
@@ -27,3 +28,12 @@ class TrimestreResponse(TrimestreBase):
 
 class TrimestreDetailResponse(TrimestreResponse):
     annee_scolaire: "AnneeScolaireResponse"
+
+
+class TrimestresGenererRequest(BaseModel):
+    annee_scolaire_id: int
+
+
+class TrimestresGenererResponse(BaseModel):
+    cree: int
+    annee_scolaire_id: int

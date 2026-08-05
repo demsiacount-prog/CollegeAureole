@@ -5,7 +5,8 @@ from sqlalchemy import func
 from database import get_db
 import models
 import schemas
-from security import get_current_user
+from security import get_current_user, require_role
+from bareme import bareme_niveau
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"], dependencies=[Depends(get_current_user)])
 
@@ -26,7 +27,7 @@ def _derniers_mois(n: int = 6):
     return list(reversed(mois))
 
 
-@router.get("/stats", response_model=schemas.DashboardStatsResponse)
+@router.get("/stats", response_model=schemas.DashboardStatsResponse, dependencies=[Depends(require_role("admin", "directeur"))])
 def get_dashboard_stats(db: Session = Depends(get_db)):
 
     # ── 1. COMPTEURS SIMPLES (COUNT côté SQL, pas de chargement de lignes) ──
@@ -92,20 +93,64 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         round((absences_mois_actuel / nb_eleves) * 100, 1) if nb_eleves > 0 else 0
     )
 
-    # ── 6. ACTIVITÉ RÉCENTE (seulement les 4 plus récentes, triées en SQL) ─
+    # ── 6. ACTIVITÉ RÉCENTE (créations de toutes natures, triées en SQL) ────
+    # Chaque table de création apporte ses événements les plus récents ; on
+    # fusionne le tout, on trie par date décroissante puis on limite.
+    LIMIT_PAR_TYPE = 5
+    TOTAL_ACTIVITES = 30
+
     dernieres_notes = (
         db.query(models.Notes, models.Eleves, models.Classes)
         .join(models.Eleves, models.Eleves.matricule == models.Notes.matricule_eleve)
         .outerjoin(models.Classes, models.Classes.id == models.Notes.id_classe)
         .order_by(models.Notes.created_at.desc())
-        .limit(4)
+        .limit(LIMIT_PAR_TYPE)
         .all()
     )
     dernieres_absences = (
         db.query(models.Absences, models.Eleves)
         .join(models.Eleves, models.Eleves.matricule == models.Absences.matricule_eleve)
         .order_by(models.Absences.created_at.desc())
-        .limit(4)
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    derniers_eleves = (
+        db.query(models.Eleves)
+        .order_by(models.Eleves.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    derniers_enseignants = (
+        db.query(models.Enseignants)
+        .order_by(models.Enseignants.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    derniers_tuteurs = (
+        db.query(models.Tuteurs)
+        .order_by(models.Tuteurs.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    dernieres_inscriptions = (
+        db.query(models.Inscriptions, models.Eleves)
+        .join(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
+        .order_by(models.Inscriptions.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    derniers_paiements = (
+        db.query(models.Paiements, models.Inscriptions, models.Eleves)
+        .outerjoin(models.Inscriptions, models.Inscriptions.id == models.Paiements.id_inscription)
+        .outerjoin(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
+        .order_by(models.Paiements.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    dernieres_depenses = (
+        db.query(models.Depenses)
+        .order_by(models.Depenses.created_at.desc())
+        .limit(LIMIT_PAR_TYPE)
         .all()
     )
 
@@ -113,9 +158,10 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     for note, eleve, classe in dernieres_notes:
         nom_eleve = f"{eleve.nom} {eleve.prenom}".strip()
         nom_classe = classe.nom if classe else "sa classe"
+        bm = bareme_niveau(classe.niveau) if classe else 20
         activites.append({
             "type": "note",
-            "texte": f"Note de {note.note}/20 ajoutée pour {nom_eleve} ({nom_classe}).",
+            "texte": f"Note de {note.note}/{bm} ajoutée pour {nom_eleve} ({nom_classe}).",
             "date": str(note.created_at),
         })
     for absence, eleve in dernieres_absences:
@@ -126,9 +172,61 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
             "texte": f"Absence {statut} enregistrée pour {nom_eleve}.",
             "date": str(absence.created_at),
         })
+    for eleve in derniers_eleves:
+        activites.append({
+            "type": "eleve",
+            "texte": f"Nouvel élève {eleve.prenom} {eleve.nom} enregistré.",
+            "date": str(eleve.created_at),
+        })
+    for enseignant in derniers_enseignants:
+        activites.append({
+            "type": "enseignant",
+            "texte": f"Enseignant {enseignant.prenom} {enseignant.nom} ajouté.",
+            "date": str(enseignant.created_at),
+        })
+    for tuteur in derniers_tuteurs:
+        activites.append({
+            "type": "tuteur",
+            "texte": f"Tuteur {tuteur.prenom} {tuteur.nom} ajouté.",
+            "date": str(tuteur.created_at),
+        })
+    for inscription, eleve in dernieres_inscriptions:
+        nom_eleve = f"{eleve.nom} {eleve.prenom}".strip()
+        reference = inscription.code_inscription or f"n°{inscription.id}"
+        activites.append({
+            "type": "inscription",
+            "texte": f"Inscription {reference} enregistrée pour {nom_eleve}.",
+            "date": str(inscription.created_at),
+        })
+    for paiement, _inscription, eleve in derniers_paiements:
+        nom_eleve = f"{eleve.nom} {eleve.prenom}".strip() if eleve else "un élève"
+        activites.append({
+            "type": "paiement",
+            "texte": f"Paiement de {paiement.montant:,.0f} FCFA reçu pour {nom_eleve}.",
+            "date": str(paiement.created_at),
+        })
+    for depense in dernieres_depenses:
+        activites.append({
+            "type": "depense",
+            "texte": f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA enregistrée.",
+            "date": str(depense.created_at),
+        })
 
-    activites.sort(key=lambda a: a["date"], reverse=True)
-    dernieres_activites = activites[:4]
+    # Un événement de chaque type d'abord (pour que toutes les créations soient
+    # visibles, y compris celles au timestamp ancien), puis on complète avec les
+    # événements les plus récents restants jusqu'à la limite.
+    par_type: dict = {}
+    for a in activites:
+        par_type.setdefault(a["type"], []).append(a)
+
+    dernieres_activites = [items[0] for items in par_type.values()]
+    autres = [a for items in par_type.values() for a in items[1:]]
+    autres.sort(key=lambda a: a["date"], reverse=True)
+    for a in autres:
+        if len(dernieres_activites) >= TOTAL_ACTIVITES:
+            break
+        dernieres_activites.append(a)
+    dernieres_activites.sort(key=lambda a: a["date"], reverse=True)
 
     # ── 7. ABSENCES SUR LES 7 DERNIERS JOURS (carte "Absences (7 derniers jours)") ──
     date_7j = aujourdhui - timedelta(days=6)  # fenêtre glissante de 7 jours, bornes incluses

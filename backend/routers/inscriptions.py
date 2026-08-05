@@ -1,20 +1,16 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from datetime import date as date_type
 from database import get_db
 import models
 import schemas
+from models.echeances import MOIS_ANNEE_SCOLAIRE
 from security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/inscriptions", tags=["Inscriptions"], dependencies=[Depends(get_current_user)])
-
-MOIS_ANNEE_SCOLAIRE = [
-    "Octobre", "Novembre", "Décembre", "Janvier", "Février",
-    "Mars", "Avril", "Mai", "Juin"
-]
-
 
 def _verifier_existence(db, matricule_eleve, id_annee_scolaire, id_classe):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first():
@@ -50,19 +46,26 @@ def _generer_echeances(db: Session, inscription: models.Inscriptions):
         statut="EN_ATTENTE" if frais_inscription > 0 else "SOLDE",
     ))
 
+    nb_mensualites = 0
     for i, mois in enumerate(MOIS_ANNEE_SCOLAIRE):
         if i < 3:
             annee_mois, num_mois = annee_debut, 10 + i
         else:
             annee_mois, num_mois = annee_debut + 1, i - 2
+        date_echeance = date_type(annee_mois, num_mois, 5)
+        # Prorata : pas d'échéance pour un mois antérieur à la date d'inscription
+        # (un élève inscrit en cours d'année n'est pas facturé pour les mois passés).
+        if date_echeance < inscription.date_inscription:
+            continue
+        nb_mensualites += 1
         db.add(models.Echeances(
             id_inscription=inscription.id, id_classe=inscription.id_classe,
-            type_echeance="MENSUALITE", mois=mois, date_echeance=date_type(annee_mois, num_mois, 5),
+            type_echeance="MENSUALITE", mois=mois, date_echeance=date_echeance,
             montant_du=mensualite, montant_paye=0.0,
             statut="EN_ATTENTE" if mensualite > 0 else "SOLDE",
         ))
 
-    inscription.montant_total = frais_inscription + (mensualite * 9)
+    inscription.montant_total = frais_inscription + (mensualite * nb_mensualites)
 
 
 def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, nouvelle_inscription: models.Inscriptions):
@@ -73,7 +76,6 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
     if not ancienne:
         return
 
-    # Un crédit disponible de l'année précédente vient d'abord compenser le report
     credit = ancienne.credit_disponible or 0.0
 
     impayes = db.query(models.Echeances).filter(
@@ -92,11 +94,24 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
         if reste <= 0:
             ech.statut = "REPORTE"
             continue
-        db.add(models.Echeances(
-            id_inscription=nouvelle_inscription.id, id_classe=nouvelle_inscription.id_classe,
-            type_echeance=ech.type_echeance, mois=ech.mois, date_echeance=nouvelle_inscription.date_inscription,
-            montant_du=reste, montant_paye=0.0, statut="REPORTE", id_echeance_origine=ech.id,
-        ))
+
+        existing = db.query(models.Echeances).filter(
+            models.Echeances.id_inscription == nouvelle_inscription.id,
+            models.Echeances.type_echeance == ech.type_echeance,
+            models.Echeances.mois == ech.mois,
+        ).first()
+
+        if existing:
+            existing.montant_du += reste
+            if existing.statut == "SOLDE":
+                existing.statut = "EN_ATTENTE"
+        else:
+            db.add(models.Echeances(
+                id_inscription=nouvelle_inscription.id, id_classe=nouvelle_inscription.id_classe,
+                type_echeance=ech.type_echeance, mois=ech.mois, date_echeance=nouvelle_inscription.date_inscription,
+                montant_du=reste, montant_paye=0.0, statut="REPORTE", id_echeance_origine=ech.id,
+            ))
+
         ech.statut = "REPORTE"
         nouvelle_inscription.montant_total += reste
 
@@ -122,17 +137,7 @@ def creer_inscription(payload: schemas.InscriptionCreate, db: Session = Depends(
     return inscription
 
 
-@router.get("/", response_model=List[schemas.InscriptionResponse])
-def lister_inscriptions(
-    matricule_eleve: Optional[str] = None,
-    id_classe: Optional[int] = None,
-    id_annee_scolaire: Optional[int] = None,
-    statut: Optional[str] = None,
-    skip: int = 0,
-    limit: int = Query(default=200, le=500),
-    db: Session = Depends(get_db),
-):
-    query = db.query(models.Inscriptions)
+def _appliquer_filtres_inscriptions(query, matricule_eleve, id_classe, id_annee_scolaire, statut, q):
     if matricule_eleve:
         query = query.filter(models.Inscriptions.matricule_eleve == matricule_eleve)
     if id_classe:
@@ -141,7 +146,55 @@ def lister_inscriptions(
         query = query.filter(models.Inscriptions.id_annee_scolaire == id_annee_scolaire)
     if statut:
         query = query.filter(models.Inscriptions.statut == statut)
-    return query.order_by(models.Inscriptions.id_annee_scolaire.desc()).offset(skip).limit(limit).all()
+    if q:
+        like = f"%{q}%"
+        query = query.join(models.Eleves)
+        query = query.filter(or_(
+            models.Inscriptions.matricule_eleve.ilike(like),
+            models.Inscriptions.code_inscription.ilike(like),
+            models.Inscriptions.observation.ilike(like),
+            models.Eleves.nom.ilike(like),
+            models.Eleves.prenom.ilike(like),
+        ))
+    return query
+
+
+@router.get("/", response_model=List[schemas.InscriptionResponse])
+def lister_inscriptions(
+    matricule_eleve: Optional[str] = None,
+    id_classe: Optional[int] = None,
+    id_annee_scolaire: Optional[int] = None,
+    statut: Optional[str] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = Query(default=200, le=500),
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_inscriptions(
+        db.query(models.Inscriptions).options(joinedload(models.Inscriptions.eleve)),
+        matricule_eleve, id_classe, id_annee_scolaire, statut, q,
+    )
+    results = query.order_by(models.Inscriptions.id_annee_scolaire.desc()).offset(skip).limit(limit).all()
+    for insc in results:
+        if insc.eleve:
+            insc.eleve_nom = insc.eleve.nom
+            insc.eleve_prenom = insc.eleve.prenom
+    return results
+
+
+@router.get("/compte")
+def compter_inscriptions(
+    matricule_eleve: Optional[str] = None,
+    id_classe: Optional[int] = None,
+    id_annee_scolaire: Optional[int] = None,
+    statut: Optional[str] = None,
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_inscriptions(
+        db.query(models.Inscriptions), matricule_eleve, id_classe, id_annee_scolaire, statut, q
+    )
+    return {"total": query.count()}
 
 
 @router.get("/eleve/{matricule_eleve}/historique", response_model=List[schemas.InscriptionDetailResponse])
@@ -200,12 +253,30 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
         raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée.")
 
     donnees = payload.model_dump(exclude_unset=True)
+    changement_classe = (
+        "id_classe" in donnees and donnees["id_classe"] is not None and donnees["id_classe"] != inscription.id_classe
+    )
     if "id_classe" in donnees and donnees["id_classe"] is not None:
         if not db.query(models.Classes).filter(models.Classes.id == donnees["id_classe"]).first():
             raise HTTPException(status_code=404, detail="Classe introuvable.")
 
     for champ, valeur in donnees.items():
         setattr(inscription, champ, valeur)
+
+    if changement_classe:
+        nouvelle_classe = db.query(models.Classes).filter(models.Classes.id == inscription.id_classe).first()
+        if nouvelle_classe:
+            nb_mensualites = 0
+            for echeance in inscription.echeances:
+                if echeance.type_echeance == "MENSUALITE":
+                    nb_mensualites += 1
+                if echeance.statut != "SOLDE":
+                    echeance.montant_du = (
+                        nouvelle_classe.frais_inscription
+                        if echeance.type_echeance == "INSCRIPTION"
+                        else nouvelle_classe.mensualite
+                    )
+            inscription.montant_total = nouvelle_classe.frais_inscription + (nouvelle_classe.mensualite * nb_mensualites)
 
     _synchroniser_classe_eleve(db, inscription.matricule_eleve, inscription.statut, inscription.id_classe)
     db.commit()
@@ -249,13 +320,14 @@ def passage_annee(payload: schemas.PassageAnneeRequest, db: Session = Depends(ge
         )
         db.add(nouvelle_inscription)
         try:
-            db.flush()
+            with db.begin_nested():
+                db.flush()
         except IntegrityError:
-            db.rollback()
             erreurs.append(f"{eleve.matricule} : inscription déjà existante.")
             continue
 
         _generer_echeances(db, nouvelle_inscription)
+        db.flush()
         _reporter_impayes(db, eleve.matricule, payload.id_annee_scolaire_origine, nouvelle_inscription)
         _synchroniser_classe_eleve(db, eleve.matricule, statut, id_classe_cible)
         nb_creees += 1

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { clsx } from 'clsx'
 
 function initials(nom: string, prenom: string) {
@@ -7,26 +8,44 @@ function initials(nom: string, prenom: string) {
 export function Avatar({
   nom,
   prenom,
-  haloed = false,
+  photo,
+  highlighted = false,
   size = 'md',
 }: {
   nom: string
   prenom: string
-  haloed?: boolean
+  photo?: string | null
+  highlighted?: boolean
   size?: 'sm' | 'md' | 'lg'
 }) {
+  const [failed, setFailed] = useState(false)
   const sizeClasses = {
     sm: 'size-7 text-[11px]',
     md: 'size-9 text-sm',
     lg: 'size-14 text-lg',
   }[size]
 
+  if (photo && !failed) {
+    return (
+      <img
+        src={photo}
+        alt={`${prenom} ${nom}`}
+        onError={() => setFailed(true)}
+        className={clsx(
+          'shrink-0 rounded-full border border-[var(--color-border)] object-cover',
+          highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-brand)]',
+          sizeClasses,
+        )}
+      />
+    )
+  }
+
   return (
     <div
       className={clsx(
-        'flex shrink-0 items-center justify-center rounded-full font-[var(--font-display)] font-medium',
-        'bg-[var(--color-surface-3)] text-[var(--color-halo-bright)] border border-[var(--color-border)]',
-        haloed && 'halo-ring',
+        'flex shrink-0 items-center justify-center rounded-full font-medium',
+        'bg-[var(--color-surface-3)] text-[var(--color-ink)] border border-[var(--color-border)]',
+        highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-brand)]',
         sizeClasses,
       )}
     >

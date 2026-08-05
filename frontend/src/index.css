@@ -16,14 +16,24 @@
   --color-ink: #f1eee4;
   --color-ink-dim: #a7a9b4;
   --color-ink-faint: #6b6e7a;
+  --color-ink-disabled: #3f424b;
 
   /* Halo accent — the school's signature warm gold, sampled from the actual logo */
   --color-halo: #d9a75c;
   --color-halo-bright: #f0c98a;
   --color-halo-dim: #8a6a3c;
+  --color-halo-ink: #161208;
   --color-halo-wash: #d9a75c1a;
 
-  /* Brand blue — the graduation cap in the logo, used as the secondary accent */
+  /* Brand blue — primary action. The halo gold is reserved for keyboard
+     focus and the active sidebar item only. */
+  --color-brand: #2d6ee8;
+  --color-brand-dark: #1e58c4;
+  --color-brand-bright: #6bb0d1;
+  --color-brand-wash: #2d6ee822;
+  --color-brand-dim: #7aa3c4;
+  --color-brand-border: #4d7fc0;
+
   --color-brand-blue: #3f80a8;
   --color-brand-blue-bright: #6bb0d1;
   --color-brand-blue-dim: #244a63;
@@ -60,6 +70,54 @@
     color-scheme: dark;
   }
 
+  /* ---- Light theme ---- */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    --color-base: #f5f3ee;
+    --color-surface: #ffffff;
+    --color-surface-2: #efede7;
+    --color-surface-3: #e5e2da;
+    --color-border: #d6d3cc;
+    --color-border-soft: #e3e0da;
+
+    --color-ink: #1a1814;
+    --color-ink-dim: #6b6b6b;
+    --color-ink-faint: #a0a0a0;
+    --color-ink-disabled: #b8b5ac;
+
+    --color-halo: #d9a75c;
+    --color-halo-bright: #c4943e;
+    --color-halo-dim: #8a6a3c;
+    --color-halo-ink: #161208;
+    --color-halo-wash: #d9a75c1a;
+
+    --color-brand: #2d6ee8;
+    --color-brand-dark: #1e58c4;
+    --color-brand-bright: #1e58c4;
+    --color-brand-wash: #ebf2ff;
+    --color-brand-dim: #4a6f9e;
+    --color-brand-border: #bfdbfe;
+
+    --color-brand-blue: #3f80a8;
+    --color-brand-blue-bright: #357099;
+    --color-brand-blue-dim: #244a63;
+    --color-brand-blue-wash: #3f80a81a;
+
+    --color-success: #7a9e3a;
+    --color-success-wash: #7a9e3a1a;
+    --color-warning: #b87d3a;
+    --color-warning-wash: #b87d3a1a;
+    --color-danger: #c94d5e;
+    --color-danger-wash: #c94d5e1a;
+    --color-info: #3f80a8;
+    --color-info-wash: #3f80a81a;
+
+    --shadow-soft: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px -12px rgba(0,0,0,0.12);
+    --shadow-halo: 0 0 0 1px var(--color-halo-wash), 0 0 24px -4px var(--color-halo-wash);
+    --shadow-blue: 0 0 0 1px var(--color-brand-blue-wash), 0 0 24px -4px var(--color-brand-blue-wash);
+  }
+
   body {
     background-color: var(--color-base);
     color: var(--color-ink);
@@ -68,8 +126,8 @@
   }
 
   ::selection {
-    background-color: var(--color-halo-wash);
-    color: var(--color-halo-bright);
+    background-color: var(--color-brand-wash);
+    color: var(--color-brand-bright);
   }
 
   * {
@@ -114,5 +172,47 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* DemoTour : surbrillance du lien de navigation actif dans le menu latéral */
+  nav a.demo-highlight {
+    box-shadow: 0 0 0 2px var(--color-halo), 0 0 16px -4px var(--color-halo);
+    border-radius: var(--radius-sm);
+  }
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-page-in {
+    animation: page-in 0.18s ease-out;
+  }
+
+  /* Skeleton shimmer for table placeholder rows */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2) 25%,
+      var(--color-surface-3) 50%,
+      var(--color-surface-2) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s linear infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 }

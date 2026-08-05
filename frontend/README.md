@@ -1,18 +1,21 @@
 # Auréole — Frontend
 
 Frontend de gestion scolaire (React + TypeScript + Vite + Tailwind v4), branché sur le
-backend FastAPI `backend_corrige`.
+backend FastAPI (`backend`).
 
 ## Démarrage
 
 ```bash
 npm install
-cp .env.example .env   # ajuster VITE_API_URL si besoin (par défaut http://localhost:3000, cf. backend_corrige/dev.sh)
+cp .env.example .env   # VITE_API_URL ne sert qu'au dev (vite : http://localhost:3000).
 npm run dev
 ```
 
-L'app tourne sur http://localhost:5173. Le backend doit déjà tourner (voir son `dev.sh`)
-et autoriser cette origine dans `CORS_ORIGINS`.
+L'app tourne sur http://localhost:5173. Le backend doit déjà tourner (voir
+`scripts/start_server.sh`) et autoriser cette origine dans `CORS_ORIGINS`.
+
+En mode serveur (interface servie par le backend), l'API est appelée sur la **même
+origine** (`window.location.origin`) : aucun `VITE_API_URL` à configurer.
 
 ## État actuel
 

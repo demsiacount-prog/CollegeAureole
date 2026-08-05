@@ -5,6 +5,7 @@ from schemas.enseignants import EnseignantResponse
 from schemas.cours import CoursResponse
 from schemas.annees_scolaires import AnneeScolaireResponse
 from schemas.classes import ClasseResponse
+from schemas.documents import DocumentResponse
 
 
 # ─── Affectation : une classe + un cours pour une année donnée ────────────────
@@ -39,6 +40,7 @@ class DossierEnseignantResponse(BaseModel):
     enseignant: EnseignantResponse
     stats: StatsEnseignantResponse
     historique: List[HistoriqueAnneeResponse] = []
+    documents: List[DocumentResponse] = []
 
     model_config = {"from_attributes": True}
 

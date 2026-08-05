@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 
 from routers import (
@@ -24,8 +24,12 @@ from routers import (
     salles,
     depenses,
     resultats,
+    cloture,
+    documents,
+    setup,
 )
 from database import engine, Base, SessionLocal
+from exceptions import AureoleException, ErrorResponse
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("college_aureole")
@@ -42,6 +46,10 @@ AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "true").strip().lower() not
 async def lifespan(app: FastAPI):
     if AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)
+        # Évolutions de schéma propres au mode desktop (SQLite) : create_all
+        # ne modifie pas les tables existantes.
+        from migrations_desktop import migrer_sqlite
+        migrer_sqlite()
     else:
         logger.info("AUTO_CREATE_TABLES=false : création de schéma ignorée, migrations Alembic attendues.")
     yield
@@ -63,15 +71,31 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(AureoleException)
+async def aureole_exception_handler(request, exc: AureoleException):
+    """Gestionnaire pour les exceptions métier Aureole."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.detail,
+    )
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc):
-    # Filet de sécurité pour la production : évite qu'une exception non prévue
-    # ne renvoie une stack trace complète au client (fuite d'information),
-    # tout en la journalisant côté serveur pour le débogage.
+    """Filet de sécurité pour les exceptions non prévues.
+    
+    En production, évite qu'une exception non prévue ne renvoie une stack trace 
+    complète au client (fuite d'information), tout en la journalisant côté serveur 
+    pour le débogage.
+    """
     logger.exception("Erreur non gérée sur %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Une erreur interne est survenue."},
+        content={
+            "error_code": "INTERNAL_SERVER_ERROR",
+            "message": "Une erreur interne est survenue.",
+            "details": None,
+        },
     )
 
 
@@ -95,9 +119,12 @@ app.include_router(seances.router)
 app.include_router(salles.router)
 app.include_router(depenses.router)
 app.include_router(resultats.router)
+app.include_router(cloture.router)
+app.include_router(documents.router)
+app.include_router(setup.router)
 
 
-@app.get("/")
+@app.get("/api/health")
 def health_check():
     # Vérifie réellement la connexion DB (SELECT 1) au lieu de retourner un
     # statut "connected" figé qui masquerait une base indisponible.
@@ -113,3 +140,29 @@ def health_check():
         db_status = "unavailable"
 
     return {"status": "running", "database": db_status}
+
+
+# --- Mode serveur : sert le frontend buildé (SPA) depuis la même origine ---
+# Permet aux postes du réseau d'ouvrir http://<ip-serveur>:3000 sans installer
+# quoi que ce soit. Répertoire configurable via FRONTEND_DIST.
+FRONTEND_DIST = os.getenv(
+    "FRONTEND_DIST",
+    os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist")),
+)
+
+if os.path.isdir(FRONTEND_DIST):
+    _index = os.path.join(FRONTEND_DIST, "index.html")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def servir_frontend(full_path: str):
+        # Les routes /api/* non trouvées restent des erreurs JSON (pas de fallback SPA)
+        if full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=status.HTTP_404_NOT_FOUND)
+        candidat = os.path.normpath(os.path.join(FRONTEND_DIST, full_path))
+        if full_path and candidat.startswith(FRONTEND_DIST) and os.path.isfile(candidat):
+            return FileResponse(candidat)
+        return FileResponse(_index)
+
+    logger.info("Mode serveur : interface servie depuis %s", FRONTEND_DIST)
+else:
+    logger.warning("FRONTEND_DIST introuvable (%s) : interface non servie.", FRONTEND_DIST)

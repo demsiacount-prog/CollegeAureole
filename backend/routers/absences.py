@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from database import get_db
 import models
@@ -25,19 +25,7 @@ def creer_absence(payload: schemas.AbsenceCreate, db: Session = Depends(get_db))
     return nouvelle_absence
 
 
-@router.get("/", response_model=List[schemas.AbsenceResponse])
-def get_all_absences(
-    classe_id: Optional[int] = None,
-    matricule_eleve: Optional[str] = None,
-    id_cours: Optional[int] = None,
-    date_debut: Optional[date] = None,
-    date_fin: Optional[date] = None,
-    skip: int = 0,
-    limit: int = Query(default=200, le=500),
-    db: Session = Depends(get_db),
-):
-    query = db.query(models.Absences).options(joinedload(models.Absences.eleve), joinedload(models.Absences.cours))
-
+def _appliquer_filtres_absences(query, classe_id, matricule_eleve, id_cours, date_debut, date_fin, justifiee, q):
     if matricule_eleve:
         query = query.filter(models.Absences.matricule_eleve == matricule_eleve)
     if id_cours:
@@ -48,8 +36,55 @@ def get_all_absences(
         query = query.filter(models.Absences.date_absence >= date_debut)
     if date_fin:
         query = query.filter(models.Absences.date_absence <= date_fin)
+    if justifiee is not None:
+        query = query.filter(models.Absences.justifiee.is_(justifiee))
+    if q:
+        like = f"%{q}%"
+        query = query.join(models.Eleves).outerjoin(models.Cours)
+        query = query.filter(or_(
+            models.Eleves.nom.ilike(like),
+            models.Eleves.prenom.ilike(like),
+            models.Absences.matricule_eleve.ilike(like),
+            models.Cours.nom.ilike(like),
+        ))
+    return query
 
+
+@router.get("/", response_model=List[schemas.AbsenceResponse])
+def get_all_absences(
+    classe_id: Optional[int] = None,
+    matricule_eleve: Optional[str] = None,
+    id_cours: Optional[int] = None,
+    date_debut: Optional[date] = None,
+    date_fin: Optional[date] = None,
+    justifiee: Optional[bool] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = Query(default=200, le=500),
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_absences(
+        db.query(models.Absences).options(joinedload(models.Absences.eleve), joinedload(models.Absences.cours)),
+        classe_id, matricule_eleve, id_cours, date_debut, date_fin, justifiee, q,
+    )
     return query.order_by(models.Absences.date_absence.desc()).offset(skip).limit(limit).all()
+
+
+@router.get("/compte")
+def compter_absences(
+    classe_id: Optional[int] = None,
+    matricule_eleve: Optional[str] = None,
+    id_cours: Optional[int] = None,
+    date_debut: Optional[date] = None,
+    date_fin: Optional[date] = None,
+    justifiee: Optional[bool] = None,
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_absences(
+        db.query(models.Absences), classe_id, matricule_eleve, id_cours, date_debut, date_fin, justifiee, q,
+    )
+    return {"total": query.count()}
 
 
 @router.get("/alertes", response_model=List[schemas.AlerteAbsenceEleve])

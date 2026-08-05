@@ -54,28 +54,22 @@ raisonnable, au lieu de charger la table entière à chaque appel. Les tables
 structurellement petites (années scolaires, trimestres, salles) n'ont pas été
 modifiées : leur volume ne justifie pas la pagination.
 
-### 6. `dev.sh`
-Le script ne lançait jamais le frontend : `uvicorn` tournait au premier plan et le
-`&&` suivant n'était exécuté qu'à l'arrêt du serveur. Il lance maintenant le backend
-en arrière-plan puis le frontend, et arrête le backend proprement si le script est
-interrompu.
-
-### 7. Dépendances
+### 6. Dépendances
 - `requirement.txt` → renommé `requirements.txt` (convention standard), et **toutes
   les versions sont désormais épinglées** (`~=`) pour des installations reproductibles.
 - `python-jose` retiré : le code utilise en réalité `PyJWT` (`import jwt`) dans
   `security.py`, `python-jose` n'était jamais importé nulle part — dépendance morte.
-- `faker`, `pytest`, `httpx` déplacés dans `requirements-dev.txt` (dépendances de
-  développement/tests, à ne pas installer en production).
+- `faker` dans `requirements.txt` : requis par `seed.py`, appelé par
+  l'assistant de première configuration (`POST /api/setup/run`).
 - `alembic` ajouté pour les migrations de schéma (voir section dédiée plus bas).
 
-### 8. CORS
+### 7. CORS
 Les origines autorisées viennent maintenant de la variable d'environnement
 `CORS_ORIGINS` (liste séparée par des virgules), avec un fallback sur les ports Vite
 de développement (`5173`/`5174`) — plus besoin de modifier `main.py` pour déployer
 sur un autre domaine.
 
-### 9. Migrations de base de données
+### 8. Migrations de base de données
 `Base.metadata.create_all()` ne crée que les tables manquantes ; il ne modifie jamais
 un schéma existant (ajout de colonne, changement de type...). Un scaffold **Alembic**
 a été ajouté (`alembic/`, `alembic.ini`) et branché sur les mêmes modèles que
@@ -114,8 +108,7 @@ le détail fonctionnel (commentaires conservés).
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt          # production
-pip install -r requirements-dev.txt      # + outils de dev (seed, tests)
+pip install -r requirements.txt
 
 # Configurez votre .env (déjà présent, à adapter) :
 # DATABASE_URL, JWT_SECRET_KEY, CORS_ORIGINS
@@ -123,10 +116,10 @@ pip install -r requirements-dev.txt      # + outils de dev (seed, tests)
 # Peupler la base avec des données de démonstration (⚠️ supprime tout) :
 python3 seed.py
 
-# Lancer le serveur seul :
+# Lancer le serveur seul (mode dev) :
 uvicorn main:app --reload --port 3000
-# ou backend + frontend ensemble :
-./dev.sh
+# ou le serveur de production (interface + API, écoute réseau) :
+./scripts/start_server.sh
 ```
 
 Après `seed.py`, trois comptes de démonstration sont créés :
@@ -140,8 +133,42 @@ Pour appeler l'API après connexion, ajoutez l'en-tête
 
 La documentation interactive Swagger est disponible sur `http://localhost:3000/docs`.
 
+## Déploiement multi-poste (une école, plusieurs postes)
+
+L'application fonctionne en **mode serveur** : une seule machine à l'école
+porte PostgreSQL + l'API + l'interface, et chaque poste ouvre un **navigateur**
+sur `http://<ip-du-serveur>:3000`. Aucune installation sur les postes ; tous
+les postes partagent la même base (écritures concurrentes gérées par
+PostgreSQL, codes identifiants protégés par verrou advisory).
+
+**Modes de base de données**
+- **PostgreSQL (serveur / multi-poste)** : via `DATABASE_URL` dans `.env`.
+- **SQLite (desktop Tauri, mono-poste/portable)** : utilisé uniquement quand
+  `DATABASE_URL` n'est pas défini — pas adapté au multi-poste.
+
+**Mise en place du serveur**
+
+```bash
+# 1. Base PostgreSQL prête ; appliquer les révisions Alembic :
+cd backend
+alembic upgrade head                    # base vierge
+# ou, pour une base existante déjà migrée par l'ancienne chaîne :
+#   psql -c "DELETE FROM alembic_version" # si révision obsolète non reconnue
+#   alembic stamp 37c410820056 && alembic upgrade head
+
+# 2. Lancer le serveur (interface + API, écoute réseau) :
+./scripts/start_server.sh               # http://0.0.0.0:3000
+
+# 3. Sauvegardes quotidiennes (cron) :
+15 1 * * * PGHOST=localhost PGUSER=demsi PGDATABASE=collegeaureole \
+  PGPASSWORD='...' /chemin/scripts/backup_pg.sh
+```
+
+**Sécurité avant mise en service** : changer le mot de passe PostgreSQL et la
+`JWT_SECRET_KEY` du `.env`, changer le mot de passe du compte admin à la
+première connexion, et ouvrir uniquement le port 3000 sur le réseau local.
+
 ## Prochaines étapes suggérées
-- Générer la première révision Alembic et l'appliquer aux environnements existants.
 - Ajouter une suite de tests (pytest + base de test dédiée, ex. SQLite en mémoire ou
   conteneur Postgres jetable) — aucun test automatisé n'existe pour l'instant.
 - Générer un PDF de bulletin à partir de `BulletinDetailFullResponse`.

@@ -17,11 +17,12 @@ from models.paiements import Paiements
 from models.salles import Salles
 from models.seances import Seances
 from models.depenses import Depenses
+from models.documents import Documents
 
 __all__ = [
     "Tuteurs", "Enseignants", "Utilisateurs",
     "AnneesScolaires", "Trimestres", "Classes", "AffectationCoursClasse", "Cours",
     "Eleves", "Notes", "Bulletins", "BulletinDetails",
     "Absences", "Inscriptions", "Echeances", "Paiements",
-    "Salles", "Seances", "Depenses",
+    "Salles", "Seances", "Depenses", "Documents",
 ]

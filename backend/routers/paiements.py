@@ -1,19 +1,14 @@
 from datetime import date as date_type
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_, cast, String as SqlString
 from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/paiements", tags=["Paiements"], dependencies=[Depends(get_current_user)])
-
-MOIS_ANNEE_SCOLAIRE = [
-    "Octobre", "Novembre", "Décembre", "Janvier", "Février",
-    "Mars", "Avril", "Mai", "Juin"
-]
-
 
 def _mettre_a_jour_statut(echeance: models.Echeances):
     if echeance.montant_paye <= 0:
@@ -43,6 +38,8 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, nu
         if reste <= 0:
             break
         a_payer = ech.reste_a_payer
+        if a_payer <= 0:
+            continue  # échéance déjà soldée en mémoire : pas de paiement à 0
         montant_sur_ech = min(reste, a_payer)
 
         paiement = models.Paiements(
@@ -63,17 +60,14 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, nu
 
     db.flush()
 
-    reste_global = sum(
-        e.reste_a_payer for e in db.query(models.Echeances).filter(
-            models.Echeances.id_inscription == inscription.id,
-            models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
-        ).all()
-    )
+    # Les échéances encore dues sont exactement celles qu'on vient de charger
+    # (montant_paye mis à jour en mémoire) : pas besoin d'une 2e requête.
+    reste_global = sum(e.reste_a_payer for e in echeances_impayees)
 
     return {"paiements_crees": paiements_crees, "echeances_mises_a_jour": echeances_maj, "reste_global": reste_global}
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur", "comptable"))])
+@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "comptable"))])
 def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = Depends(get_db)):
     inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == payload.id_inscription).first()
     if not inscription:
@@ -98,17 +92,7 @@ def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = 
     }
 
 
-@router.get("/", response_model=List[schemas.PaiementResponse])
-def lister_paiements(
-    id_inscription: Optional[int] = None,
-    matricule_eleve: Optional[str] = None,
-    date_debut: Optional[date_type] = None,
-    date_fin: Optional[date_type] = None,
-    skip: int = 0,
-    limit: int = Query(default=200, le=500),
-    db: Session = Depends(get_db),
-):
-    query = db.query(models.Paiements)
+def _appliquer_filtres_paiements(query, id_inscription, matricule_eleve, date_debut, date_fin, q):
     if id_inscription:
         query = query.filter(models.Paiements.id_inscription == id_inscription)
     if matricule_eleve:
@@ -117,24 +101,103 @@ def lister_paiements(
         query = query.filter(models.Paiements.date >= date_debut)
     if date_fin:
         query = query.filter(models.Paiements.date <= date_fin)
-    query = query.order_by(models.Paiements.date.desc()).offset(skip).limit(limit)
-    return query.all()
+    if q:
+        like = f"%{q}%"
+        query = query.join(models.Inscriptions)
+        query = query.filter(or_(
+            models.Paiements.code_paiement.ilike(like),
+            models.Paiements.numero_recu.ilike(like),
+            models.Paiements.observation.ilike(like),
+            models.Paiements.mode.ilike(like),
+            models.Inscriptions.matricule_eleve.ilike(like),
+            cast(models.Inscriptions.id_classe, SqlString).ilike(like),
+        ))
+    return query
 
 
-@router.get("/relances", response_model=List[schemas.EcheanceResponse])
+@router.get("/", response_model=List[schemas.PaiementResponse], dependencies=[Depends(require_role("admin", "comptable"))])
+def lister_paiements(
+    id_inscription: Optional[int] = None,
+    matricule_eleve: Optional[str] = None,
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = Query(default=200, le=500),
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_paiements(
+        db.query(models.Paiements).options(
+            joinedload(models.Paiements.inscription).joinedload(models.Inscriptions.eleve)
+        ),
+        id_inscription, matricule_eleve, date_debut, date_fin, q
+    )
+    results = query.order_by(models.Paiements.date.desc()).offset(skip).limit(limit).all()
+    for p in results:
+        if p.inscription and p.inscription.eleve:
+            p.matricule_eleve = p.inscription.eleve.matricule
+            p.eleve_nom = p.inscription.eleve.nom
+            p.eleve_prenom = p.inscription.eleve.prenom
+    return results
+
+
+@router.get("/compte", dependencies=[Depends(require_role("admin", "comptable"))])
+def compter_paiements(
+    id_inscription: Optional[int] = None,
+    matricule_eleve: Optional[str] = None,
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = _appliquer_filtres_paiements(
+        db.query(models.Paiements), id_inscription, matricule_eleve, date_debut, date_fin, q
+    )
+    return {"total": query.count()}
+
+
+@router.get("/relances", response_model=List[schemas.RelanceResponse], dependencies=[Depends(require_role("admin", "comptable"))])
 def get_echeances_en_retard(db: Session = Depends(get_db)):
     """Échéances impayées dont la date est dépassée — base pour les relances
-    (email/SMS à brancher séparément, ici on expose juste la liste ciblée)."""
+    (email/SMS à brancher séparément). Chaque relance embarque l'élève, sa
+    classe et le contact de son tuteur."""
     aujourdhui = date_type.today()
-    return (
+    echeances = (
         db.query(models.Echeances)
+        .options(
+            joinedload(models.Echeances.inscription).joinedload(models.Inscriptions.eleve).joinedload(models.Eleves.tuteur),
+            joinedload(models.Echeances.inscription).joinedload(models.Inscriptions.classe),
+        )
         .filter(models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]), models.Echeances.date_echeance < aujourdhui)
         .order_by(models.Echeances.date_echeance.asc())
         .all()
     )
 
+    resultats = []
+    for e in echeances:
+        inscription = e.inscription
+        eleve = inscription.eleve if inscription else None
+        tuteur = eleve.tuteur if eleve else None
+        classe = inscription.classe if inscription else None
+        resultats.append(
+            schemas.RelanceResponse(
+                **schemas.EcheanceResponse.model_validate(e).model_dump(),
+                matricule_eleve=inscription.matricule_eleve if inscription else None,
+                eleve_nom=eleve.nom if eleve else None,
+                eleve_prenom=eleve.prenom if eleve else None,
+                classe_nom=classe.nom if classe else None,
+                niveau_classe=classe.niveau if classe else None,
+                code_tuteur=tuteur.code_tuteur if tuteur else None,
+                tuteur_nom=tuteur.nom if tuteur else None,
+                tuteur_prenom=tuteur.prenom if tuteur else None,
+                telephone_tuteur=tuteur.telephone if tuteur else None,
+                email_tuteur=tuteur.email if tuteur else None,
+            )
+        )
+    return resultats
 
-@router.get("/{paiement_id}", response_model=schemas.PaiementResponse)
+
+@router.get("/{paiement_id}", response_model=schemas.PaiementResponse, dependencies=[Depends(require_role("admin", "comptable"))])
 def get_paiement(paiement_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
     if not p:
@@ -157,7 +220,7 @@ def supprimer_paiement(paiement_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.get("/echeances/{id_inscription}", response_model=List[schemas.EcheanceResponse])
+@router.get("/echeances/{id_inscription}", response_model=List[schemas.EcheanceResponse], dependencies=[Depends(require_role("admin", "comptable"))])
 def get_echeances(id_inscription: int, db: Session = Depends(get_db)):
     return (
         db.query(models.Echeances)

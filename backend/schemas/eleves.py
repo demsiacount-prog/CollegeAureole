@@ -14,10 +14,17 @@ class EleveBase(BaseModel):
     sexe: str
     adresse: Optional[str] = None
     statut: str
+    acte_naissance: bool = False
+    carnet_sante: bool = False
+    jugement_tutelle: bool = False
+    photo_id: bool = False
 
 class EleveCreate(EleveBase):
     tuteur_id: int
     classe_id: Optional[int] = None
+    # Année scolaire d'inscription : sert au matricule EL{année}. Non persistée
+    # sur l'élève (l'inscription reste la source). Repli : année active.
+    annee_scolaire_id: Optional[int] = None
 
 class EleveResponse(EleveBase):
     matricule: str

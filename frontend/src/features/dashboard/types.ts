@@ -14,7 +14,7 @@ export interface AbsenceMois {
 }
 
 export interface ActiviteRecente {
-  type: 'note' | 'absence'
+  type: string
   texte: string
   date: string
 }

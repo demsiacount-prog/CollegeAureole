@@ -33,8 +33,10 @@ class CoursCreate(CoursBase):
 
 class CoursResponse(CoursBase):
     id: int
+    code_cours: Optional[str] = None
     created_at: str
     updated_at: str
+    matricule_enseignant: Optional[str] = None
     classes: List["ClasseResponse"] = []
     coefficients: List[AffectationCoursClasseResponse] = Field(default_factory=list, validation_alias="classes_affectations")
     enseignant: Optional[EnseignantResponse] = None

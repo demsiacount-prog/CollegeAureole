@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy import or_
+from typing import List, Optional
 from database import get_db
 import models
 import schemas
@@ -22,8 +23,33 @@ def create_enseignant(enseignant: schemas.EnseignantCreate, db: Session = Depend
 
 
 @router.get("/", response_model=List[schemas.EnseignantResponse])
-def get_all_enseignants(skip: int = 0, limit: int = Query(default=100, le=500), db: Session = Depends(get_db)):
-    return db.query(models.Enseignants).order_by(models.Enseignants.matricule).offset(skip).limit(limit).all()
+def get_all_enseignants(q: Optional[str] = None, skip: int = 0, limit: int = Query(default=100, le=500), db: Session = Depends(get_db)):
+    query = db.query(models.Enseignants)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(
+            models.Enseignants.matricule.ilike(like),
+            models.Enseignants.nom.ilike(like),
+            models.Enseignants.prenom.ilike(like),
+            models.Enseignants.specialite.ilike(like),
+            models.Enseignants.email.ilike(like),
+        ))
+    return query.order_by(models.Enseignants.matricule).offset(skip).limit(limit).all()
+
+
+@router.get("/compte")
+def compter_enseignants(q: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Enseignants)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(
+            models.Enseignants.matricule.ilike(like),
+            models.Enseignants.nom.ilike(like),
+            models.Enseignants.prenom.ilike(like),
+            models.Enseignants.specialite.ilike(like),
+            models.Enseignants.email.ilike(like),
+        ))
+    return {"total": query.count()}
 
 
 @router.get("/{matricule}", response_model=schemas.EnseignantResponse)

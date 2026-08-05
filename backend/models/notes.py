@@ -1,10 +1,13 @@
 from datetime import date, datetime
-from sqlalchemy import Column, Integer, String, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
 class Notes(Base):
     __tablename__ = "notes"
+    __table_args__ = (
+        UniqueConstraint("matricule_eleve", "id_cours", "id_trimestre", name="uq_note_eleve_cours_trimestre"),
+    )
     id = Column(Integer, primary_key=True)
     date = Column(String, nullable=False, default=lambda: date.today().isoformat())
     note = Column(Float, nullable=False)

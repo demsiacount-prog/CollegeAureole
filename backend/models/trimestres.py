@@ -9,6 +9,7 @@ class Trimestres(Base):
 
     id = Column(Integer, primary_key=True)
     nom = Column(String, nullable=False)
+    type = Column(String, nullable=False, default="TRIMESTRE")  # TRIMESTRE (7e-9e) | COMPOSITION (1e-6e)
     date_debut = Column(Date, nullable=False)
     date_fin = Column(Date, nullable=False)
     verrouille = Column(Boolean, nullable=False, default=False)  # empêche la saisie/modif de notes

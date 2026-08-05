@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from schemas.trimestres import TrimestreResponse
 
 class NoteBase(BaseModel):
-    note: float = Field(..., ge=0.0, le=20.0)
+    note: float = Field(..., ge=0.0, le=100.0)  # validated dynamically per-classe bareme in router
 
 class NoteCreate(NoteBase):
     matricule_eleve: str
@@ -21,6 +21,11 @@ class NoteCreate(NoteBase):
 class NoteResponse(NoteBase):
     id: int
     date: str
+    matricule_eleve: str
+    id_cours: int
+    id_classe: int
+    matricule_enseignant: str
+    id_trimestre: Optional[int] = None
     created_at: str
     updated_at: str
     eleve: "EleveResponse"

@@ -1,6 +1,6 @@
 # models/classes.py
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, event
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -8,11 +8,11 @@ from database import Base
 class Classes(Base):
     __tablename__ = "classes"
     id = Column(Integer, primary_key=True)
+    code_classe = Column(String, nullable=True, unique=True, index=True)
     niveau = Column(String, nullable=False)
     nom = Column(String, nullable=False)
     frais_inscription = Column(Float, nullable=False, default=0.0)
     mensualite = Column(Float, nullable=False, default=0.0)
-    capacite_max = Column(Integer, nullable=True)  # None = pas de limite
     created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
     updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
                         onupdate=lambda: datetime.now().isoformat())
@@ -36,3 +36,14 @@ class Classes(Base):
     @property
     def effectif_actuel(self) -> int:
         return len([e for e in self.eleves if e.statut == "actif"])
+
+
+@event.listens_for(Classes, "before_insert")
+def generer_code_classe(mapper, connection, target):
+    """CLA{année de création}{n°} — compteur global."""
+    from sqlalchemy.orm import object_session
+    from identifiants import generer_code, annee_creation
+    target.code_classe = generer_code(
+        connection, Classes.__table__.c.code_classe, "CLA", annee_creation(),
+        session=object_session(target),
+    )

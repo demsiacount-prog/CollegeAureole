@@ -5,8 +5,25 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from periodes import generer_periodes_par_defaut
 
 router = APIRouter(prefix="/api/trimestres", tags=["Trimestres"], dependencies=[Depends(get_current_user)])
+
+
+@router.post("/generer", response_model=schemas.TrimestresGenererResponse, dependencies=[Depends(require_role("admin"))])
+def generer_periodes_par_defaut_pour_annee(payload: schemas.TrimestresGenererRequest, db: Session = Depends(get_db)):
+    """Crée le jeu de périodes par défaut (trimestres + compositions) d'une année.
+
+    Idempotent : un type déjà présent dans l'année n'est pas dupliqué.
+    """
+    annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == payload.annee_scolaire_id).first()
+    if not annee:
+        raise HTTPException(status_code=404, detail="Année scolaire introuvable.")
+    if annee.cloturee:
+        raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée : aucune période ne peut y être ajoutée.")
+    cree = generer_periodes_par_defaut(db, annee.id, annee.date_debut, annee.date_fin)
+    db.commit()
+    return {"cree": cree, "annee_scolaire_id": annee.id}
 
 
 @router.post("/", response_model=schemas.TrimestreResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])

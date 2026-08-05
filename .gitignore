@@ -1,2 +1,6 @@
 .CHANGELOG.md
 .vscode
+
+# Artéfacts de build
+*.deb
+*.zip

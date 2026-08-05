@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Literal, Optional, TYPE_CHECKING
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from schemas.paiements import PaiementResponse
 from schemas.noteParMatieres import NoteParMatiere
@@ -25,7 +25,7 @@ class InscriptionBase(BaseModel):
     id_classe: Optional[int] = None
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
-    montant_total: float = 0.0
+    montant_total: float = Field(default=0.0, ge=0)
     date_inscription: date = date.today()
     date_fin: Optional[date] = None
     observation: Optional[str] = None
@@ -40,16 +40,19 @@ class InscriptionUpdate(BaseModel):
     statut: Optional[StatutInscription] = None
     statut_passage: Optional[StatutPassage] = None
     diplome: Optional[bool] = None
-    montant_total: Optional[float] = None
+    montant_total: Optional[float] = Field(default=None, ge=0)
     date_fin: Optional[date] = None
     observation: Optional[str] = None
 
 
 class InscriptionResponse(InscriptionBase):
     id: int
+    code_inscription: Optional[str] = None
     statut_passage: StatutPassage = "EN_ATTENTE"
     diplome: bool = False
     credit_disponible: float = 0.0
+    eleve_nom: Optional[str] = None
+    eleve_prenom: Optional[str] = None
     model_config = {"from_attributes": True}
 
 

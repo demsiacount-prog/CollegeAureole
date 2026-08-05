@@ -1,15 +1,11 @@
 # schemas/echeances.py
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 TypeEcheance = Literal["INSCRIPTION", "MENSUALITE"]
 StatutEcheance = Literal["EN_ATTENTE", "PARTIEL", "SOLDE", "REPORTE"]
 
-MOIS_ANNEE_SCOLAIRE = [
-    "Octobre", "Novembre", "Décembre", "Janvier", "Février",
-    "Mars", "Avril", "Mai", "Juin"
-]
 
 class EcheanceResponse(BaseModel):
     id:                  int
@@ -27,11 +23,26 @@ class EcheanceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RelanceResponse(EcheanceResponse):
+    """Échéance en retard enrichie : élève, classe et contact du tuteur
+    (prêt à brancher sur un envoi email/SMS de relance)."""
+    matricule_eleve:     Optional[str] = None
+    eleve_nom:           Optional[str] = None
+    eleve_prenom:        Optional[str] = None
+    classe_nom:          Optional[str] = None
+    niveau_classe:       Optional[str] = None
+    code_tuteur:         Optional[str] = None
+    tuteur_nom:          Optional[str] = None
+    tuteur_prenom:       Optional[str] = None
+    telephone_tuteur:    Optional[str] = None
+    email_tuteur:        Optional[str] = None
+
+
 class PaiementEcheanceCreate(BaseModel):
     """Enregistrer un paiement sur une inscription.
     Le montant est distribué automatiquement sur les échéances impayées."""
     id_inscription: int
-    montant:        float
+    montant:        float = Field(gt=0)
     date:           date
     mode:           Optional[str] = None
     numero_recu:    Optional[str] = None

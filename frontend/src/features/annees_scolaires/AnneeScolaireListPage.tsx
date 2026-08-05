@@ -172,6 +172,7 @@ export default function AnneeScolaireListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Année scolaire « ${deleting.libelle} » supprimée.`)
           }
         }}

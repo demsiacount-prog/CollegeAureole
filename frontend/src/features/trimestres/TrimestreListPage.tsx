@@ -215,6 +215,7 @@ export default function TrimestreListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Trimestre « ${deleting.nom} » supprimé.`)
           }
         }}

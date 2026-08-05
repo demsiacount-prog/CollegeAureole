@@ -150,6 +150,7 @@ export default function UtilisateurListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), 'Utilisateur supprimé.')
           }
         }}

@@ -370,6 +370,7 @@ export default function SeanceListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), 'Séance supprimée.')
           }
         }}

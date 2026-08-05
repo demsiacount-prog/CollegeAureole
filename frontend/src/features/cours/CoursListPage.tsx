@@ -241,6 +241,7 @@ export default function CoursListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Cours « ${deleting.nom} » supprimé.`)
           }
         }}

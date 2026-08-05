@@ -172,6 +172,7 @@ export default function TuteurListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(
               () => deleteMut.mutate(deleting.id),
               `Tuteur « ${deleting.prenom} ${deleting.nom} » supprimé.`,

@@ -186,6 +186,7 @@ export default function PaiementListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), 'Paiement supprimé.')
           }
         }}

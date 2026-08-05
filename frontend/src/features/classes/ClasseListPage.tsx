@@ -257,6 +257,7 @@ export default function ClasseListPage() {
           onClose={() => setDeleting(null)}
           onConfirm={() => {
             if (deleting) {
+              setDeleting(null)
               scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Classe « ${deleting.nom} » supprimée.`)
             }
           }}

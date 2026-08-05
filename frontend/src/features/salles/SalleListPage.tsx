@@ -212,6 +212,7 @@ export default function SalleListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Salle « ${deleting.nom} » supprimée.`)
           }
         }}

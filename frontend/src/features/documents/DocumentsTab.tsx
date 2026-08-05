@@ -105,6 +105,7 @@ export function DocumentsTab({ documents, labels, invalidateKey, upload }: Props
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), 'Document supprimé.')
           }
         }}

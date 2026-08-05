@@ -202,6 +202,7 @@ export default function DepenseListPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) {
+            setDeleting(null)
             scheduleDeleteWithUndo(
               () => deleteMut.mutate(deleting.id),
               `Dépense « ${deleting.libelle} » supprimée.`,

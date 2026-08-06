@@ -13,7 +13,31 @@ os.environ.setdefault(
     "tauri://localhost,http://tauri.localhost,https://tauri.localhost",
 )
 
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "WARNING"))
+from database import get_data_dir
+
+def _configurer_logs():
+    data_dir = get_data_dir() or os.path.expanduser("~")
+    log_file = os.path.join(data_dir, "backend.log")
+    niveau = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+    formateur = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    fh = logging.FileHandler(log_file, encoding="utf-8")
+    fh.setLevel(niveau)
+    fh.setFormatter(formateur)
+
+    logger = logging.getLogger("college_aureole")
+    logger.setLevel(niveau)
+    logger.addHandler(fh)
+    for nom in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(nom)
+        lg.setLevel(logging.INFO)
+        lg.handlers.clear()
+        lg.addHandler(fh)
+    logger.info("Backend démarré. Journal : %s", log_file)
+    logger.info("CORS_ORIGINS=%s", os.getenv("CORS_ORIGINS"))
+    logger.info("DATABASE_URL=%s", os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(data_dir, 'collegeaureole.db')}")
+    return log_file
+
+_LOG_FILE = _configurer_logs()
 logger = logging.getLogger("college_aureole")
 
 def _trouver_port():
@@ -33,7 +57,8 @@ def _servir():
         app,
         host="127.0.0.1",
         port=PORT,
-        log_level=os.getenv("LOG_LEVEL", "warning").lower(),
+        log_level="info",
+        access_log=True,
     )
     server = uvicorn.Server(config)
 

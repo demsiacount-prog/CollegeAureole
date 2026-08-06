@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/useAuth'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/hooks/useTheme'
+import { APP_VERSION, APP_BUILD_TIME } from '@/lib/buildInfo'
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
@@ -156,6 +157,9 @@ export function LoginPage() {
 
           <p className="mt-8 text-center text-xs text-[var(--color-ink-faint)]">
             Accès réservé au personnel administratif de l'établissement.
+          </p>
+          <p className="mt-2 text-center text-[10px] text-[var(--color-ink-faint)]">
+            v{APP_VERSION} · build {new Date(APP_BUILD_TIME).toLocaleString('fr-FR')}
           </p>
         </section>
       </div>

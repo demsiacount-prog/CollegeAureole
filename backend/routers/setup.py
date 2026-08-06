@@ -28,6 +28,11 @@ def setup_status(db: Session = Depends(get_db)):
     admin_exists = db.query(models.Utilisateurs).filter(
         models.Utilisateurs.role == RoleUtilisateur.ADMIN,
     ).first() is not None
+    nb_users = db.query(models.Utilisateurs).count()
+    logger.info(
+        "setup/status : configured=%s utilisateurs=%s",
+        admin_exists, nb_users,
+    )
     return SetupStatusResponse(configured=admin_exists)
 
 

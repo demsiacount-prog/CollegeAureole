@@ -14,6 +14,7 @@ import { ServerOff } from 'lucide-react'
 import { NAV_SECTIONS } from '@/routes/nav'
 import { useBackendUrl } from '@/hooks/useBackendUrl'
 import { setApiBaseUrl, api } from '@/lib/api'
+import { APP_VERSION, APP_BUILD_TIME } from '@/lib/buildInfo'
 
 const loadDashboard = () => import('@/pages/DashboardPage')
 const loadEleveList = () => import('@/features/eleves/EleveListPage')
@@ -122,6 +123,9 @@ function BackendErrorScreen({ backendUrl, onRetry }: { backendUrl: string; onRet
       <Button variant="primary" onClick={onRetry}>
         Réessayer
       </Button>
+      <p className="mt-2 text-[10px] text-[var(--color-ink-faint)]">
+        v{APP_VERSION} · build {new Date(APP_BUILD_TIME).toLocaleString('fr-FR')}
+      </p>
     </div>
   )
 }

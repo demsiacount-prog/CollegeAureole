@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/hooks/useTheme'
 import { APP_VERSION, APP_BUILD_TIME } from '@/lib/buildInfo'
+import { api, extractErrorMessage } from '@/lib/api'
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
@@ -17,6 +18,8 @@ export function LoginPage() {
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   if (isAuthenticated) {
     const from = (location.state as { from?: Location })?.from?.pathname ?? '/app'
@@ -34,6 +37,23 @@ export function LoginPage() {
       setError(err instanceof Error ? err.message : 'Connexion impossible.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  async function handleReset() {
+    if (isResetting) return
+    const ok = window.confirm(
+      'Vider toutes les données et revenir à la configuration initiale ?\n\nCette action est irréversible.',
+    )
+    if (!ok) return
+    setResetError(null)
+    setIsResetting(true)
+    try {
+      await api.post('/api/setup/reset', { confirm: true }, { timeout: 60_000 })
+      window.location.reload()
+    } catch (err) {
+      setResetError(extractErrorMessage(err, 'Réinitialisation impossible.'))
+      setIsResetting(false)
     }
   }
 
@@ -161,6 +181,19 @@ export function LoginPage() {
           <p className="mt-2 text-center text-[10px] text-[var(--color-ink-faint)]">
             v{APP_VERSION} · build {new Date(APP_BUILD_TIME).toLocaleString('fr-FR')}
           </p>
+          {resetError && (
+            <p role="alert" className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-center text-xs text-[var(--color-danger)]">
+              {resetError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isResetting}
+            className="mt-4 text-[10px] text-[var(--color-ink-faint)] underline underline-offset-2 transition-colors hover:text-[var(--color-ink-dim)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isResetting ? 'Réinitialisation en cours…' : 'Réinitialiser l’application (première configuration)'}
+          </button>
         </section>
       </div>
     </div>

@@ -83,3 +83,24 @@ def run_setup(payload: SetupInput, db: Session = Depends(get_db)):
 
     db.commit()
     return {"message": "Configuration terminée."}
+
+
+class ResetInput(BaseModel):
+    confirm: bool = False
+
+
+@router.post("/reset")
+def reset_database(payload: ResetInput, db: Session = Depends(get_db)):
+    """Vide toute la base et recrée le schéma : retour à la configuration initiale.
+
+    Dangereux par nature (supprime toutes les données), accessible uniquement
+    depuis le localhost de l'app desktop, et requiert une confirmation explicite.
+    """
+    if not payload.confirm:
+        raise HTTPException(status_code=400, detail="Confirmation requise.")
+    logger.warning("Réinitialisation complète de la base demandée.")
+    db.close()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    logger.warning("Base réinitialisée avec succès.")
+    return {"message": "Base réinitialisée."}

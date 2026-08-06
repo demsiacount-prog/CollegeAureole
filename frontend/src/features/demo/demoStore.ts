@@ -1,5 +1,3 @@
-import { APP_VERSION } from '@/lib/buildInfo'
-
 export type DemoListener = (open: boolean) => void
 
 const DEMO_STORAGE_PREFIX = 'aureole-demo-state'
@@ -20,7 +18,7 @@ function getInstallationId() {
 }
 
 async function getAppVersion() {
-  return APP_VERSION
+  return 'web'
 }
 
 function getDemoStateKey(version: string, installationId: string) {

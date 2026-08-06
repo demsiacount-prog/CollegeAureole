@@ -9,6 +9,8 @@ import { Spinner } from '@/components/ui/Spinner'
 import { LoginPage } from '@/pages/LoginPage'
 import SetupWizard from '@/pages/SetupWizard'
 import { AccessDeniedPage, NotFoundPage } from '@/pages/StatusPages'
+import { Button } from '@/components/ui/Button'
+import { ServerOff } from 'lucide-react'
 import { NAV_SECTIONS } from '@/routes/nav'
 import { useBackendUrl } from '@/hooks/useBackendUrl'
 import { setApiBaseUrl, api } from '@/lib/api'
@@ -106,9 +108,28 @@ function LoadingScreen() {
   )
 }
 
+function BackendErrorScreen({ backendUrl, onRetry }: { backendUrl: string; onRetry: () => void }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-base)] px-6 text-center">
+      <ServerOff className="size-10 text-[var(--color-danger)]" strokeWidth={1.75} />
+      <div>
+        <h2 className="text-xl font-semibold text-[var(--color-ink)]">Serveur inaccessible</h2>
+        <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--color-ink-dim)]">
+          Impossible de joindre le service <span className="font-mono">{backendUrl}</span>. Vérifiez
+          que le serveur est bien lancé puis réessayez.
+        </p>
+      </div>
+      <Button variant="primary" onClick={onRetry}>
+        Réessayer
+      </Button>
+    </div>
+  )
+}
+
 export default function App() {
   const { backendUrl, ready } = useBackendUrl()
-  const [setupState, setSetupState] = useState<'loading' | 'setup' | 'done'>('loading')
+  const [setupState, setSetupState] = useState<'loading' | 'setup' | 'done' | 'error'>('loading')
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     if (!ready || !backendUrl) return
@@ -123,18 +144,26 @@ export default function App() {
         .then((res) => {
           if (!cancelled) setSetupState(res.data.configured ? 'done' : 'setup')
         })
-        .catch(() => {
-          attempts += 1
-          if (!cancelled && attempts < 20) setTimeout(tryCheck, 500)
-          else if (!cancelled) setSetupState('done')
-        })
+      .catch(() => {
+        attempts += 1
+        if (!cancelled && attempts < 20) setTimeout(tryCheck, 500)
+        else if (!cancelled) setSetupState('error')
+      })
     }
     tryCheck()
     return () => { cancelled = true }
-  }, [ready, backendUrl])
+  }, [ready, backendUrl, retryKey])
 
   if (!ready || setupState === 'loading') return <LoadingScreen />
   if (setupState === 'setup') return <SetupWizard />
+  if (setupState === 'error') {
+    return (
+      <BackendErrorScreen
+        backendUrl={backendUrl}
+        onRetry={() => setRetryKey((k) => k + 1)}
+      />
+    )
+  }
 
   return (
     <ErrorBoundary>

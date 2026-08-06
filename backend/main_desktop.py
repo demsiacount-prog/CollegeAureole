@@ -6,7 +6,12 @@ import threading
 import time
 
 os.environ.setdefault("AUTO_CREATE_TABLES", "true")
-os.environ.setdefault("CORS_ORIGINS", "tauri://localhost,https://tauri.localhost")
+# Tauri v2 : origine HTTP sur Windows (http://tauri.localhost), schéma tauri://
+# sur Linux/macOS. https://tauri.localhost = ancien schéma v1 (compatibilité).
+os.environ.setdefault(
+    "CORS_ORIGINS",
+    "tauri://localhost,http://tauri.localhost,https://tauri.localhost",
+)
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "WARNING"))
 logger = logging.getLogger("college_aureole")

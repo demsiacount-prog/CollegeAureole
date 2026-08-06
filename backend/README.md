@@ -141,10 +141,8 @@ sur `http://<ip-du-serveur>:3000`. Aucune installation sur les postes ; tous
 les postes partagent la même base (écritures concurrentes gérées par
 PostgreSQL, codes identifiants protégés par verrou advisory).
 
-**Modes de base de données**
-- **PostgreSQL (serveur / multi-poste)** : via `DATABASE_URL` dans `.env`.
-- **SQLite (desktop Tauri, mono-poste/portable)** : utilisé uniquement quand
-  `DATABASE_URL` n'est pas défini — pas adapté au multi-poste.
+La base de données est **PostgreSQL uniquement**, configurée via
+`DATABASE_URL` dans `.env`.
 
 **Mise en place du serveur**
 

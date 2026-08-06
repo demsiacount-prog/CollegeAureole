@@ -12,7 +12,6 @@ import { AccessDeniedPage, NotFoundPage } from '@/pages/StatusPages'
 import { Button } from '@/components/ui/Button'
 import { ServerOff } from 'lucide-react'
 import { NAV_SECTIONS } from '@/routes/nav'
-import { useBackendUrl } from '@/hooks/useBackendUrl'
 import { setApiBaseUrl, api } from '@/lib/api'
 import { APP_VERSION, APP_BUILD_TIME } from '@/lib/buildInfo'
 
@@ -131,12 +130,12 @@ function BackendErrorScreen({ backendUrl, onRetry }: { backendUrl: string; onRet
 }
 
 export default function App() {
-  const { backendUrl, ready } = useBackendUrl()
+  const backendUrl = window.location.origin
   const [setupState, setSetupState] = useState<'loading' | 'setup' | 'done' | 'error'>('loading')
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
-    if (!ready || !backendUrl) return
+    if (!backendUrl) return
     setApiBaseUrl(backendUrl)
     // Précharge les chunks de routes en arrière-plan pendant l'écran de
     // démarrage : la navigation sera instantanée dès le premier clic.
@@ -156,9 +155,9 @@ export default function App() {
     }
     tryCheck()
     return () => { cancelled = true }
-  }, [ready, backendUrl, retryKey])
+  }, [backendUrl, retryKey])
 
-  if (!ready || setupState === 'loading') return <LoadingScreen />
+  if (setupState === 'loading') return <LoadingScreen />
   if (setupState === 'setup') return <SetupWizard />
   if (setupState === 'error') {
     return (

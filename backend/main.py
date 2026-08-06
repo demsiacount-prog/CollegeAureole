@@ -46,10 +46,6 @@ AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "true").strip().lower() not
 async def lifespan(app: FastAPI):
     if AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)
-        # Évolutions de schéma propres au mode desktop (SQLite) : create_all
-        # ne modifie pas les tables existantes.
-        from migrations_desktop import migrer_sqlite
-        migrer_sqlite()
     else:
         logger.info("AUTO_CREATE_TABLES=false : création de schéma ignorée, migrations Alembic attendues.")
     yield

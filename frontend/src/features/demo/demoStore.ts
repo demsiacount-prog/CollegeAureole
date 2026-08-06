@@ -1,3 +1,5 @@
+import { APP_VERSION } from '@/lib/buildInfo'
+
 export type DemoListener = (open: boolean) => void
 
 const DEMO_STORAGE_PREFIX = 'aureole-demo-state'
@@ -18,12 +20,7 @@ function getInstallationId() {
 }
 
 async function getAppVersion() {
-  try {
-    const { getVersion } = await import('@tauri-apps/api/app')
-    return await getVersion()
-  } catch {
-    return 'web'
-  }
+  return APP_VERSION
 }
 
 function getDemoStateKey(version: string, installationId: string) {

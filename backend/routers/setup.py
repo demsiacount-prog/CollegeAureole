@@ -94,7 +94,7 @@ def reset_database(payload: ResetInput, db: Session = Depends(get_db)):
     """Vide toute la base et recrée le schéma : retour à la configuration initiale.
 
     Dangereux par nature (supprime toutes les données), accessible uniquement
-    depuis le localhost de l'app desktop, et requiert une confirmation explicite.
+    depuis le localhost, et requiert une confirmation explicite.
     """
     if not payload.confirm:
         raise HTTPException(status_code=400, detail="Confirmation requise.")

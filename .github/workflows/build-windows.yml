@@ -93,6 +93,8 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
+          # NSIS ne crée pas les répertoires parents du fichier de sortie
+          New-Item -ItemType Directory -Force dist | Out-Null
           & "C:\Program Files (x86)\NSIS\makensis.exe" desktop/serveur/serveur.nsi
           if ($LASTEXITCODE -ne 0) { throw "makensis a échoué (code $LASTEXITCODE)" }
           $exe = Get-ChildItem -Recurse -Filter college-aureole-serveur_x64-setup.exe |

@@ -142,7 +142,11 @@ Function GenererEnv
   FileWrite $2 "CORS_ORIGINS=http://tauri.localhost,https://tauri.localhost,tauri://localhost$\r$\n"
   FileWrite $2 "DATABASE_URL=postgresql+psycopg2://$PgUtilisateur:$PgMotDePasse@$PgHote:$PgPort/$PgBase$\r$\n"
   FileClose $2
-  AccessControl::GrantOnFile "$INSTDIR\.env" "(BU)" "GenericRead"
+
+  ; Lecture restreinte du .env (mot de passe base + clé JWT) : SYSTEM et
+  ; Administrateurs uniquement, via SIDs bien connus (indépendant de la
+  ; langue de Windows). Le service tourne sous LocalSystem : il y accède.
+  nsExec::ExecToLog 'icacls "$INSTDIR\.env" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F'
 FunctionEnd
 
 ; ── Désinstallation ──

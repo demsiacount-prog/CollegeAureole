@@ -53,6 +53,51 @@ jobs:
           path: college-aureole_x64-setup.exe
           if-no-files-found: error
 
+  client-linux:
+    name: Client Linux (.deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri
+
+      - name: Dépendances système Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Installer les dépendances front
+        working-directory: frontend
+        run: npm ci
+
+      - name: Construire le client (.deb)
+        working-directory: frontend
+        run: npm run tauri build -- --bundles deb
+
+      - name: Récupérer le paquet
+        run: |
+          VERSION=$(node -p "require('./frontend/src-tauri/tauri.conf.json').version")
+          cp "frontend/src-tauri/target/release/bundle/deb/College Aureole_${VERSION}_amd64.deb" \
+             "college-aureole_${VERSION}_amd64.deb"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-linux
+          path: college-aureole_*_amd64.deb
+          if-no-files-found: error
+
   serveur-backend:
     name: Serveur backend (PyInstaller + NSIS)
     runs-on: windows-latest
@@ -110,7 +155,7 @@ jobs:
 
   release:
     name: Publication GitHub Release
-    needs: [client-tauri, serveur-backend]
+    needs: [client-tauri, client-linux, serveur-backend]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -123,3 +168,4 @@ jobs:
           files: |
             college-aureole_x64-setup.exe
             college-aureole-serveur_x64-setup.exe
+            college-aureole_*_amd64.deb

@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
-import type { Paiement, PaiementCreateInput, PaiementResult, Echeance, Relance } from './types'
+import type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Relance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult } from './types'
 
-export type { Paiement, PaiementCreateInput, PaiementResult, Echeance, Relance }
+export type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Relance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult }
 
 export async function fetchPaiements(params?: {
   id_inscription?: number
@@ -42,6 +42,30 @@ export async function createPaiement(body: PaiementCreateInput): Promise<Paiemen
   return res.data
 }
 
+export async function updatePaiement(id: number, body: PaiementUpdateInput): Promise<Paiement> {
+  const res = await api.put<Paiement>(`/api/paiements/${id}`, body)
+  return res.data
+}
+
 export async function deletePaiement(id: number): Promise<void> {
   await api.delete(`/api/paiements/${id}`)
+}
+
+export async function fetchRemises(idEcheance: number): Promise<Remise[]> {
+  const res = await api.get<Remise[]>(`/api/paiements/echeances/${idEcheance}/remises`)
+  return res.data
+}
+
+export async function createRemise(idEcheance: number, body: RemiseCreateInput): Promise<Remise> {
+  const res = await api.post<Remise>(`/api/paiements/echeances/${idEcheance}/remises`, body)
+  return res.data
+}
+
+export async function deleteRemise(idRemise: number): Promise<void> {
+  await api.delete(`/api/paiements/remises/${idRemise}`)
+}
+
+export async function createPaiementGroupe(body: PaiementGroupeInput): Promise<PaiementGroupeResult> {
+  const res = await api.post<PaiementGroupeResult>('/api/paiements/groupes', body)
+  return res.data
 }

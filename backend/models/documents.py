@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, ForeignKey, LargeBinary, DateTime
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -19,6 +19,6 @@ class Documents(Base):
     contenu = Column(LargeBinary, nullable=True)
     taille = Column(Integer, nullable=True)
     mime_type = Column(String, nullable=True)
-    uploaded_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
+    uploaded_at = Column(DateTime, nullable=False, default=now_utc)
 
     eleve = relationship("Eleves", back_populates="documents")

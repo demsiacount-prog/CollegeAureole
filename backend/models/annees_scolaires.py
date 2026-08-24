@@ -1,5 +1,6 @@
-from datetime import datetime
-from sqlalchemy import Boolean, Column, Date, Integer, String
+
+from sqlalchemy import Boolean, Column, Date, Integer, String, DateTime
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -13,9 +14,8 @@ class AnneesScolaires(Base):
     date_fin = Column(Date, nullable=False)
     active = Column(Boolean, nullable=False, default=False)
     cloturee = Column(Boolean, nullable=False, default=False)  # bloque toute nouvelle saisie sur l'année
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     trimestres = relationship("Trimestres", back_populates="annee_scolaire", cascade="all, delete-orphan")
     inscriptions = relationship("Inscriptions", back_populates="annee_scolaire")

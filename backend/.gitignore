@@ -107,3 +107,11 @@ venv.bak/
 .mypy_cache/
 
 .idea/*
+# Bases SQLite (un fichier par poste)
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+# Logos et fichiers téléversés (contenu généré à l'exécution)
+uploads/

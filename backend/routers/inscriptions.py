@@ -14,14 +14,14 @@ router = APIRouter(prefix="/api/inscriptions", tags=["Inscriptions"], dependenci
 
 def _verifier_existence(db, matricule_eleve, id_annee_scolaire, id_classe):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first():
-        raise HTTPException(status_code=404, detail="Élève introuvable.")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == id_annee_scolaire).first()
     if not annee:
-        raise HTTPException(status_code=404, detail="Année scolaire introuvable.")
+        raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
-        raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée.")
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
     if id_classe and not db.query(models.Classes).filter(models.Classes.id == id_classe).first():
-        raise HTTPException(status_code=404, detail="Classe introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
 
 
 def _synchroniser_classe_eleve(db, matricule_eleve, statut, id_classe):
@@ -128,12 +128,72 @@ def creer_inscription(payload: schemas.InscriptionCreate, db: Session = Depends(
         db.flush()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Cet élève a déjà une inscription pour cette année scolaire.")
+        raise HTTPException(status_code=409, detail="Inscription déjà existante")
 
     _generer_echeances(db, inscription)
     _synchroniser_classe_eleve(db, payload.matricule_eleve, payload.statut, payload.id_classe)
     db.commit()
     db.refresh(inscription)
+    return inscription
+
+
+@router.post("/dossier-complet", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+def creer_dossier_complet(payload: schemas.DossierCompletCreate, db: Session = Depends(get_db)):
+    """Crée tuteur (optionnel) + élève + inscription dans UNE SEULE transaction :
+    si une étape échoue, le rollback annule l'ensemble (aucun orphelin)."""
+    if payload.tuteur_id is None and payload.tuteur is None:
+        raise HTTPException(status_code=400, detail="Tuteur manquant")
+    if payload.tuteur_id is not None and not db.query(models.Tuteurs).filter(models.Tuteurs.id == payload.tuteur_id).first():
+        raise HTTPException(status_code=404, detail="Tuteur introuvable")
+
+    annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == payload.id_annee_scolaire).first()
+    if not annee:
+        raise HTTPException(status_code=404, detail="Année scolaire introuvable")
+    if annee.cloturee:
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
+    if payload.classe_id and not db.query(models.Classes).filter(models.Classes.id == payload.classe_id).first():
+        raise HTTPException(status_code=404, detail="Classe introuvable")
+
+    # 1) Tuteur — créé dans la même transaction ou réutilisé
+    if payload.tuteur_id is not None:
+        tuteur_id = payload.tuteur_id
+    else:
+        nouveau_tuteur = models.Tuteurs(**payload.tuteur.model_dump())
+        db.add(nouveau_tuteur)
+        db.flush()
+        tuteur_id = nouveau_tuteur.id
+
+    # 2) Élève — le matricule est généré par before_insert à partir de l'année
+    eleve_donnees = payload.eleve.model_dump()
+    eleve_donnees.pop("certificat_radiation", None)  # accepté mais non persisté
+    if not eleve_donnees.get("adresse"):
+        eleve_donnees["adresse"] = ""  # champ nullable mais requis métier
+    nouveau_eleve = models.Eleves(**eleve_donnees, tuteur_id=tuteur_id, classe_id=payload.classe_id)
+    nouveau_eleve.annee_scolaire_id = payload.id_annee_scolaire
+    db.add(nouveau_eleve)
+    db.flush()
+
+    # 3) Inscription unique — toute erreur rollback tuteur + élève + inscription
+    inscription = models.Inscriptions(
+        matricule_eleve=nouveau_eleve.matricule,
+        id_classe=payload.classe_id,
+        id_annee_scolaire=payload.id_annee_scolaire,
+        statut="Inscrit",
+        observation=payload.observation,
+    )
+    db.add(inscription)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Inscription déjà existante")
+
+    _generer_echeances(db, inscription)
+    _synchroniser_classe_eleve(db, nouveau_eleve.matricule, inscription.statut, payload.classe_id)
+    db.commit()
+    db.refresh(inscription)
+    inscription.eleve_nom = nouveau_eleve.nom
+    inscription.eleve_prenom = nouveau_eleve.prenom
     return inscription
 
 
@@ -167,7 +227,7 @@ def lister_inscriptions(
     statut: Optional[str] = None,
     q: Optional[str] = None,
     skip: int = 0,
-    limit: int = Query(default=200, le=500),
+    limit: int = Query(default=200, le=5000),
     db: Session = Depends(get_db),
 ):
     query = _appliquer_filtres_inscriptions(
@@ -200,7 +260,7 @@ def compter_inscriptions(
 @router.get("/eleve/{matricule_eleve}/historique", response_model=List[schemas.InscriptionDetailResponse])
 def historique_eleve(matricule_eleve: str, db: Session = Depends(get_db)):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first():
-        raise HTTPException(status_code=404, detail="Élève introuvable.")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
 
     # Import différé pour éviter tout risque de dépendance circulaire entre routeurs :
     # réutilise la même logique d'enrichissement que le dossier élève (finances,
@@ -240,7 +300,7 @@ def get_inscription(inscription_id: int, db: Session = Depends(get_db)):
         .first()
     )
     if not insc:
-        raise HTTPException(status_code=404, detail="Inscription introuvable.")
+        raise HTTPException(status_code=404, detail="Inscription introuvable")
     return _construire_inscription_enrichie(db, insc)
 
 
@@ -248,9 +308,9 @@ def get_inscription(inscription_id: int, db: Session = Depends(get_db)):
 def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate, db: Session = Depends(get_db)):
     inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not inscription:
-        raise HTTPException(status_code=404, detail="Inscription introuvable.")
+        raise HTTPException(status_code=404, detail="Inscription introuvable")
     if inscription.annee_scolaire and inscription.annee_scolaire.cloturee:
-        raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée.")
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
 
     donnees = payload.model_dump(exclude_unset=True)
     changement_classe = (
@@ -258,7 +318,7 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
     )
     if "id_classe" in donnees and donnees["id_classe"] is not None:
         if not db.query(models.Classes).filter(models.Classes.id == donnees["id_classe"]).first():
-            raise HTTPException(status_code=404, detail="Classe introuvable.")
+            raise HTTPException(status_code=404, detail="Classe introuvable")
 
     for champ, valeur in donnees.items():
         setattr(inscription, champ, valeur)
@@ -288,7 +348,7 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
 def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
     insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
-        raise HTTPException(status_code=404, detail="Inscription introuvable.")
+        raise HTTPException(status_code=404, detail="Inscription introuvable")
     db.delete(insc)
     db.commit()
     return None
@@ -297,12 +357,12 @@ def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
 @router.post("/passage-annee", response_model=schemas.PassageAnneeResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
 def passage_annee(payload: schemas.PassageAnneeRequest, db: Session = Depends(get_db)):
     if not db.query(models.Classes).filter(models.Classes.id == payload.id_classe_origine).first():
-        raise HTTPException(status_code=404, detail="Classe d'origine introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
     annee_dest = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == payload.id_annee_scolaire_destination).first()
     if not annee_dest:
-        raise HTTPException(status_code=404, detail="Année de destination introuvable.")
+        raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee_dest.cloturee:
-        raise HTTPException(status_code=409, detail="L'année de destination est déjà clôturée.")
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
 
     eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe_origine).all()
     nb_creees, nb_redoublants, erreurs = 0, 0, []

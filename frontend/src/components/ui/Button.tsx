@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, type AnchorHTMLAttributes, forwardRef } from 'react'
+import { type ButtonHTMLAttributes, type AnchorHTMLAttributes, forwardRef, type ComponentProps } from 'react'
 import { Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
@@ -60,7 +60,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     )
     if (to) {
       return (
-        <Link to={to} className={classes}>
+        <Link {...(rest as ComponentProps<typeof Link>)} to={to} className={classes}>
           {content}
         </Link>
       )

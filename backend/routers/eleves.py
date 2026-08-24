@@ -7,6 +7,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from services.moyennes import calculer_moyenne_annuelle, calculer_moyennes_par_trimestre, calculer_notes_par_matiere
 
 router = APIRouter(prefix="/api/eleves", tags=["Élèves"], dependencies=[Depends(get_current_user)])
 
@@ -21,8 +22,6 @@ class EleveUpdate(BaseModel):
     photo: Optional[str] = None
     acte_naissance: Optional[bool] = None
     carnet_sante: Optional[bool] = None
-    jugement_tutelle: Optional[bool] = None
-    photo_id: Optional[bool] = None
 
 
 def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -> int:
@@ -32,7 +31,7 @@ def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -
     if annee_scolaire_id is not None:
         annee = db.query(AnneesScolaires).filter(AnneesScolaires.id == annee_scolaire_id).first()
         if not annee:
-            raise HTTPException(status_code=404, detail="Année scolaire introuvable.")
+            raise HTTPException(status_code=404, detail="Année scolaire introuvable")
         return annee.id
     annee_active = (
         db.query(AnneesScolaires)
@@ -41,7 +40,7 @@ def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -
         .first()
     )
     if not annee_active:
-        raise HTTPException(status_code=400, detail="Aucune année scolaire active : impossible d'inscrire l'élève.")
+        raise HTTPException(status_code=400, detail="Aucune année scolaire active")
     return annee_active.id
 
 
@@ -83,7 +82,7 @@ def _inscrire_eleve(db: Session, matricule: str, id_classe: int, annee_scolaire_
 @router.post("/", response_model=schemas.EleveResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
     if not db.query(models.Tuteurs).filter(models.Tuteurs.id == eleve.tuteur_id).first():
-        raise HTTPException(status_code=404, detail="Le tuteur spécifié n'existe pas.")
+        raise HTTPException(status_code=404, detail="Tuteur introuvable")
     donnees = eleve.model_dump()
     # Transitoire : utilisé par before_insert pour l'année du matricule, non persisté.
     annee_scolaire_id = donnees.pop("annee_scolaire_id", None)
@@ -104,7 +103,7 @@ def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=List[schemas.EleveResponse])
 def get_all_eleves(
     skip: int = 0,
-    limit: int = Query(default=100, le=500),
+    limit: int = Query(default=100, le=5000),
     q: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -151,7 +150,7 @@ def compter_eleves(
 def update_eleve(matricule: str, payload: EleveUpdate, db: Session = Depends(get_db)):
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule).first()
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève non trouvé")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
 
     donnees = payload.model_dump(exclude_unset=True)
     for key, value in donnees.items():
@@ -182,7 +181,7 @@ def get_eleve(matricule: str, db: Session = Depends(get_db)):
         .first()
     )
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève non trouvé")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     return eleve
 
 
@@ -190,7 +189,7 @@ def get_eleve(matricule: str, db: Session = Depends(get_db)):
 def desactiver_eleve(matricule: str, db: Session = Depends(get_db)):
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule).first()
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève non trouvé")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     eleve.statut = "inactif"
     db.commit()
     db.refresh(eleve)
@@ -201,7 +200,7 @@ def desactiver_eleve(matricule: str, db: Session = Depends(get_db)):
 def activer_eleve(matricule: str, db: Session = Depends(get_db)):
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule).first()
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève non trouvé")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     eleve.statut = "actif"
     db.commit()
     db.refresh(eleve)
@@ -212,64 +211,6 @@ def activer_eleve(matricule: str, db: Session = Depends(get_db)):
 # Reconstruit à partir des schémas existants (DossierEleveResponse,
 # InscriptionDetailResponse, MoyenneTrimestre, NoteParMatiere), qui étaient déjà
 # définis et importés mais que rien n'exposait : il manquait ce endpoint.
-
-def _moyenne_annuelle(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> Optional[float]:
-    bulletins = (
-        db.query(models.Bulletins)
-        .join(models.Trimestres, models.Bulletins.id_trimestre == models.Trimestres.id)
-        .filter(
-            models.Bulletins.matricule_eleve == matricule_eleve,
-            models.Trimestres.annee_scolaire_id == id_annee_scolaire,
-        )
-        .all()
-    )
-    if not bulletins:
-        return None
-    return round(sum(b.moyenne_generale for b in bulletins) / len(bulletins), 2)
-
-
-def _moyennes_par_trimestre(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> List["schemas.MoyenneTrimestre"]:
-    trimestres = (
-        db.query(models.Trimestres)
-        .filter(models.Trimestres.annee_scolaire_id == id_annee_scolaire)
-        .order_by(models.Trimestres.date_debut.asc())
-        .all()
-    )
-    resultats = []
-    for numero, trimestre in enumerate(trimestres, start=1):
-        bulletin = (
-            db.query(models.Bulletins)
-            .filter(
-                models.Bulletins.matricule_eleve == matricule_eleve,
-                models.Bulletins.id_trimestre == trimestre.id,
-            )
-            .first()
-        )
-        resultats.append(schemas.MoyenneTrimestre(
-            numero=numero,
-            periode=trimestre.nom,
-            moyenne=bulletin.moyenne_generale if bulletin else None,
-        ))
-    return resultats
-
-
-def _notes_par_matiere(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> List["schemas.NoteParMatiere"]:
-    resultats = (
-        db.query(models.Cours.nom, func.count(models.Notes.id), func.avg(models.Notes.note))
-        .join(models.Notes, models.Notes.id_cours == models.Cours.id)
-        .join(models.Trimestres, models.Notes.id_trimestre == models.Trimestres.id)
-        .filter(
-            models.Notes.matricule_eleve == matricule_eleve,
-            models.Trimestres.annee_scolaire_id == id_annee_scolaire,
-        )
-        .group_by(models.Cours.nom)
-        .all()
-    )
-    return [
-        schemas.NoteParMatiere(matiere=nom, nb_notes=nb, moyenne=round(float(moy), 2) if moy is not None else None)
-        for nom, nb, moy in resultats
-    ]
-
 
 def _construire_inscription_enrichie(db: Session, inscription: models.Inscriptions) -> "schemas.InscriptionDetailResponse":
     annee = inscription.annee_scolaire
@@ -296,12 +237,12 @@ def _construire_inscription_enrichie(db: Session, inscription: models.Inscriptio
         annee_scolaire=annee,
         eleve=inscription.eleve,
         nb_absences=nb_absences,
-        moyenne_annuelle=_moyenne_annuelle(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else None,
-        moyennes_par_trimestre=_moyennes_par_trimestre(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else [],
+        moyenne_annuelle=calculer_moyenne_annuelle(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else None,
+        moyennes_par_trimestre=calculer_moyennes_par_trimestre(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else [],
         paiements=inscription.paiements,
         montant_paye=montant_paye,
         reste_a_payer=reste_a_payer,
-        notes_par_matiere=_notes_par_matiere(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else [],
+        notes_par_matiere=calculer_notes_par_matiere(db, inscription.matricule_eleve, inscription.id_annee_scolaire) if annee else [],
     )
 
 
@@ -316,7 +257,7 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
         .first()
     )
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève non trouvé")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
 
     inscriptions = (
         db.query(models.Inscriptions)
@@ -385,8 +326,6 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
         statut=eleve.statut,
         acte_naissance=eleve.acte_naissance,
         carnet_sante=eleve.carnet_sante,
-        jugement_tutelle=eleve.jugement_tutelle,
-        photo_id=eleve.photo_id,
         created_at=eleve.created_at,
         updated_at=eleve.updated_at,
         tuteur=schemas.TuteurResponse.model_validate(eleve.tuteur),

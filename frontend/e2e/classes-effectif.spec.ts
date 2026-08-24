@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { loginViaApi } from './helpers'
+import { login } from './helpers'
 
 test('les élèves affectés à une classe sont visibles', async ({ page }) => {
-  await loginViaApi(page, 'admin')
+  await login(page, 'admin')
   await page.goto('/app/classes')
   await expect(page.getByRole('heading', { name: 'Classes' })).toBeVisible()
 

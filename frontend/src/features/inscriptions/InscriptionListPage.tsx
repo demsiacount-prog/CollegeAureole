@@ -5,13 +5,14 @@ import { clsx } from 'clsx'
 import { Plus, Trash2, ChevronLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card, CardBody } from '@/components/ui/Card'
+import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Avatar } from '@/components/ui/Avatar'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
@@ -19,8 +20,9 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate } from '@/lib/format'
 import { useAuth } from '@/auth/useAuth'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { fetchInscriptions, fetchInscriptionsTotal, deleteInscription } from './api'
+import { fetchInscriptions, fetchInscriptionsTotal, deleteInscription, createInscription } from './api'
 import InscriptionWizard from './InscriptionWizard'
+import InscriptionFormDrawer from './InscriptionFormDrawer'
 import type { Inscription } from './types'
 
 type Tab = 'liste' | 'nouvelle'
@@ -48,6 +50,7 @@ export default function InscriptionListPage() {
   const [filterStatut, setFilterStatut] = useState('')
   const [page, setPage] = useState(1)
   const [deleting, setDeleting] = useState<Inscription | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
@@ -148,7 +151,7 @@ export default function InscriptionListPage() {
               className={clsx(
                 'rounded px-4 py-1.5 text-sm font-medium transition-all',
                 tab === t
-                  ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                  ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-soft)]'
                   : 'bg-transparent text-[var(--color-ink-dim)] hover:text-[var(--color-ink)]',
               )}
             >
@@ -209,57 +212,53 @@ export default function InscriptionListPage() {
                 <EmptyState message={debouncedSearch ? 'Aucune inscription trouvée.' : 'Aucune inscription enregistrée.'} />
               </div>
             ) : (
-              <Card>
-                <CardBody>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)]">
-                          <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">N° Inscription</th>
-                          <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Année</th>
-                          <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Date</th>
-                          <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Statut</th>
-                          <th className="pb-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border-soft)]">
-                        {inscriptions.map((i) => (
-                          <tr key={i.id} className="hover:bg-[var(--color-surface-2)]">
-                            <td className="py-3">
-                              <div className="flex items-center gap-3">
+              <TableContainer>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Eleve</TableHead>
+                      <TableHead>Année</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inscriptions.map((i) => (
+                      <TableRow key={i.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
                             <Link to={`/app/eleves/${i.matricule_eleve}`} className="flex items-center gap-3 group">
                               <Avatar nom={i.eleve_nom ?? ''} prenom={i.eleve_prenom ?? ''} size="sm" />
                               <div>
                                 <p className="text-sm text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">{i.eleve_nom ?? '—'} {i.eleve_prenom ?? '—'}</p>
                               </div>
                             </Link>
-                              </div>
-                            </td>
-                            <td className="py-3 text-[var(--color-ink-dim)]">
-                              {annees.find((a) => a.id === i.id_annee_scolaire)?.libelle ?? '—'}
-                            </td>
-                            <td className="py-3 text-[var(--color-ink-dim)]">{formatDate(i.date_inscription)}</td>
-                            <td className="py-3">
-                              <Badge tone={statutTone(i.statut)}>{i.statut}</Badge>
-                            </td>
-                            <td className="py-3 text-right">
-                              {canDelete && (
-                                <button
-                                  onClick={() => setDeleting(i)}
-                                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
-                                  aria-label="Supprimer"
-                                >
-                                  <Trash2 size={14} strokeWidth={1.75} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardBody>
-              </Card>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[var(--color-ink-dim)]">
+                          {annees.find((a) => a.id === i.id_annee_scolaire)?.libelle ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-[var(--color-ink-dim)]">{formatDate(i.date_inscription)}</TableCell>
+                        <TableCell>
+                          <Badge tone={statutTone(i.statut)}>{i.statut}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleting(i)}
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                              aria-label="Supprimer"
+                            >
+                              <Trash2 size={14} strokeWidth={1.75} />
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
 
             {total > 0 && (
@@ -269,13 +268,22 @@ export default function InscriptionListPage() {
         )}
 
         {tab === 'nouvelle' && (
-          <InscriptionWizard
-            onComplete={() => {
-              qc.invalidateQueries({ queryKey: ['inscriptions'] })
-              setTab('liste')
-            }}
-            onCancel={() => setTab('liste')}
-          />
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setDrawerOpen(true)}>
+                <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
+                Inscrire un élève existant
+              </Button>
+            </div>
+            <InscriptionWizard
+              onComplete={() => {
+                qc.invalidateQueries({ queryKey: ['inscriptions'] })
+                setTab('liste')
+              }}
+              onCancel={() => setTab('liste')}
+              canImport={user?.role === 'admin'}
+            />
+          </div>
         )}
       </div>
 
@@ -292,6 +300,16 @@ export default function InscriptionListPage() {
         description={`Supprimer l'inscription ${deleting?.code_inscription ?? `n°${deleting?.id}`} de ${deleting?.eleve_nom ?? ''} ${deleting?.eleve_prenom ?? ''} ?`}
         confirmLabel="Supprimer"
         variant="danger"
+      />
+
+      <InscriptionFormDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={async (data) => {
+          await createInscription(data)
+          setDrawerOpen(false)
+          qc.invalidateQueries({ queryKey: ['inscriptions'] })
+        }}
       />
     </div>
   )

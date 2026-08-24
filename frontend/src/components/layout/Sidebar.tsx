@@ -2,23 +2,29 @@ import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { NAV_SECTIONS } from '@/routes/nav'
 import { useAuth } from '@/auth/useAuth'
+import { useEtablissement } from '@/features/etablissement/useEtablissement'
+import { LogoEtablissement } from '@/components/ui/LogoEtablissement'
 
 export function Sidebar() {
   const { user } = useAuth()
+  const { data: etab } = useEtablissement()
   if (!user) return null
+
+  const nom = etab?.nom ?? 'Gestion Scolaire'
+  const device = etab?.devise?.trim() ?? ''
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border-soft)] bg-[var(--color-surface)]">
       <div className="flex items-center gap-3 px-5 py-6">
-        <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-halo-dim)]">
-          <span className="absolute inset-0 rounded-full halo-ring" />
-          <img src="/logo-emblem.png" alt="" className="size-6 object-contain" />
+        <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-halo-dim)] bg-[var(--color-surface-2)]">
+          <span className="absolute inset-0 rounded-xl halo-ring" />
+          <LogoEtablissement src={etab?.logo} nom={nom} className="size-8" />
         </span>
         <div className="leading-tight">
-          <p className="font-[var(--font-display)] text-[17px] tracking-tight text-[var(--color-ink)]">Collège Auréole</p>
-          <p className="font-[var(--font-display)] italic text-[11px] text-[var(--color-halo-dim)]">
-            L’excellent n’a pas de concurrent
-          </p>
+          <p className="font-[var(--font-display)] text-[16px] leading-tight tracking-tight text-[var(--color-ink)]">{nom}</p>
+          {device && (
+            <p className="mt-0.5 font-[var(--font-display)] italic text-[11px] text-[var(--color-halo-dim)]">{device}</p>
+          )}
         </div>
       </div>
 

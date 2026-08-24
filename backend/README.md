@@ -112,20 +112,20 @@ pip install -r requirements.txt
 
 # Configurez votre .env (déjà présent, à adapter) :
 # DATABASE_URL, JWT_SECRET_KEY, CORS_ORIGINS
+# Par défaut la base est SQLite (sqlite:///./collegeaureole.db) ; pour
+# PostgreSQL, posez DATABASE_URL="postgresql://<utilisateur>:<mot_de_passe>@localhost:5432/collegeaureole".
 
 # Peupler la base avec des données de démonstration (⚠️ supprime tout) :
 python3 seed.py
 
-# Lancer le serveur seul (mode dev) :
+# Lancer le serveur API :
 uvicorn main:app --reload --port 3000
-# ou le serveur de production (interface + API, écoute réseau) :
-./scripts/start_server.sh
 ```
 
 Après `seed.py`, trois comptes de démonstration sont créés :
-- `admin@collegeaureole.ml` / `Password123!` (rôle admin)
-- `directeur@collegeaureole.ml` / `Password123!` (rôle directeur)
-- `comptable@collegeaureole.ml` / `Password123!` (rôle comptable)
+- `admin@etablissement.com` / `Password123!` (rôle admin)
+- `directeur@etablissement.com` / `Password123!` (rôle directeur)
+- `comptable@etablissement.com` / `Password123!` (rôle comptable)
 
 Pour appeler l'API après connexion, ajoutez l'en-tête
 `Authorization: Bearer <access_token>` (récupéré via `POST /api/auth/connexion`)
@@ -133,38 +133,31 @@ Pour appeler l'API après connexion, ajoutez l'en-tête
 
 La documentation interactive Swagger est disponible sur `http://localhost:3000/docs`.
 
-## Déploiement multi-poste (une école, plusieurs postes)
-
-L'application fonctionne en **mode serveur** : une seule machine à l'école
-porte PostgreSQL + l'API + l'interface, et chaque poste ouvre un **navigateur**
-sur `http://<ip-du-serveur>:3000`. Aucune installation sur les postes ; tous
-les postes partagent la même base (écritures concurrentes gérées par
-PostgreSQL, codes identifiants protégés par verrou advisory).
-
-La base de données est **PostgreSQL uniquement**, configurée via
-`DATABASE_URL` dans `.env`.
-
-**Mise en place du serveur**
+## Démarrage de l'application complète
 
 ```bash
-# 1. Base PostgreSQL prête ; appliquer les révisions Alembic :
+# 1. Terminal 1 — le backend (API + base de données) :
 cd backend
-alembic upgrade head                    # base vierge
-# ou, pour une base existante déjà migrée par l'ancienne chaîne :
-#   psql -c "DELETE FROM alembic_version" # si révision obsolète non reconnue
-#   alembic stamp 37c410820056 && alembic upgrade head
+uvicorn main:app --reload --port 3000
 
-# 2. Lancer le serveur (interface + API, écoute réseau) :
-./scripts/start_server.sh               # http://0.0.0.0:3000
-
-# 3. Sauvegardes quotidiennes (cron) :
-15 1 * * * PGHOST=localhost PGUSER=demsi PGDATABASE=collegeaureole \
-  PGPASSWORD='...' /chemin/scripts/backup_pg.sh
+# 2. Terminal 2 — l'interface (dev Vite, port 5173) :
+cd frontend
+npm run dev
 ```
 
-**Sécurité avant mise en service** : changer le mot de passe PostgreSQL et la
-`JWT_SECRET_KEY` du `.env`, changer le mot de passe du compte admin à la
-première connexion, et ouvrir uniquement le port 3000 sur le réseau local.
+L'application s'ouvre alors sur `http://localhost:5173` (le frontend dev
+redirige `/api` et `/uploads` vers le backend via la proxy Vite).
+
+## Sauvegardes (optionnel)
+
+La base est un simple fichier SQLite (`backend/collegeaureole.db`, créé au
+premier démarrage). Une sauvegarde consiste à copier ce fichier (idéalement
+avec `VACUUM INTO` pour une copie cohérente). En multi-poste hors réseau, la
+synchronisation par classeurs Excel (`/api/sync/...`) reste le moyen de
+converger les données entre postes.
+
+**Sécurité avant mise en service** : changer la `JWT_SECRET_KEY` du `.env` et
+le mot de passe du compte admin à la première connexion.
 
 ## Prochaines étapes suggérées
 - Ajouter une suite de tests (pytest + base de test dédiée, ex. SQLite en mémoire ou

@@ -1,5 +1,6 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Time, ForeignKey
+
+from sqlalchemy import Column, Integer, String, Time, DateTime, ForeignKey
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -17,8 +18,8 @@ class Seances(Base):
     heure_debut = Column(Time, nullable=False)
     heure_fin = Column(Time, nullable=False)
 
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(), onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     cours = relationship("Cours", back_populates="seances")
     classe = relationship("Classes", back_populates="seances")

@@ -15,29 +15,22 @@ déclenche tous les before_insert avant d'émettre les INSERT, un MAX sur la
 table ne verrait alors aucune ligne pour un flush groupé → codes dupliqués.
 Un compteur courant est donc maintenu dans session.info pendant le flush.
 
-En mode multi-poste (PostgreSQL), deux sessions peuvent calculer le même
-MAX+1 au même instant : un verrou advisory (`pg_advisory_xact_lock`) clé sur
-{préfixe, année} sérialise la génération entre sessions, relâché à la fin de
-la transaction.
+PostgreSQL : verrou advisory `pg_advisory_xact_lock` sur {préfixe, année}
+pour sérialiser la génération entre sessions concurrentes.
 """
-import zlib
 from datetime import datetime
 
 from sqlalchemy import select, text
 
 
-def prochain_numero(connection, colonne, prefixe: str, annee_num: int) -> int:
-    """Plus grand n° existant pour {préfixe}{année} + 1.
+def _make_lock_key(prefixe: str, annee_num: int) -> int:
+    """Clé de verrou advisory stable pour un couple (préfixe, année)."""
+    raw = f"{prefixe}{annee_num:02d}".encode()
+    return int.from_bytes(raw[:4].ljust(4, b"\x00"), "big") & 0x7FFFFFFF
 
-    Verrou advisory PostgreSQL d'abord : deux postes qui inscrivent en même
-    temps pour la même {préfixe}{année} verraient sinon le même MAX → collision
-    sur l'index unique. Le verrou (transactionnel) est relâché au commit."""
-    if connection.dialect.name == "postgresql":
-        cle = f"{prefixe}:{annee_num:02d}"
-        connection.execute(
-            text("SELECT pg_advisory_xact_lock(:k)"),
-            {"k": zlib.crc32(cle.encode("utf-8"))},
-        ).fetchone()
+
+def prochain_numero(connection, colonne, prefixe: str, annee_num: int) -> int:
+    """Plus grand n° existant pour {préfixe}{année} + 1."""
     prefix = f"{prefixe}{annee_num:02d}"
     codes = connection.execute(
         select(colonne).where(colonne.like(f"{prefix}%"))
@@ -53,12 +46,21 @@ def generer_code(connection, colonne, prefixe: str, annee_num: int, session=None
     `session.info` pendant un même flush : indispensable quand plusieurs
     lignes sont insérées dans un seul commit (tous les before_insert
     s'exécutent avant que les INSERT ne soient émis, le MAX sur la table
-    ne verrait alors qu'aucune ligne → codes dupliqués)."""
+    ne verrait alors qu'aucune ligne → codes dupliqués).
+
+    Sur PostgreSQL, un verrou advisory est acquis avant le MAX pour
+    sérialiser les sessions concurrentes."""
     prefix = f"{prefixe}{annee_num:02d}"
     if session is not None:
         cle = (prefixe, annee_num)
         compteur = session.info.get(cle)
         if compteur is None:
+            # PostgreSQL : verrou advisory avant le SELECT MAX
+            if connection.dialect.name == "postgresql":
+                lock_key = _make_lock_key(prefixe, annee_num)
+                connection.execute(
+                    text("SELECT pg_advisory_xact_lock(:k)"), {"k": lock_key}
+                )
             compteur = prochain_numero(connection, colonne, prefixe, annee_num)
             session.info[cle] = compteur
         else:

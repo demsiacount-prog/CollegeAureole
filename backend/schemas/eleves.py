@@ -1,23 +1,24 @@
+from datetime import date, datetime
 from pydantic import BaseModel, Field
-from typing import Optional, TYPE_CHECKING
+from typing import Literal, Optional, TYPE_CHECKING
 from schemas.tuteurs import TuteurResponse
 
 if TYPE_CHECKING:
     from schemas.classes import ClasseResponse
 
+
 class EleveBase(BaseModel):
-    nom: str
-    prenom: str
-    photo: Optional[str] = None
-    date_de_naissance :str
-    lieu_de_naissance : str
-    sexe: str
-    adresse: Optional[str] = None
-    statut: str
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
+    photo: Optional[str] = Field(default=None, max_length=500)
+    date_de_naissance: date
+    lieu_de_naissance: str = Field(min_length=1, max_length=200)
+    sexe: Literal["M", "F"]
+    adresse: Optional[str] = Field(default=None, max_length=300)
+    statut: Literal["actif", "inactif"] = "actif"
     acte_naissance: bool = False
     carnet_sante: bool = False
-    jugement_tutelle: bool = False
-    photo_id: bool = False
+
 
 class EleveCreate(EleveBase):
     tuteur_id: int
@@ -26,10 +27,11 @@ class EleveCreate(EleveBase):
     # sur l'élève (l'inscription reste la source). Repli : année active.
     annee_scolaire_id: Optional[int] = None
 
+
 class EleveResponse(EleveBase):
     matricule: str
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     tuteur: TuteurResponse
 

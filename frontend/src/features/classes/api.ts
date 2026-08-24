@@ -8,6 +8,7 @@ export interface ClasseCreateInput {
   nom: string
   frais_inscription?: number
   mensualite?: number
+  id_salle?: number | null
 }
 
 export interface ClasseDetail {

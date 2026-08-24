@@ -2,7 +2,6 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { DemoTour } from '@/features/demo/DemoTour'
 
 export function AppLayout() {
   const location = useLocation()
@@ -21,7 +20,6 @@ export function AppLayout() {
           </div>
         </main>
       </div>
-      <DemoTour />
     </div>
   )
 }

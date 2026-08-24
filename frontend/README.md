@@ -11,11 +11,10 @@ cp .env.example .env   # VITE_API_URL ne sert qu'au dev (vite : http://localhost
 npm run dev
 ```
 
-L'app tourne sur http://localhost:5173. Le backend doit déjà tourner (voir
-`scripts/start_server.sh`) et autoriser cette origine dans `CORS_ORIGINS`.
-
-En mode serveur (interface servie par le backend), l'API est appelée sur la **même
-origine** (`window.location.origin`) : aucun `VITE_API_URL` à configurer.
+L'app tourne sur http://localhost:5173. Le backend FastAPI doit tourner en parallèle
+(`cd backend && uvicorn main:app --reload --port 3000`) ; la proxy Vite redirige
+`/api` et `/uploads` vers `http://localhost:3000`, et CORS est déjà configuré
+pour l'origine Vite.
 
 ## État actuel
 

@@ -9,7 +9,9 @@ from schemas.utilisateurs import (
     UtilisateurInscription, UtilisateurConnexion, UtilisateurUpdate,
     UtilisateurChangerMotDePasse, UtilisateurResponse, TokenResponse,
 )
-from schemas.dashboard import DashboardStatsResponse
+from schemas.dashboard import (
+    DashboardStatsResponse, DashboardFinanceResponse, EvolutionMensuelle,
+)
 from schemas.annees_scolaires import AnneeScolaireCreate, AnneeScolaireResponse, AnneeScolaireDetailResponse
 from schemas.trimestres import TrimestreCreate, TrimestreResponse, TrimestreDetailResponse, TrimestresGenererRequest, TrimestresGenererResponse
 from schemas.classes import ClasseCreate, ClasseResponse, ClasseDetailResponse
@@ -27,6 +29,7 @@ from schemas.paiements import PaiementCreate, PaiementResponse
 from schemas.inscriptions import (
     InscriptionCreate, InscriptionUpdate, InscriptionResponse, InscriptionDetailResponse,
     MoyenneTrimestre, PassageAnneeRequest, PassageAnneeResponse,
+    DossierCompletCreate,
 )
 from schemas.seances import SeanceCreate, SeanceUpdate, SeanceResponse, SeanceDetailResponse
 from schemas.dossierEleves import DossierEleveResponse
@@ -34,7 +37,8 @@ from schemas.noteParMatieres import NoteParMatiere
 from schemas.dossierEnseignants import (
     DossierEnseignantResponse, HistoriqueAnneeResponse, AffectationResponse, StatsEnseignantResponse,
 )
-from schemas.echeances import PaiementEcheanceCreate, EcheanceResponse, RelanceResponse
+from schemas.echeances import PaiementEcheanceCreate, PaiementUpdate, EcheanceResponse, RelanceResponse, PaiementResultResponse
+from schemas.remises import RemiseCreate, RemiseResponse, PaiementGroupeCreate, PaiementGroupeResponse
 from schemas.depenses import DepenseCreate, DepenseUpdate, DepenseResponse
 from schemas.cloture import (
     CloturePreviewResponse, NouvelleAnneePayload,
@@ -42,8 +46,10 @@ from schemas.cloture import (
     CompteursPreview,ElevePreview,AnneeInfo,RapportCloture
 )
 from schemas.documents import DocumentResponse
+from schemas.etablissement import EtablissementUpdate, EtablissementResponse
 
 # Résolution des forward references — l'ordre compte (dépendances d'abord)
+ClasseResponse.model_rebuild()
 CoursResponse.model_rebuild()
 EleveResponse.model_rebuild()
 ClasseDetailResponse.model_rebuild()

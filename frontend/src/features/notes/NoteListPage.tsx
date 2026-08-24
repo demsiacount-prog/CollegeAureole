@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/auth/useAuth'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, updateNote } from './api'
+import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, updateNote, deleteNote } from './api'
 import type { Note, NoteCreatePayload } from './api'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/ui/Avatar'
 import { extractErrorMessage } from '@/lib/api'
@@ -80,7 +80,9 @@ export default function NoteListPage() {
   }, [filteredTrimestres, trimestreId])
 
   const bareme = useMemo(() => {
-    return classeDetail ? baremeNiveau(classeDetail.niveau) : 20
+    // Classe non encore chargée : on masque la saisie plutôt que de deviner
+    // un barème (EF1 /10, EF2 /20).
+    return classeDetail ? baremeNiveau(classeDetail.niveau) : null
   }, [classeDetail])
 
   const selectedCours = useMemo(() => {
@@ -90,7 +92,7 @@ export default function NoteListPage() {
 
   const matriculeEnseignant = selectedCours?.enseignant?.matricule ?? ''
 
-  const { data: existingNotes = EMPTY_ARRAY, isLoading: loadingNotes } = useQuery({
+  const { data: existingNotes = EMPTY_ARRAY, isLoading: loadingNotes, isError: erreurNotes } = useQuery({
     queryKey: ['existing-notes', classeId, coursId, trimestreId],
     queryFn: () => fetchExistingNotes({ id_classe: classeId!, id_cours: coursId!, id_trimestre: trimestreId! }),
     enabled: classeId != null && coursId != null && trimestreId != null,
@@ -120,6 +122,7 @@ export default function NoteListPage() {
 
   const updateLocal = useCallback((matricule: string, value: string) => {
     if (value !== '' && value.includes('-')) return
+    if (bareme == null) return
     if (value !== '' && (isNaN(Number(value)) || Number(value) > bareme)) return
     setRows((prev) =>
       prev.map((r) => (r.matricule === matricule ? { ...r, localValue: value } : r)),
@@ -137,6 +140,7 @@ export default function NoteListPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!classeId || !coursId || trimestreId == null) return
+      if (bareme == null) return
       if (!matriculeEnseignant) {
         throw new Error("Ce cours n'a pas d'enseignant assigné : impossible d'enregistrer les notes.")
       }
@@ -151,7 +155,12 @@ export default function NoteListPage() {
       }
 
       for (const row of rows) {
-        if (row.localValue === '') continue
+        if (row.localValue === '') {
+          if (row.existingNote) {
+            await deleteNote(row.existingNote.id)
+          }
+          continue
+        }
         const val = parseFloat(row.localValue)
         if (isNaN(val) || val < 0 || val > bareme) continue
 
@@ -295,6 +304,10 @@ export default function NoteListPage() {
           </div>
         ) : loadingClasse || loadingNotes ? (
           <TableSkeleton rows={8} />
+        ) : erreurNotes ? (
+          <div className="py-16">
+            <EmptyState message="Impossible de charger les notes de cette matière." />
+          </div>
         ) : rows.length === 0 ? (
           <div className="py-16">
             <EmptyState message="Aucun élève dans cette classe." />
@@ -314,41 +327,38 @@ export default function NoteListPage() {
               </p>
             )}
 
-            <Card className="overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border-soft)] text-xs font-[var(--font-mono)] text-[var(--color-ink-faint)]">
-                    <th className="px-5 py-3 text-left font-medium">Élève</th>
-                    <th className="px-5 py-3 text-center font-medium">Note /{bareme}</th>
-                    <th className="px-5 py-3 text-left font-medium">Appréciation</th>
-                    <th className="px-5 py-3 text-center font-medium">Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableContainer>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Élève</TableHead>
+                    <TableHead className="text-center">{bareme != null ? `Note /${bareme}` : 'Note'}</TableHead>
+                    <TableHead>Appréciation</TableHead>
+                    <TableHead className="text-center">Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {rows.map((row) => {
                     const parsed = row.localValue === '' ? null : parseFloat(row.localValue)
-                    const isValid = parsed != null && !isNaN(parsed) && parsed >= 0 && parsed <= bareme
+                    const isValid = bareme != null && parsed != null && !isNaN(parsed) && parsed >= 0 && parsed <= bareme
                     const isModified = row.existingNote && parsed !== row.existingNote.note
                     const isNew = !row.existingNote && parsed != null && !isNaN(parsed)
 
                     return (
-                      <tr
-                        key={row.matricule}
-                        className="border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]"
-                      >
-                        <td className="px-5 py-3">
+                      <TableRow key={row.matricule}>
+                        <TableCell>
                           <Link to={`/app/eleves/${row.matricule}`} className="flex items-center gap-3 group">
                             <Avatar nom={row.nom} prenom={row.prenom} size="sm" />
                             <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">
                               {row.prenom} {row.nom}
                             </span>
                           </Link>
-                        </td>
-                        <td className="px-5 py-3 text-center">
+                        </TableCell>
+                        <TableCell className="text-center">
                           <input
                             type="number"
                             min={0}
-                            max={bareme}
+                            max={bareme ?? undefined}
                             step={bareme === 10 ? 0.25 : 0.5}
                             value={row.localValue}
                             onChange={(e) => updateLocal(row.matricule, e.target.value)}
@@ -366,17 +376,17 @@ export default function NoteListPage() {
                             aria-label={`Note de ${row.prenom} ${row.nom}`}
                             className="w-20 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1.5 text-center text-sm text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)] disabled:opacity-50"
                           />
-                        </td>
-                        <td className="px-5 py-3">
-                          {isValid ? (
+                        </TableCell>
+                        <TableCell>
+                          {isValid && bareme != null ? (
                             <Badge tone={noteColor(parsed!, bareme)}>
                               {appreciation(parsed!, bareme)}
                             </Badge>
                           ) : (
                             <span className="text-[var(--color-ink-faint)]">—</span>
                           )}
-                        </td>
-                        <td className="px-5 py-3 text-center">
+                        </TableCell>
+                        <TableCell className="text-center">
                           {isModified ? (
                             <span className="text-xs font-medium text-[var(--color-warning)]">Modifié</span>
                           ) : row.existingNote ? (
@@ -386,13 +396,13 @@ export default function NoteListPage() {
                           ) : (
                             <span className="text-[var(--color-ink-faint)]">—</span>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )
                   })}
-                </tbody>
-              </table>
-            </Card>
+                </TableBody>
+              </Table>
+            </TableContainer>
 
             <p className="text-sm text-[var(--color-ink-dim)]">
               {stats.filled}/{stats.total} notes saisies

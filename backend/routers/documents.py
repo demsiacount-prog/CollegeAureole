@@ -1,7 +1,6 @@
 import os
 import re
 import mimetypes
-import shutil
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import Response, FileResponse
@@ -36,12 +35,12 @@ def _deviner_media_type(nom_fichier: str) -> str:
 
 def _verifier_upload(file: UploadFile):
     if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail=f"Type de fichier non autorisé : {file.content_type}")
+        raise HTTPException(status_code=400, detail="Type de fichier non autorisé")
     file.file.seek(0, 2)
     taille = file.file.tell()
     file.file.seek(0)
     if taille > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"Fichier trop volumineux ({taille} octets). Maximum : {MAX_FILE_SIZE} octets.")
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux")
 
 
 def _enregistrer_document(
@@ -58,17 +57,17 @@ def _enregistrer_document(
     if matricule_eleve:
         entite = db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first()
         if not entite:
-            raise HTTPException(status_code=404, detail="Élève introuvable.")
+            raise HTTPException(status_code=404, detail="Élève introuvable")
     elif matricule_enseignant:
         entite = db.query(models.Enseignants).filter(models.Enseignants.matricule == matricule_enseignant).first()
         if not entite:
-            raise HTTPException(status_code=404, detail="Enseignant introuvable.")
+            raise HTTPException(status_code=404, detail="Enseignant introuvable")
     elif code_tuteur:
         entite = db.query(models.Tuteurs).filter(models.Tuteurs.code_tuteur == code_tuteur).first()
         if not entite:
-            raise HTTPException(status_code=404, detail="Tuteur introuvable.")
+            raise HTTPException(status_code=404, detail="Tuteur introuvable")
     else:
-        raise HTTPException(status_code=400, detail="Entité cible manquante.")
+        raise HTTPException(status_code=400, detail="Entité cible manquante")
 
     contenu = file.file.read()
 
@@ -96,11 +95,13 @@ def _enregistrer_document(
     return doc
 
 
-# ── Uploads (admin/directeur) ────────────────────────────────────────────────
+# ── Uploads ──────────────────────────────────────────────────────────────────
+# Les documents des élèves ne peuvent être importés que par l'administrateur.
+_ROLE_UPLOAD_ELEVE = [Depends(require_role("admin"))]
 _ROLE_UPLOAD = [Depends(require_role("admin", "directeur"))]
 
 
-@router.post("/upload", response_model=schemas.DocumentResponse, status_code=status.HTTP_201_CREATED, dependencies=_ROLE_UPLOAD)
+@router.post("/upload", response_model=schemas.DocumentResponse, status_code=status.HTTP_201_CREATED, dependencies=_ROLE_UPLOAD_ELEVE)
 def upload_document_eleve(
     matricule_eleve: str = Form(...),
     type_document: str = Form(...),
@@ -172,7 +173,7 @@ def lister_documents_tuteur(code: str, db: Session = Depends(get_db)):
 def telecharger_document(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
-        raise HTTPException(status_code=404, detail="Document introuvable.")
+        raise HTTPException(status_code=404, detail="Document introuvable")
 
     if doc.contenu is not None:
         return Response(
@@ -183,7 +184,7 @@ def telecharger_document(document_id: int, db: Session = Depends(get_db)):
 
     # Fallback : anciens documents stockés sur disque avant la migration BLOB.
     if not os.path.exists(doc.filepath):
-        raise HTTPException(status_code=404, detail="Fichier introuvable.")
+        raise HTTPException(status_code=404, detail="Fichier introuvable")
     return FileResponse(
         doc.filepath,
         filename=doc.filename,
@@ -196,7 +197,7 @@ def telecharger_document(document_id: int, db: Session = Depends(get_db)):
 def supprimer_document(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
-        raise HTTPException(status_code=404, detail="Document introuvable.")
+        raise HTTPException(status_code=404, detail="Document introuvable")
     if doc.filepath and os.path.exists(doc.filepath) and os.path.isfile(doc.filepath):
         try:
             os.remove(doc.filepath)

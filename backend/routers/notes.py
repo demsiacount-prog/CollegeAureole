@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from timeutils import now_utc
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
@@ -23,30 +23,43 @@ _EAGER = (
 
 def _verifier_references(note, db: Session):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == note.matricule_eleve).first():
-        raise HTTPException(status_code=404, detail="Élève introuvable.")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     cours = db.query(models.Cours).filter(models.Cours.id == note.id_cours).first()
     if not cours:
-        raise HTTPException(status_code=404, detail="Cours introuvable.")
+        raise HTTPException(status_code=404, detail="Cours introuvable")
     if not db.query(models.Classes).filter(models.Classes.id == note.id_classe).first():
-        raise HTTPException(status_code=404, detail="Classe introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
     if not db.query(models.Enseignants).filter(models.Enseignants.matricule == note.matricule_enseignant).first():
-        raise HTTPException(status_code=404, detail="Enseignant introuvable.")
+        raise HTTPException(status_code=404, detail="Enseignant introuvable")
     if not db.query(models.AffectationCoursClasse).filter(
         models.AffectationCoursClasse.id_cours == note.id_cours,
         models.AffectationCoursClasse.id_classe == note.id_classe,
     ).first():
-        raise HTTPException(status_code=400, detail="Ce cours n'est pas affecté à cette classe.")
+        raise HTTPException(status_code=400, detail="Cours non affecté")
     if cours.matricule_enseignant and cours.matricule_enseignant != note.matricule_enseignant:
-        raise HTTPException(status_code=400, detail="Cet enseignant n'enseigne pas ce cours.")
+        raise HTTPException(status_code=400, detail="Enseignant non assigné")
     if note.id_trimestre is not None:
         trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
         if not trimestre:
-            raise HTTPException(status_code=404, detail="Trimestre introuvable.")
+            raise HTTPException(status_code=404, detail="Trimestre introuvable")
         if trimestre.verrouille:
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
-                detail="La période de saisie de ce trimestre est verrouillée.",
+                detail="Trimestre verrouillé",
             )
+
+
+def _verifier_doublon(note, db: Session):
+    query = db.query(models.Notes).filter(
+        models.Notes.matricule_eleve == note.matricule_eleve,
+        models.Notes.id_cours == note.id_cours,
+    )
+    if note.id_trimestre is not None:
+        query = query.filter(models.Notes.id_trimestre == note.id_trimestre)
+    else:
+        query = query.filter(models.Notes.id_trimestre.is_(None))
+    if query.first():
+        raise HTTPException(status_code=409, detail="Note déjà existante")
 
 
 @router.post("/", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
@@ -55,9 +68,10 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == note.id_classe).first()
     bareme = bareme_niveau(classe.niveau) if classe else 20
     if note.note > bareme:
-        raise HTTPException(status_code=422, detail=f"La note ne peut pas dépasser {bareme} pour cette classe.")
+        raise HTTPException(status_code=422, detail="Note dépasse le barème")
+    _verifier_doublon(note, db)
     data = note.model_dump()
-    data["date"] = date.today().isoformat()
+    data["date"] = now_utc().date()
     nouvelle_note = models.Notes(**data)
     db.add(nouvelle_note)
     db.commit()
@@ -105,17 +119,29 @@ def update_note(note_id: int, note_update: schemas.NoteCreate, db: Session = Dep
     classe = db.query(models.Classes).filter(models.Classes.id == note_update.id_classe).first()
     bareme = bareme_niveau(classe.niveau) if classe else 20
     if note_update.note > bareme:
-        raise HTTPException(status_code=422, detail=f"La note ne peut pas dépasser {bareme} pour cette classe.")
+        raise HTTPException(status_code=422, detail="Note dépasse le barème")
+
+    query_doublon = db.query(models.Notes).filter(
+        models.Notes.matricule_eleve == note_update.matricule_eleve,
+        models.Notes.id_cours == note_update.id_cours,
+        models.Notes.id != note_id,
+    )
+    if note_update.id_trimestre is not None:
+        query_doublon = query_doublon.filter(models.Notes.id_trimestre == note_update.id_trimestre)
+    else:
+        query_doublon = query_doublon.filter(models.Notes.id_trimestre.is_(None))
+    if query_doublon.first():
+        raise HTTPException(status_code=409, detail="Note déjà existante")
 
     for key, value in note_update.model_dump().items():
         setattr(db_note, key, value)
-    db_note.updated_at = datetime.now().isoformat()
+    db_note.updated_at = now_utc()
     db.commit()
     db.refresh(db_note)
     return db_note
 
 
-@router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin", "directeur"))])
 def delete_note(note_id: int, db: Session = Depends(get_db)):
     db_note = db.query(models.Notes).filter(models.Notes.id == note_id).first()
     if not db_note:
@@ -123,7 +149,7 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
     if db_note.id_trimestre:
         trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == db_note.id_trimestre).first()
         if trimestre and trimestre.verrouille:
-            raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Trimestre verrouillé.")
+            raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Trimestre verrouillé")
     db.delete(db_note)
     db.commit()
     return None

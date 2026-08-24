@@ -4,8 +4,8 @@ from enums import RoleUtilisateur
 
 
 class UtilisateurBase(BaseModel):
-    nom: str
-    prenom: str
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
     email: EmailStr
 
 
@@ -20,15 +20,15 @@ class UtilisateurConnexion(BaseModel):
 
 
 class UtilisateurUpdate(BaseModel):
-    nom: str
-    prenom: str
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
     email: EmailStr
     role: RoleUtilisateur
     actif: bool = True
 
 
 class UtilisateurChangerMotDePasse(BaseModel):
-    ancien_mot_de_passe: str
+    ancien_mot_de_passe: str = Field(min_length=1)
     nouveau_mot_de_passe: str = Field(..., min_length=8)
 
 

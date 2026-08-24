@@ -46,7 +46,7 @@ def _action_prevue(insc: models.Inscriptions, classe_dest=None) -> str:
 def preview_cloture(db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
     if not annee:
-        raise HTTPException(status_code=404, detail="Aucune année scolaire active.")
+        raise HTTPException(status_code=404, detail="Aucune année scolaire active")
 
     inscriptions = (
         db.query(models.Inscriptions)
@@ -106,7 +106,7 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
     try:
         annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
         if not annee_active:
-            raise HTTPException(status_code=404, detail="Aucune année scolaire active.")
+            raise HTTPException(status_code=404, detail="Aucune année scolaire active")
 
         inscriptions = (
             db.query(models.Inscriptions)
@@ -119,24 +119,17 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
         )
 
         if not inscriptions:
-            raise HTTPException(status_code=400, detail="Aucune inscription pour cette année.")
+            raise HTTPException(status_code=400, detail="Aucune inscription")
 
         en_attente = [i for i in inscriptions if i.statut_passage == "EN_ATTENTE"]
         if en_attente:
-            noms = ", ".join(
-                f"{i.eleve.nom} {i.eleve.prenom}" if i.eleve else i.matricule_eleve
-                for i in en_attente[:10]
-            )
-            detail = f"{len(en_attente)} élève(s) encore en attente : {noms}"
-            if len(en_attente) > 10:
-                detail += ", ..."
-            raise HTTPException(status_code=409, detail=detail)
+            raise HTTPException(status_code=409, detail="Élèves en attente")
 
         doublon = db.query(models.AnneesScolaires).filter(
             models.AnneesScolaires.libelle == payload.nouvelle_annee.libelle
         ).first()
         if doublon:
-            raise HTTPException(status_code=400, detail="Cette année scolaire existe déjà.")
+            raise HTTPException(status_code=400, detail="Année scolaire déjà existante")
 
         nouvelle_annee = models.AnneesScolaires(
             libelle=payload.nouvelle_annee.libelle,
@@ -231,4 +224,4 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
     except Exception:
         db.rollback()
         logger.exception("Erreur lors de l'exécution de la clôture d'année.")
-        raise HTTPException(status_code=500, detail="Erreur interne lors de la clôture d'année.")
+        raise HTTPException(status_code=500, detail="Erreur interne")

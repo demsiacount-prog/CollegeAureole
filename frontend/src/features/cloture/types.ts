@@ -1,6 +1,8 @@
 // Miroir de schemas/cloture.py
 
-export type StatutPassage = 'EN_ATTENTE' | 'ADMIS' | 'RECALE' | 'EXCLU'
+import type { StatutPassage } from '@/features/resultats/types'
+
+export type { StatutPassage } from '@/features/resultats/types'
 
 export interface ElevePreview {
   matricule: string

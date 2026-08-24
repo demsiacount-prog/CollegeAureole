@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from pydantic import BaseModel, Field
 from typing import Optional, TYPE_CHECKING
 from schemas.enseignants import EnseignantResponse
@@ -20,14 +21,14 @@ class NoteCreate(NoteBase):
 
 class NoteResponse(NoteBase):
     id: int
-    date: str
+    date: date
     matricule_eleve: str
     id_cours: int
     id_classe: int
     matricule_enseignant: str
     id_trimestre: Optional[int] = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     eleve: "EleveResponse"
     cours: "CoursResponse"
     classe: "ClasseResponse"

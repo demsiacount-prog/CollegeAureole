@@ -9,11 +9,11 @@ CategorieDepense = Literal[
 ]
 
 class DepenseBase(BaseModel):
-    libelle:     str
+    libelle:     str = Field(min_length=1, max_length=200)
     montant:     float = Field(gt=0)
     categorie:   CategorieDepense = "AUTRE"
     date:        date
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=500)
 
 class DepenseCreate(DepenseBase):
     pass
@@ -22,7 +22,7 @@ class DepenseUpdate(BaseModel):
     libelle:     Optional[str]             = None
     montant:     Optional[float]           = None
     categorie:   Optional[CategorieDepense] = None
-    date:        Optional[str]            = None
+    date:        Optional[date]            = None
     description: Optional[str]            = None
 
 class DepenseResponse(DepenseBase):

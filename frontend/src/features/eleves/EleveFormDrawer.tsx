@@ -11,6 +11,7 @@ import { uploadDocument } from '@/features/documents/api'
 import { fetchTuteurs, createTuteur } from '@/features/tuteurs/api'
 import { fetchClasses } from '@/features/classes/api'
 import { extractErrorMessage } from '@/lib/api'
+import { required, email, phone, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { Eleve, EleveCreateInput, EleveUpdateInput } from './types'
 
 interface EleveFormDrawerProps {
@@ -19,6 +20,7 @@ interface EleveFormDrawerProps {
   eleve: Eleve | null // null = création
   onCreate: (payload: EleveCreateInput) => Promise<unknown>
   onUpdate: (matricule: string, payload: EleveUpdateInput) => Promise<unknown>
+  canImport?: boolean
 }
 
 const emptyForm = {
@@ -32,9 +34,6 @@ const emptyForm = {
   statut: 'actif',
   acte_naissance: false,
   carnet_sante: false,
-  jugement_tutelle: false,
-  photo_id: false,
-  certificat_radiation: false,
   tuteur_id: '',
   classe_id: '',
   tuteur_mode: 'create' as 'create' | 'select',
@@ -48,18 +47,16 @@ const emptyForm = {
 
 const DOCS_LABELS: Record<string, string> = {
   acte_naissance: 'Acte de naissance',
-  carnet_sante: 'Carnet santé',
-  jugement_tutelle: 'Tutelle',
-  photo_id: 'Photo ID',
-  certificat_radiation: 'Radiation',
+  carnet_sante: 'Carnet de santé',
 }
 
-const DOCS_FIELDS = ['acte_naissance', 'carnet_sante', 'jugement_tutelle', 'photo_id', 'certificat_radiation'] as const
+const DOCS_FIELDS = ['acte_naissance', 'carnet_sante'] as const
 
-export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: EleveFormDrawerProps) {
+export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canImport = true }: EleveFormDrawerProps) {
   const isEdit = !!eleve
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Errors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({})
   const [uploadProgress, setUploadProgress] = useState<string | null>(null)
@@ -82,9 +79,6 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
         statut: eleve.statut,
         acte_naissance: eleve.acte_naissance,
         carnet_sante: eleve.carnet_sante,
-        jugement_tutelle: eleve.jugement_tutelle,
-        photo_id: eleve.photo_id,
-        certificat_radiation: eleve.certificat_radiation,
         tuteur_id: String(eleve.tuteur.id),
         classe_id: eleve.classe ? String(eleve.classe.id) : '',
         tuteur_mode: 'select',
@@ -93,6 +87,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
       setForm(emptyForm)
     }
     setError(null)
+    setErrors({})
     setDocFiles({})
     setUploadProgress(null)
   }, [open, eleve])
@@ -100,6 +95,25 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    const rules: Record<string, string | undefined> = {
+      prenom: required(form.prenom, 'Le prénom'),
+      nom: required(form.nom, 'Le nom'),
+      lieu_de_naissance: required(form.lieu_de_naissance, 'Le lieu de naissance'),
+    }
+    if (!isEdit) {
+      rules.date_de_naissance = required(form.date_de_naissance, 'La date de naissance')
+    }
+    if (form.tuteur_mode === 'create') {
+      rules.tuteur_prenom = required(form.tuteur_prenom, 'Le prénom du tuteur')
+      rules.tuteur_nom = required(form.tuteur_nom, 'Le nom du tuteur')
+      rules.tuteur_telephone = required(form.tuteur_telephone, 'Le téléphone du tuteur') ?? phone(form.tuteur_telephone)
+      rules.tuteur_email = required(form.tuteur_email, "L'e-mail du tuteur") ?? email(form.tuteur_email)
+    } else {
+      rules.tuteur_id = required(form.tuteur_id, 'Le tuteur')
+    }
+    const errs = validateFields(rules)
+    setErrors(errs)
+    if (hasErrors(errs)) return
     setIsSubmitting(true)
     try {
       let matricule: string | undefined
@@ -113,20 +127,12 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
           statut: form.statut,
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
-          jugement_tutelle: form.jugement_tutelle,
-          photo_id: form.photo_id,
-          certificat_radiation: form.certificat_radiation,
           classe_id: form.classe_id ? Number(form.classe_id) : null,
         })
         matricule = eleve.matricule
       } else {
         let tuteurId: number
         if (form.tuteur_mode === 'create') {
-          if (!form.tuteur_prenom.trim() || !form.tuteur_nom.trim() || !form.tuteur_telephone.trim() || !form.tuteur_email.trim()) {
-            setError('Veuillez remplir les informations du tuteur (prénom, nom, téléphone, e-mail).')
-            setIsSubmitting(false)
-            return
-          }
           const created = await createTuteur({
             prenom: form.tuteur_prenom.trim(),
             nom: form.tuteur_nom.trim(),
@@ -137,11 +143,6 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
           })
           tuteurId = created.id
         } else {
-          if (!form.tuteur_id) {
-            setError('Veuillez sélectionner un tuteur.')
-            setIsSubmitting(false)
-            return
-          }
           tuteurId = Number(form.tuteur_id)
         }
         const createdEleve = await onCreate({
@@ -155,9 +156,6 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
           statut: form.statut,
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
-          jugement_tutelle: form.jugement_tutelle,
-          photo_id: form.photo_id,
-          certificat_radiation: form.certificat_radiation,
           tuteur_id: tuteurId,
           classe_id: form.classe_id ? Number(form.classe_id) : null,
         })
@@ -188,12 +186,32 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
       title={isEdit ? `Modifier ${eleve?.prenom} ${eleve?.nom}` : 'Nouvel élève'}
       description={isEdit ? `Matricule ${eleve?.matricule}` : 'Créer un dossier élève et l’associer à un tuteur.'}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <PhotoPicker nom={form.nom} prenom={form.prenom} value={form.photo} onChange={(photo) => setForm({ ...form, photo })} />
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Prénom" placeholder="ex. Aminata" value={form.prenom} onChange={(e) => setForm({ ...form, prenom: e.target.value })} required />
-          <Input label="Nom" placeholder="ex. Diallo" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required />
+          <Input
+            label="Prénom"
+            placeholder="ex. Aminata"
+            value={form.prenom}
+            onChange={(e) => {
+              setForm({ ...form, prenom: e.target.value })
+              if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
+            }}
+            required
+            error={errors.prenom}
+          />
+          <Input
+            label="Nom"
+            placeholder="ex. Diallo"
+            value={form.nom}
+            onChange={(e) => {
+              setForm({ ...form, nom: e.target.value })
+              if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
+            }}
+            required
+            error={errors.nom}
+          />
         </div>
 
         {!isEdit && (
@@ -203,8 +221,12 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
               type="date"
               max={new Date().toISOString().split('T')[0]}
               value={form.date_de_naissance}
-              onChange={(e) => setForm({ ...form, date_de_naissance: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, date_de_naissance: e.target.value })
+                if (errors.date_de_naissance) setErrors((prev) => ({ ...prev, date_de_naissance: undefined }))
+              }}
               required
+              error={errors.date_de_naissance}
             />
             <Select label="Sexe" value={form.sexe} onChange={(e) => setForm({ ...form, sexe: e.target.value })}>
               <option value="M">Masculin</option>
@@ -217,8 +239,12 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
           label="Lieu de naissance"
           placeholder="ex. Bamako"
           value={form.lieu_de_naissance}
-          onChange={(e) => setForm({ ...form, lieu_de_naissance: e.target.value })}
+          onChange={(e) => {
+            setForm({ ...form, lieu_de_naissance: e.target.value })
+            if (errors.lieu_de_naissance) setErrors((prev) => ({ ...prev, lieu_de_naissance: undefined }))
+          }}
           required
+          error={errors.lieu_de_naissance}
         />
         <Input label="Adresse" placeholder="ex. Badalabougou, Bamako" value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
 
@@ -264,22 +290,24 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
                       {DOCS_LABELS[field]}
                     </span>
                   </button>
-                  <label className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]">
-                    <Upload size={13} strokeWidth={1.75} />
-                    <span className="max-w-[140px] truncate">
-                      {docFiles[field] ? docFiles[field]!.name : 'Importer…'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null
-                        setDocFiles((prev) => ({ ...prev, [field]: f }))
-                        if (f) setForm((prev) => ({ ...prev, [field]: true }))
-                      }}
-                    />
-                  </label>
+                  {canImport && (
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]">
+                      <Upload size={13} strokeWidth={1.75} />
+                      <span className="max-w-[140px] truncate">
+                        {docFiles[field] ? docFiles[field]!.name : 'Importer…'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null
+                          setDocFiles((prev) => ({ ...prev, [field]: f }))
+                          if (f) setForm((prev) => ({ ...prev, [field]: true }))
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
                 {docFiles[field] && (
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -338,31 +366,47 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
                     label="Prénom du tuteur"
                     placeholder="ex. Amadou"
                     value={form.tuteur_prenom}
-                    onChange={(e) => setForm({ ...form, tuteur_prenom: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, tuteur_prenom: e.target.value })
+                      if (errors.tuteur_prenom) setErrors((prev) => ({ ...prev, tuteur_prenom: undefined }))
+                    }}
                     required
+                    error={errors.tuteur_prenom}
                   />
                   <Input
                     label="Nom du tuteur"
                     placeholder="ex. Touré"
                     value={form.tuteur_nom}
-                    onChange={(e) => setForm({ ...form, tuteur_nom: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, tuteur_nom: e.target.value })
+                      if (errors.tuteur_nom) setErrors((prev) => ({ ...prev, tuteur_nom: undefined }))
+                    }}
                     required
+                    error={errors.tuteur_nom}
                   />
                 </div>
                 <Input
                   label="Téléphone du tuteur"
                   placeholder="+223 XX XX XX XX"
                   value={form.tuteur_telephone}
-                  onChange={(e) => setForm({ ...form, tuteur_telephone: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, tuteur_telephone: e.target.value })
+                    if (errors.tuteur_telephone) setErrors((prev) => ({ ...prev, tuteur_telephone: undefined }))
+                  }}
                   required
+                  error={errors.tuteur_telephone}
                 />
                 <Input
                   label="E-mail du tuteur"
                   type="email"
                   placeholder="ex. amadou@email.com"
                   value={form.tuteur_email}
-                  onChange={(e) => setForm({ ...form, tuteur_email: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, tuteur_email: e.target.value })
+                    if (errors.tuteur_email) setErrors((prev) => ({ ...prev, tuteur_email: undefined }))
+                  }}
                   required
+                  error={errors.tuteur_email}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -383,7 +427,10 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
               <SearchableSelect
                 label="Sélectionner un tuteur"
                 value={form.tuteur_id}
-                onChange={(v) => setForm({ ...form, tuteur_id: v })}
+                onChange={(v) => {
+                  setForm({ ...form, tuteur_id: v })
+                  if (errors.tuteur_id) setErrors((prev) => ({ ...prev, tuteur_id: undefined }))
+                }}
                 options={tuteurs.map((t) => ({
                   value: String(t.id),
                   label: `${t.prenom} ${t.nom}`.trim(),
@@ -391,6 +438,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate }: El
                 }))}
                 placeholder="Rechercher un tuteur…"
                 emptyMessage="Aucun tuteur trouvé"
+                error={errors.tuteur_id}
               />
             )}
           </div>

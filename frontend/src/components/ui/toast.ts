@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type ToastTone = 'success' | 'error' | 'info'
+export type ToastTone = 'success' | 'error' | 'info' | 'warning'
 
 export interface ToastAction {
   label: string

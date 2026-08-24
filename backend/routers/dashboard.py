@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -27,8 +27,21 @@ def _derniers_mois(n: int = 6):
     return list(reversed(mois))
 
 
-@router.get("/stats", response_model=schemas.DashboardStatsResponse, dependencies=[Depends(require_role("admin", "directeur"))])
-def get_dashboard_stats(db: Session = Depends(get_db)):
+def est_modifie(created_at, updated_at) -> bool:
+    """Vrai si la ligne a réellement été modifiée après sa création.
+
+    created_at/updated_at ont des defaults séparés (écart d'~1 µs à
+    l'insertion), on ignore donc les écarts inférieurs à 1 seconde.
+    """
+    try:
+        delta = updated_at - created_at
+        return delta.total_seconds() > 1.0
+    except (TypeError, AttributeError):
+        return False
+
+
+
+def _stats_direction(db: Session, include_finance: bool = True) -> dict:
 
     # ── 1. COMPTEURS SIMPLES (COUNT côté SQL, pas de chargement de lignes) ──
     nb_eleves = db.query(func.count(models.Eleves.matricule)).scalar() or 0
@@ -44,7 +57,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         .all()
     )
     moyennes_par_classe = [
-        {"classe": f"{niveau} {nom}", "moy": round(float(moy), 1) if moy is not None else 0}
+        {"classe": f"{niveau} {nom}", "moy": round(float(moy), 1) if moy is not None else 0, "bareme": bareme_niveau(niveau)}
         for niveau, nom, moy in moyennes_brutes
     ]
 
@@ -75,8 +88,6 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
     compteur_par_mois = {(a, m): 0 for a, m, _ in mois_range}
     for (d,) in dates_absences:
-        if isinstance(d, str):
-            d = datetime.fromisoformat(d).date()
         key = (d.year, d.month)
         if key in compteur_par_mois:
             compteur_par_mois[key] += 1
@@ -103,39 +114,39 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         db.query(models.Notes, models.Eleves, models.Classes)
         .join(models.Eleves, models.Eleves.matricule == models.Notes.matricule_eleve)
         .outerjoin(models.Classes, models.Classes.id == models.Notes.id_classe)
-        .order_by(models.Notes.created_at.desc())
+        .order_by(models.Notes.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     dernieres_absences = (
         db.query(models.Absences, models.Eleves)
         .join(models.Eleves, models.Eleves.matricule == models.Absences.matricule_eleve)
-        .order_by(models.Absences.created_at.desc())
+        .order_by(models.Absences.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     derniers_eleves = (
         db.query(models.Eleves)
-        .order_by(models.Eleves.created_at.desc())
+        .order_by(models.Eleves.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     derniers_enseignants = (
         db.query(models.Enseignants)
-        .order_by(models.Enseignants.created_at.desc())
+        .order_by(models.Enseignants.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     derniers_tuteurs = (
         db.query(models.Tuteurs)
-        .order_by(models.Tuteurs.created_at.desc())
+        .order_by(models.Tuteurs.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     dernieres_inscriptions = (
         db.query(models.Inscriptions, models.Eleves)
         .join(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
-        .order_by(models.Inscriptions.created_at.desc())
+        .order_by(models.Inscriptions.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
@@ -143,13 +154,20 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         db.query(models.Paiements, models.Inscriptions, models.Eleves)
         .outerjoin(models.Inscriptions, models.Inscriptions.id == models.Paiements.id_inscription)
         .outerjoin(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
-        .order_by(models.Paiements.created_at.desc())
+        .order_by(models.Paiements.updated_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
     dernieres_depenses = (
         db.query(models.Depenses)
-        .order_by(models.Depenses.created_at.desc())
+        .order_by(models.Depenses.updated_at.desc())
+        .limit(LIMIT_PAR_TYPE)
+        .all()
+    )
+    derniers_documents = (
+        db.query(models.Documents, models.Eleves)
+        .outerjoin(models.Eleves, models.Eleves.matricule == models.Documents.matricule_eleve)
+        .order_by(models.Documents.uploaded_at.desc())
         .limit(LIMIT_PAR_TYPE)
         .all()
     )
@@ -159,57 +177,96 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         nom_eleve = f"{eleve.nom} {eleve.prenom}".strip()
         nom_classe = classe.nom if classe else "sa classe"
         bm = bareme_niveau(classe.niveau) if classe else 20
+        if est_modifie(note.created_at, note.updated_at):
+            texte = f"Note de {note.note}/{bm} modifiée pour {nom_eleve} ({nom_classe})."
+        else:
+            texte = f"Note de {note.note}/{bm} ajoutée pour {nom_eleve} ({nom_classe})."
         activites.append({
             "type": "note",
-            "texte": f"Note de {note.note}/{bm} ajoutée pour {nom_eleve} ({nom_classe}).",
-            "date": str(note.created_at),
+            "texte": texte,
+            "date": str(note.updated_at),
         })
     for absence, eleve in dernieres_absences:
         nom_eleve = f"{eleve.nom} {eleve.prenom}".strip()
         statut = "justifiée" if absence.justifiee else "non justifiée"
+        if est_modifie(absence.created_at, absence.updated_at):
+            texte = f"Absence {statut} modifiée pour {nom_eleve}."
+        else:
+            texte = f"Absence {statut} enregistrée pour {nom_eleve}."
         activites.append({
             "type": "absence",
-            "texte": f"Absence {statut} enregistrée pour {nom_eleve}.",
-            "date": str(absence.created_at),
+            "texte": texte,
+            "date": str(absence.updated_at),
         })
     for eleve in derniers_eleves:
+        if est_modifie(eleve.created_at, eleve.updated_at):
+            texte = f"Élève {eleve.prenom} {eleve.nom} mis à jour."
+        else:
+            texte = f"Nouvel élève {eleve.prenom} {eleve.nom} enregistré."
         activites.append({
             "type": "eleve",
-            "texte": f"Nouvel élève {eleve.prenom} {eleve.nom} enregistré.",
-            "date": str(eleve.created_at),
+            "texte": texte,
+            "date": str(eleve.updated_at),
         })
     for enseignant in derniers_enseignants:
+        if est_modifie(enseignant.created_at, enseignant.updated_at):
+            texte = f"Enseignant {enseignant.prenom} {enseignant.nom} mis à jour."
+        else:
+            texte = f"Enseignant {enseignant.prenom} {enseignant.nom} ajouté."
         activites.append({
             "type": "enseignant",
-            "texte": f"Enseignant {enseignant.prenom} {enseignant.nom} ajouté.",
-            "date": str(enseignant.created_at),
+            "texte": texte,
+            "date": str(enseignant.updated_at),
         })
     for tuteur in derniers_tuteurs:
+        if est_modifie(tuteur.created_at, tuteur.updated_at):
+            texte = f"Tuteur {tuteur.prenom} {tuteur.nom} mis à jour."
+        else:
+            texte = f"Tuteur {tuteur.prenom} {tuteur.nom} ajouté."
         activites.append({
             "type": "tuteur",
-            "texte": f"Tuteur {tuteur.prenom} {tuteur.nom} ajouté.",
-            "date": str(tuteur.created_at),
+            "texte": texte,
+            "date": str(tuteur.updated_at),
         })
     for inscription, eleve in dernieres_inscriptions:
         nom_eleve = f"{eleve.nom} {eleve.prenom}".strip()
         reference = inscription.code_inscription or f"n°{inscription.id}"
+        if est_modifie(inscription.created_at, inscription.updated_at):
+            texte = f"Inscription {reference} mise à jour pour {nom_eleve}."
+        else:
+            texte = f"Inscription {reference} enregistrée pour {nom_eleve}."
         activites.append({
             "type": "inscription",
-            "texte": f"Inscription {reference} enregistrée pour {nom_eleve}.",
-            "date": str(inscription.created_at),
+            "texte": texte,
+            "date": str(inscription.updated_at),
         })
     for paiement, _inscription, eleve in derniers_paiements:
         nom_eleve = f"{eleve.nom} {eleve.prenom}".strip() if eleve else "un élève"
+        if est_modifie(paiement.created_at, paiement.updated_at):
+            texte = f"Paiement de {paiement.montant:,.0f} FCFA modifié pour {nom_eleve}."
+        else:
+            texte = f"Paiement de {paiement.montant:,.0f} FCFA reçu pour {nom_eleve}."
         activites.append({
             "type": "paiement",
-            "texte": f"Paiement de {paiement.montant:,.0f} FCFA reçu pour {nom_eleve}.",
-            "date": str(paiement.created_at),
+            "texte": texte,
+            "date": str(paiement.updated_at),
         })
     for depense in dernieres_depenses:
+        if est_modifie(depense.created_at, depense.updated_at):
+            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA modifiée."
+        else:
+            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA enregistrée."
         activites.append({
             "type": "depense",
-            "texte": f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA enregistrée.",
-            "date": str(depense.created_at),
+            "texte": texte,
+            "date": str(depense.updated_at),
+        })
+    for document, eleve in derniers_documents:
+        nom_eleve = f"{eleve.prenom} {eleve.nom}".strip() if eleve else "un élève"
+        activites.append({
+            "type": "document",
+            "texte": f"Document « {document.filename} » ajouté pour l'élève {nom_eleve}.",
+            "date": str(document.uploaded_at),
         })
 
     # Un événement de chaque type d'abord (pour que toutes les créations soient
@@ -227,6 +284,8 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
             break
         dernieres_activites.append(a)
     dernieres_activites.sort(key=lambda a: a["date"], reverse=True)
+    if not include_finance:
+        dernieres_activites = [a for a in dernieres_activites if a["type"] not in ("paiement", "depense")]
 
     # ── 7. ABSENCES SUR LES 7 DERNIERS JOURS (carte "Absences (7 derniers jours)") ──
     date_7j = aujourdhui - timedelta(days=6)  # fenêtre glissante de 7 jours, bornes incluses
@@ -258,3 +317,134 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         "absences_par_mois": absences_par_mois,
         "dernieres_activites": dernieres_activites,
     }
+
+
+def _stats_finances(db: Session) -> dict:
+    """Tableau de bord du comptable : flux financiers uniquement."""
+    aujourdhui = date.today()
+    debut_mois = date(aujourdhui.year, aujourdhui.month, 1)
+
+    # ── 1. FLUX DU MOIS EN COURS ─────────────────────────────────────────────
+    paiements_mois = (
+        db.query(func.coalesce(func.sum(models.Paiements.montant), 0.0))
+        .filter(models.Paiements.date >= debut_mois, models.Paiements.date <= aujourdhui)
+        .scalar() or 0.0
+    )
+    depenses_mois = (
+        db.query(func.coalesce(func.sum(models.Depenses.montant), 0.0))
+        .filter(models.Depenses.date >= debut_mois, models.Depenses.date <= aujourdhui)
+        .scalar() or 0.0
+    )
+    solde_mois = paiements_mois - depenses_mois
+
+    # ── 2. ÉCHÉANCES EN RETARD (relances) ────────────────────────────────────
+    echeances_retard = (
+        db.query(models.Echeances)
+        .filter(
+            models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+            models.Echeances.date_echeance < aujourdhui,
+        )
+        .all()
+    )
+    montant_en_retard = sum(max(e.montant_du - e.montant_paye, 0.0) for e in echeances_retard)
+
+    # ── 3. ÉVOLUTION MENSUELLE (6 derniers mois) ─────────────────────────────
+    mois_range = _derniers_mois(6)
+    annee_min, mois_min, _ = mois_range[0]
+    date_min = date(annee_min, mois_min, 1)
+    paiements_par_mois = {
+        (int(p.annee), int(p.mois)): float(p.total)
+        for p in db.query(
+            func.extract("year", models.Paiements.date).label("annee"),
+            func.extract("month", models.Paiements.date).label("mois"),
+            func.coalesce(func.sum(models.Paiements.montant), 0.0).label("total"),
+        )
+        .filter(models.Paiements.date >= date_min)
+        .group_by(func.extract("year", models.Paiements.date), func.extract("month", models.Paiements.date))
+        .all()
+    }
+    depenses_par_mois = {
+        (int(d.annee), int(d.mois)): float(d.total)
+        for d in db.query(
+            func.extract("year", models.Depenses.date).label("annee"),
+            func.extract("month", models.Depenses.date).label("mois"),
+            func.coalesce(func.sum(models.Depenses.montant), 0.0).label("total"),
+        )
+        .filter(models.Depenses.date >= date_min)
+        .group_by(func.extract("year", models.Depenses.date), func.extract("month", models.Depenses.date))
+        .all()
+    }
+    evolution_mensuelle = [
+        {
+            "mois": label,
+            "paiements": round(float(paiements_par_mois.get((a, m), 0.0)), 2),
+            "depenses": round(float(depenses_par_mois.get((a, m), 0.0)), 2),
+        }
+        for a, m, label in mois_range
+    ]
+
+    # ── 4. ACTIVITÉ FINANCIÈRE RÉCENTE (paiements + dépenses) ────────────────
+    activites: list[dict] = []
+    derniers_paiements = (
+        db.query(models.Paiements, models.Inscriptions, models.Eleves)
+        .outerjoin(models.Inscriptions, models.Inscriptions.id == models.Paiements.id_inscription)
+        .outerjoin(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
+        .order_by(models.Paiements.updated_at.desc())
+        .limit(8)
+        .all()
+    )
+    for paiement, _inscription, eleve in derniers_paiements:
+        nom_eleve = f"{eleve.nom} {eleve.prenom}".strip() if eleve else "un élève"
+        if est_modifie(paiement.created_at, paiement.updated_at):
+            texte = f"Paiement de {paiement.montant:,.0f} FCFA modifié pour {nom_eleve}."
+        else:
+            texte = f"Paiement de {paiement.montant:,.0f} FCFA reçu pour {nom_eleve}."
+        activites.append({
+            "type": "paiement",
+            "texte": texte,
+            "date": str(paiement.updated_at),
+        })
+    dernieres_depenses = (
+        db.query(models.Depenses)
+        .order_by(models.Depenses.updated_at.desc())
+        .limit(8)
+        .all()
+    )
+    for depense in dernieres_depenses:
+        if est_modifie(depense.created_at, depense.updated_at):
+            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA modifiée."
+        else:
+            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA enregistrée."
+        activites.append({
+            "type": "depense",
+            "texte": texte,
+            "date": str(depense.updated_at),
+        })
+    activites.sort(key=lambda a: a["date"], reverse=True)
+    activites = activites[:12]
+
+    return {
+        "paiements_mois": round(float(paiements_mois), 2),
+        "depenses_mois": round(float(depenses_mois), 2),
+        "solde_mois": round(float(solde_mois), 2),
+        "echeances_en_retard": len(echeances_retard),
+        "montant_en_retard": round(float(montant_en_retard), 2),
+        "evolution_mensuelle": evolution_mensuelle,
+        "dernieres_activites": activites,
+    }
+
+
+@router.get("/stats", response_model=schemas.DashboardStatsResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+def get_dashboard_stats(
+    utilisateur: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tableau de bord pédagogique (admin/directeur). Le directeur ne voit pas
+    les flux financiers (paiements, dépenses)."""
+    return _stats_direction(db, include_finance=utilisateur.role.value == "admin")
+
+
+@router.get("/finances", response_model=schemas.DashboardFinanceResponse, dependencies=[Depends(require_role("admin", "comptable"))])
+def get_dashboard_finances(db: Session = Depends(get_db)):
+    """Tableau de bord du comptable : flux financiers uniquement."""
+    return _stats_finances(db)

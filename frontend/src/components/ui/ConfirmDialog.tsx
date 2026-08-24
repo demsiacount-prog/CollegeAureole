@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { Button } from './Button'
+import { useModalStack } from './modalStack'
 
 interface Props {
   open: boolean
@@ -13,10 +14,12 @@ interface Props {
 }
 
 export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel = 'Confirmer', variant = 'danger', children }: Props) {
+  useModalStack(open)
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl">
         <div className="flex items-start justify-between mb-4">

@@ -10,13 +10,16 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { formatDate, formatMontant, formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
 import { fetchDossierEleve, updateEleve } from './api'
 import { EleveFormDrawer } from './EleveFormDrawer'
+import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
+import { createInscription } from '@/features/inscriptions/api'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
-import { ELEVE_DOCS_LABELS } from '@/features/documents/labels'
+import { countVisibleDocuments, ELEVE_DOCS_LABELS } from '@/features/documents/labels'
 import { uploadDocument } from '@/features/documents/api'
 import type { DossierEleve, NoteEleve, InscriptionDetail, AbsenceEleve } from './types'
 
@@ -24,7 +27,9 @@ export default function EleveDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
   const { user } = useAuth()
   const canWrite = user?.role === 'admin' || user?.role === 'directeur'
+  const canImportDocs = user?.role === 'admin'
   const [editOpen, setEditOpen] = useState(false)
+  const [inscriptionOpen, setInscriptionOpen] = useState(false)
 
   const { data: dossier, isLoading, isError, refetch } = useQuery({
     queryKey: ['eleve-dossier', matricule],
@@ -56,6 +61,11 @@ export default function EleveDetailPage() {
     [dossier, anneeMap, anneeNiveau],
   )
   const anneeActiveId = dossier?.annee_scolaire?.id
+  // Un élève déjà inscrit (ou redoublant) pour l'année active n'a plus de
+  // bouton « Inscrire » : l'inscription existe déjà.
+  const dejaInscritAnneeActive = (dossier?.inscriptions ?? []).some(
+    (i) => ['Inscrit', 'Redoublant'].includes(i.statut) && (anneeActiveId == null || i.id_annee_scolaire === anneeActiveId),
+  )
   const nbAnneesAvecResultats = resultats.anneesTriees.length
   const anneeResultatsDefaut =
     anneeActiveId != null && resultats.parAnnee.has(anneeActiveId)
@@ -125,10 +135,17 @@ export default function EleveDetailPage() {
             </div>
           </div>
           {canWrite && (
-            <Button variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil strokeWidth={1.75} className="size-4" />
-              Modifier
-            </Button>
+            <div className="flex gap-2">
+              {!dejaInscritAnneeActive && (
+                <Button variant="primary" onClick={() => setInscriptionOpen(true)}>
+                  Inscrire
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                <Pencil strokeWidth={1.75} className="size-4" />
+                Modifier
+              </Button>
+            </div>
           )}
         </div>
       </Card>
@@ -165,13 +182,14 @@ export default function EleveDetailPage() {
           {
             key: 'documents',
             label: 'Documents',
-            count: dossier.documents.length,
+            count: countVisibleDocuments(dossier.documents, ELEVE_DOCS_LABELS),
             content: (
               <DocumentsTab
                 documents={dossier.documents}
                 labels={ELEVE_DOCS_LABELS}
                 invalidateKey={['eleve-dossier', dossier.matricule]}
                 upload={(typeDocument, file) => uploadDocument(dossier.matricule, typeDocument, file)}
+                canEdit={canImportDocs}
               />
             ),
           },
@@ -185,6 +203,19 @@ export default function EleveDetailPage() {
         onCreate={async () => {}}
         onUpdate={async (m, payload) => {
           await updateEleve(m, payload)
+          await refetch()
+        }}
+        canImport={canImportDocs}
+      />
+
+      <InscriptionFormDrawer
+        open={inscriptionOpen}
+        onClose={() => setInscriptionOpen(false)}
+        initialMatricule={dossier.matricule}
+        initialAnneeScolaireId={anneeActiveId}
+        onSubmit={async (data) => {
+          await createInscription(data)
+          setInscriptionOpen(false)
           await refetch()
         }}
       />
@@ -241,14 +272,7 @@ function ProfilTab({ dossier }: { dossier: DossierEleve }) {
             <p className="text-[var(--color-ink-faint)]">Carnet de santé</p>
             <p className="mt-1 font-medium text-[var(--color-ink)]">{dossier.carnet_sante ? 'Présent' : 'À compléter'}</p>
           </div>
-          <div className="rounded-lg border border-[var(--color-border-soft)] px-3 py-2">
-            <p className="text-[var(--color-ink-faint)]">Photo</p>
-            <p className="mt-1 font-medium text-[var(--color-ink)]">{dossier.photo ? 'Importée' : 'À importer'}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--color-border-soft)] px-3 py-2">
-            <p className="text-[var(--color-ink-faint)]">Certificat de radiation</p>
-            <p className="mt-1 font-medium text-[var(--color-ink)]">{dossier.certificat_radiation ? 'Présent' : 'Non requis'}</p>
-          </div>
+          
         </CardBody>
       </Card>
     </div>
@@ -285,11 +309,14 @@ function InscriptionsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }
               {insc.statut}
             </Badge>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
             <Stat label="Moyenne annuelle" value={formatMoyenne(insc.moyenne_annuelle, bm)} />
             <Stat label="Absences" value={String(insc.nb_absences)} />
             <Stat label="Montant payé" value={formatMontant(insc.montant_paye)} />
             <Stat label="Reste à payer" value={formatMontant(insc.reste_a_payer)} />
+            {insc.credit_disponible > 0 && (
+              <Stat label="Crédit disponible" value={formatMontant(insc.credit_disponible)} />
+            )}
           </div>
         </Card>
       )
@@ -315,8 +342,33 @@ interface PeriodeResultat {
     cours: NoteEleve['cours']
     moyenne: number
     nbNotes: number
+    coefficient: number
     enseignant: NoteEleve['enseignant']
   }[]
+}
+
+function coefficientCours(cours: NoteEleve['cours'], idClasse: number): number {
+  const aff = cours.coefficients.find((a) => a.id_classe === idClasse)
+  return aff ? aff.coefficient : 1
+}
+
+// EF2 et au-delà : moyenne pondérée par coefficients.
+// EF1 : moyenne arithmétique simple (notes /10, coefficients non applicables).
+function moyennePeriode(moyennes: { moyenne: number; coefficient: number }[], ponderee: boolean): number | null {
+  if (!ponderee) {
+    return moyennes.length > 0 ? moyennes.reduce((somme, m) => somme + m.moyenne, 0) / moyennes.length : null
+  }
+  return moyennePonderee(moyennes)
+}
+
+function moyennePonderee(moyennes: { moyenne: number; coefficient: number }[]): number | null {
+  let sommePonderee = 0
+  let sommeCoefficients = 0
+  for (const m of moyennes) {
+    sommePonderee += m.moyenne * m.coefficient
+    sommeCoefficients += m.coefficient
+  }
+  return sommeCoefficients > 0 ? sommePonderee / sommeCoefficients : null
 }
 
 interface AnneeResultat {
@@ -348,7 +400,7 @@ function regrouperResultats(notes: NoteEleve[], anneeMap: Record<number, string>
   }
 
   for (const periode of parPeriode.values()) {
-    const byCours = new Map<number, { cours: NoteEleve['cours']; total: number; nbNotes: number; enseignant: NoteEleve['enseignant'] }>()
+    const byCours = new Map<number, { cours: NoteEleve['cours']; total: number; nbNotes: number; coefficient: number; enseignant: NoteEleve['enseignant'] }>()
     for (const n of periode.notes) {
       const cell = byCours.get(n.cours.id)
       if (cell) {
@@ -356,11 +408,11 @@ function regrouperResultats(notes: NoteEleve[], anneeMap: Record<number, string>
         cell.nbNotes += 1
         cell.enseignant = n.enseignant
       } else {
-        byCours.set(n.cours.id, { cours: n.cours, total: n.note, nbNotes: 1, enseignant: n.enseignant })
+        byCours.set(n.cours.id, { cours: n.cours, total: n.note, nbNotes: 1, coefficient: coefficientCours(n.cours, n.id_classe), enseignant: n.enseignant })
       }
     }
     periode.moyennesParMatiere = [...byCours.values()]
-      .map((cell) => ({ cours: cell.cours, moyenne: cell.total / cell.nbNotes, nbNotes: cell.nbNotes, enseignant: cell.enseignant }))
+      .map((cell) => ({ cours: cell.cours, moyenne: cell.total / cell.nbNotes, nbNotes: cell.nbNotes, coefficient: cell.coefficient, enseignant: cell.enseignant }))
       .sort((a, b) => a.cours.nom.localeCompare(b.cours.nom))
   }
 
@@ -402,7 +454,10 @@ function regrouperResultats(notes: NoteEleve[], anneeMap: Record<number, string>
     const completes = annee.periodes.filter((p) => p.estComplete)
     annee.moyenneAnnuelle =
       completes.length > 0
-        ? completes.reduce((somme, p) => somme + p.moyennesParMatiere.reduce((s, m) => s + m.moyenne, 0) / p.moyennesParMatiere.length, 0) / completes.length
+        ? completes.reduce((somme, p) => {
+            const moyenne = moyennePeriode(p.moyennesParMatiere, !annee.estPrimaire)
+            return somme + (moyenne ?? 0)
+          }, 0) / completes.length
         : null
   }
 
@@ -460,10 +515,7 @@ function NotesTab({ resultats, defaultExpandedId }: { resultats: ResultatsEleve;
             {ouvert && (
               <div className="flex flex-col gap-4">
                 {annee.periodes.map((periode) => {
-                  const avg =
-                    periode.moyennesParMatiere.length > 0
-                      ? periode.moyennesParMatiere.reduce((somme, m) => somme + m.moyenne, 0) / periode.moyennesParMatiere.length
-                      : null
+                  const avg = moyennePeriode(periode.moyennesParMatiere, !annee.estPrimaire)
                   return (
                     <Card key={periode.trimestre.id}>
                       <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-3">
@@ -488,31 +540,33 @@ function NotesTab({ resultats, defaultExpandedId }: { resultats: ResultatsEleve;
                           )}
                         </div>
                       </div>
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr className="border-b border-[var(--color-border)] text-sm font-medium text-[var(--color-ink-dim)]">
-                            <th className="px-5 py-2.5 font-medium">Matière</th>
-                            <th className="px-5 py-2.5 font-medium">Enseignant</th>
-                            <th className="px-5 py-2.5 font-medium text-right">Note /{annee.bareme}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {annee.coursAttendus.map((cours) => {
-                            const detail = periode.moyennesParMatiere.find((m) => m.cours.id === cours.id) ?? null
-                            return (
-                              <tr key={cours.id} className="border-b border-[var(--color-border-soft)] last:border-0">
-                                <td className="px-5 py-2.5 text-[var(--color-ink)]">{cours.nom}</td>
-                                <td className="px-5 py-2.5 text-[var(--color-ink-dim)]">
-                                  {detail ? `${detail.enseignant.prenom} ${detail.enseignant.nom}` : '—'}
-                                </td>
-                                <td className="px-5 py-2.5 text-right font-medium text-[var(--color-ink)]">
-                                  {detail ? detail.moyenne.toFixed(2) : '—'}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                      <TableContainer className="rounded-none border-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Matière</TableHead>
+                              <TableHead>Enseignant</TableHead>
+                              <TableHead className="text-right">Note /{annee.bareme}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {annee.coursAttendus.map((cours) => {
+                              const detail = periode.moyennesParMatiere.find((m) => m.cours.id === cours.id) ?? null
+                              return (
+                                <TableRow key={cours.id}>
+                                  <TableCell className="text-[var(--color-ink)]">{cours.nom}</TableCell>
+                                  <TableCell className="text-[var(--color-ink-dim)]">
+                                    {detail ? `${detail.enseignant.prenom} ${detail.enseignant.nom}` : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                                    {detail ? detail.moyenne.toFixed(2) : '—'}
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
                     </Card>
                   )
                 })}
@@ -599,30 +653,30 @@ function AbsencesTab({ groups, defaultExpandedId }: { groups: AnneeAbsences[]; d
               (g.absences.length === 0 ? (
                 <p className="px-2 text-sm text-[var(--color-ink-faint)]">Aucune absence pour l'année active.</p>
               ) : (
-                <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)]">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--color-border)] text-sm font-medium text-[var(--color-ink-dim)]">
-                        <th className="px-4 py-2.5 font-medium">Date</th>
-                        <th className="px-4 py-2.5 font-medium">Cours</th>
-                        <th className="px-4 py-2.5 font-medium">Motif</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <TableContainer>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Cours</TableHead>
+                        <TableHead>Motif</TableHead>
+                        <TableHead className="text-right">Statut</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {g.absences.map((a) => (
-                        <tr key={a.id} className="border-b border-[var(--color-border-soft)] last:border-0">
-                          <td className="px-4 py-2.5 text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</td>
-                          <td className="px-4 py-2.5 text-[var(--color-ink)]">{a.cours?.nom ?? '—'}</td>
-                          <td className="px-4 py-2.5 text-[var(--color-ink-dim)]">{a.motif ?? '—'}</td>
-                          <td className="px-4 py-2.5 text-right">
+                        <TableRow key={a.id}>
+                          <TableCell className="text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</TableCell>
+                          <TableCell className="text-[var(--color-ink)]">{a.cours?.nom ?? '—'}</TableCell>
+                          <TableCell className="text-[var(--color-ink-dim)]">{a.motif ?? '—'}</TableCell>
+                          <TableCell className="text-right">
                             <Badge tone={a.justifiee ? 'success' : 'danger'}>{a.justifiee ? 'Justifiée' : 'Non justifiée'}</Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               ))}
           </div>
         )

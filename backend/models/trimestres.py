@@ -1,11 +1,15 @@
-from datetime import datetime
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Boolean
+
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Boolean, DateTime, UniqueConstraint
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
 
 class Trimestres(Base):
     __tablename__ = "trimestres"
+    __table_args__ = (
+        UniqueConstraint("annee_scolaire_id", "nom", name="uq_trimestre_annee_nom"),
+    )
 
     id = Column(Integer, primary_key=True)
     nom = Column(String, nullable=False)
@@ -13,9 +17,8 @@ class Trimestres(Base):
     date_debut = Column(Date, nullable=False)
     date_fin = Column(Date, nullable=False)
     verrouille = Column(Boolean, nullable=False, default=False)  # empêche la saisie/modif de notes
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     annee_scolaire_id = Column(Integer, ForeignKey("annees_scolaires.id", ondelete="CASCADE"), nullable=False)
 

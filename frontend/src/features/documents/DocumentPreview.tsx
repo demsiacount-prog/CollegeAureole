@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Download, FileText, FileQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -57,58 +57,12 @@ function kind(doc: Document, blobType: string): 'image' | 'pdf' | 'other' {
 }
 
 function PdfViewer({ url }: { url: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [rendering, setRendering] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    let cancelled = false
-    setRendering(true)
-    setError('')
-    ;(async () => {
-      try {
-        const [pdfjsLib, workerUrl] = await Promise.all([
-          import('pdfjs-dist'),
-          import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
-        ])
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.default
-        const res = await fetch(url)
-        const data = await res.arrayBuffer()
-        if (cancelled) return
-        const pdf = await pdfjsLib.getDocument({ data }).promise
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i)
-          const base = page.getViewport({ scale: 1 })
-          const scale = Math.min(1.6, 900 / base.width)
-          const viewport = page.getViewport({ scale })
-          const canvas = document.createElement('canvas')
-          canvas.width = viewport.width
-          canvas.height = viewport.height
-          canvas.className =
-            'mx-auto block h-auto max-w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-soft)]'
-          container.appendChild(canvas)
-          await page.render({ canvas, viewport }).promise
-        }
-      } catch {
-        if (!cancelled) setError("Impossible de lire le PDF.")
-      } finally {
-        if (!cancelled) setRendering(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-      container.replaceChildren()
-    }
-  }, [url])
-
   return (
-    <div className="flex flex-col items-center gap-4">
-      {rendering && <Spinner label="Lecture du PDF…" />}
-      {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
-      <div ref={containerRef} className="w-full space-y-4" />
-    </div>
+    <iframe
+      src={url}
+      className="mx-auto block h-[calc(100vh-140px)] w-full max-w-4xl rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white"
+      title="Aperçu PDF"
+    />
   )
 }
 

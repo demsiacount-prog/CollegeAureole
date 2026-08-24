@@ -1,5 +1,7 @@
-from datetime import date, datetime
-from sqlalchemy import Column, Integer, String, Date, Float, Boolean, ForeignKey, UniqueConstraint, event
+from datetime import date
+
+from sqlalchemy import Column, Integer, String, Date, Float, Boolean, DateTime, ForeignKey, UniqueConstraint, event
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -25,8 +27,8 @@ class Inscriptions(Base):
     date_fin = Column(Date, nullable=True)
     observation = Column(String, nullable=True)
 
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(), onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     eleve = relationship("Eleves", back_populates="inscriptions")
     classe = relationship("Classes", back_populates="inscriptions")
@@ -46,8 +48,14 @@ def generer_code_inscription(mapper, connection, target):
     from sqlalchemy.orm import object_session
     from identifiants import generer_code, resoudre_annee
 
-    annee = resoudre_annee(connection, target.id_annee_scolaire)
+    session = object_session(target)
+    cle_annee = ("_import_annee", target.id_annee_scolaire)
+    annee = session.info.get(cle_annee) if session is not None else None
+    if annee is None:
+        annee = resoudre_annee(connection, target.id_annee_scolaire)
+        if session is not None:
+            session.info[cle_annee] = annee
     target.code_inscription = generer_code(
         connection, Inscriptions.__table__.c.code_inscription, "INS", annee,
-        session=object_session(target),
+        session=session,
     )

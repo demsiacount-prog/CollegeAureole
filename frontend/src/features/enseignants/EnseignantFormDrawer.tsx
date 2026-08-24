@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { createEnseignant, updateEnseignant } from './api'
 import { extractErrorMessage } from '@/lib/api'
 import { toast } from '@/components/ui/toast'
+import { required, email, phone, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { Enseignant, EnseignantCreateInput } from './types'
 
 interface Props {
@@ -25,9 +26,9 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
     email: '',
     adresse: '',
     specialite: '',
-    heures_hebdo_max: null,
   })
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState<Errors>({})
 
   useEffect(() => {
     if (open) {
@@ -38,15 +39,29 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
         email: enseignant?.email ?? '',
         adresse: enseignant?.adresse ?? '',
         specialite: enseignant?.specialite ?? '',
-        heures_hebdo_max: enseignant?.heures_hebdo_max ?? null,
       })
       setError('')
+      setErrors({})
     }
   }, [open, enseignant])
 
   const set = (k: keyof EnseignantCreateInput) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const handleSubmit = () => {
+    const errs = validateFields({
+      prenom: required(form.prenom, 'Le prénom'),
+      nom: required(form.nom, 'Le nom'),
+      specialite: required(form.specialite, 'La spécialité'),
+      email: required(form.email, "L'e-mail") ?? email(form.email),
+      telephone: required(form.telephone, 'Le téléphone') ?? phone(form.telephone),
+      adresse: required(form.adresse, "L'adresse"),
+    })
+    setErrors(errs)
+    if (hasErrors(errs)) return
+    mutation.mutate()
+  }
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -69,26 +84,73 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
       title={isEdit ? "Modifier l'enseignant" : 'Nouvel enseignant'}
     >
       <form
-        onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}
+        onSubmit={(e) => { e.preventDefault(); handleSubmit() }}
+        noValidate
         className="flex flex-col h-full"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Prénom" placeholder="ex. Mamadou" value={form.prenom} onChange={set('prenom')} required />
-            <Input label="Nom" placeholder="ex. Condé" value={form.nom} onChange={set('nom')} required />
+            <Input
+              label="Prénom"
+              placeholder="ex. Mamadou"
+              value={form.prenom}
+              onChange={(e) => {
+                set('prenom')(e)
+                if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
+              }}
+              required
+              error={errors.prenom}
+            />
+            <Input
+              label="Nom"
+              placeholder="ex. Condé"
+              value={form.nom}
+              onChange={(e) => {
+                set('nom')(e)
+                if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
+              }}
+              required
+              error={errors.nom}
+            />
           </div>
-          <Input label="Spécialité" placeholder="ex. Mathématiques" value={form.specialite} onChange={set('specialite')} required />
-          <Input label="E-mail" type="email" placeholder="ex. mamadou.conde@ecole.ml" value={form.email} onChange={set('email')} required />
-          <Input label="Téléphone" value={form.telephone} onChange={set('telephone')} placeholder="+223 XX XX XX XX" />
-          <Input label="Adresse" placeholder="ex. Hamdallaye, Bamako" value={form.adresse} onChange={set('adresse')} />
           <Input
-            label="Quota horaire max (h/semaine)"
-            type="number"
-            min={0}
-            placeholder="ex. 20"
-            value={form.heures_hebdo_max != null ? String(form.heures_hebdo_max) : ''}
-            onChange={(e) => setForm((f) => ({ ...f, heures_hebdo_max: e.target.value ? Number(e.target.value) : null }))}
+            label="Spécialité"
+            placeholder="ex. Mathématiques"
+            value={form.specialite}
+            onChange={(e) => {
+              set('specialite')(e)
+              if (errors.specialite) setErrors((prev) => ({ ...prev, specialite: undefined }))
+            }}
+            required
+            error={errors.specialite}
           />
+          <Input
+            label="E-mail"
+            type="email"
+            placeholder="ex. mamadou.conde@ecole.ml"
+            value={form.email}
+            onChange={(e) => {
+              set('email')(e)
+              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+            }}
+            required
+            error={errors.email}
+          />
+          <Input
+            label="Téléphone"
+            value={form.telephone}
+            onChange={(e) => {
+              set('telephone')(e)
+              if (errors.telephone) setErrors((prev) => ({ ...prev, telephone: undefined }))
+            }}
+            placeholder="+223 XX XX XX XX"
+            error={errors.telephone}
+          />
+          <Input label="Adresse" placeholder="ex. Hamdallaye, Bamako" value={form.adresse} onChange={(e) => {
+            set('adresse')(e)
+            if (errors.adresse) setErrors((prev) => ({ ...prev, adresse: undefined }))
+          }} error={errors.adresse} />
+          
           {error && (
             <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
               {error}

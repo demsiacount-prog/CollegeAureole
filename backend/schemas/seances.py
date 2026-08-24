@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import datetime, time
 from typing import Literal, Optional, TYPE_CHECKING
 from pydantic import BaseModel, model_validator
 
@@ -22,7 +22,7 @@ class SeanceBase(BaseModel):
     @model_validator(mode="after")
     def verifier_horaires(self):
         if self.heure_fin <= self.heure_debut:
-            raise ValueError("L'heure de fin doit être après l'heure de début.")
+            raise ValueError("Heure de fin invalide")
         return self
 
 
@@ -41,8 +41,8 @@ class SeanceUpdate(BaseModel):
 
 class SeanceResponse(SeanceBase):
     id: int
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     model_config = {"from_attributes": True}
 
 

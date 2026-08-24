@@ -1,10 +1,11 @@
 # schemas/echeances.py
 from datetime import date
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Dict, List, Optional, Literal
 
 TypeEcheance = Literal["INSCRIPTION", "MENSUALITE"]
 StatutEcheance = Literal["EN_ATTENTE", "PARTIEL", "SOLDE", "REPORTE"]
+ModePaiement = Literal["ESPECES", "VIREMENT", "CHEQUE", "MOBILE_MONEY"]
 
 
 class EcheanceResponse(BaseModel):
@@ -19,6 +20,7 @@ class EcheanceResponse(BaseModel):
     reste_a_payer:       float
     statut:              StatutEcheance
     id_echeance_origine: Optional[int] = None
+    total_remises:       float = 0.0
 
     model_config = {"from_attributes": True}
 
@@ -38,15 +40,38 @@ class RelanceResponse(EcheanceResponse):
     email_tuteur:        Optional[str] = None
 
 
+class RemiseParEcheance(BaseModel):
+    montant: float = Field(gt=0)
+    motif: Optional[str] = Field(default=None, max_length=500)
+
+
 class PaiementEcheanceCreate(BaseModel):
     """Enregistrer un paiement sur une inscription.
     Le montant est distribué automatiquement sur les échéances impayées."""
     id_inscription: int
+    ids_echeances:  Optional[List[int]] = None
     montant:        float = Field(gt=0)
     date:           date
-    mode:           Optional[str] = None
-    numero_recu:    Optional[str] = None
-    observation:    Optional[str] = None
+    mode:           Optional[ModePaiement] = None
+    observation:    Optional[str] = Field(default=None, max_length=500)
+    remises:        Optional[Dict[int, RemiseParEcheance]] = None
+
+
+class PaiementResultResponse(BaseModel):
+    """Réponse de l'enregistrement d'un paiement : distribution sur échéances."""
+    nb_paiements_crees:     int
+    echeances_mises_a_jour: List[EcheanceResponse]
+    reste_global:           float
+    credit_disponible:      float
+
+
+class PaiementUpdate(BaseModel):
+    """Modifier un paiement existant : montant, date, mode, observation.
+    Le delta est reporté sur l'échéance (ou le crédit) correspondante."""
+    date:           Optional[date] = None
+    montant:        Optional[float] = Field(default=None, gt=0)
+    mode:           Optional[ModePaiement] = None
+    observation:    Optional[str] = Field(default=None, max_length=500)
 
 
 class PaiementEcheanceResponse(BaseModel):

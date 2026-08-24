@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Zap, Info, CheckCircle2, XCircle, Clock, Ban } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
@@ -89,13 +90,20 @@ export default function ResultatListPage() {
           onChange={(e) => setClasseId(Number(e.target.value))}
           options={classes.map((c) => ({ value: c.id, label: `${c.niveau} — ${c.nom}` }))}
           className="w-56"
+          disabled={classes.length === 0}
         />
       </div>
 
-      {isLoading ? (
+      {classes.length === 0 ? (
+        <div className="py-16">
+          <EmptyState message="Aucune classe enregistrée pour le moment." />
+        </div>
+      ) : isLoading ? (
         <TableSkeleton rows={8} />
       ) : isError || !resultats ? (
-        <EmptyState message="Impossible de charger les résultats de cette classe." />
+        <div className="py-16">
+          <EmptyState message="Impossible de charger les résultats de cette classe." />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -148,33 +156,33 @@ export default function ResultatListPage() {
             <CardHeader>
               <CardTitle>Élèves ({resultats.effectif})</CardTitle>
             </CardHeader>
-            <CardBody className="p-0">
-              {resultats.eleves.length === 0 ? (
-                <div className="p-5">
-                  <EmptyState message="Aucun élève inscrit dans cette classe pour l'année active." />
-                </div>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)] text-sm font-medium text-[var(--color-ink-dim)]">
-                      <th className="px-5 py-3 font-medium">Élève</th>
-                      <th className="px-5 py-3 font-medium">Moyenne annuelle</th>
-                      <th className="px-5 py-3 font-medium">Statut de passage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            {resultats.eleves.length === 0 ? (
+              <div className="p-5">
+                <EmptyState message="Aucun élève inscrit dans cette classe pour l'année active." />
+              </div>
+            ) : (
+              <TableContainer className="rounded-none border-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Élève</TableHead>
+                      <TableHead>Moyenne annuelle</TableHead>
+                      <TableHead>Statut de passage</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {resultats.eleves.map((e) => {
                       const info = STATUT_INFO[e.statut_passage]
                       return (
-                        <tr key={e.inscription_id} className="border-b border-[var(--color-border-soft)] last:border-0">
-                          <td className="px-5 py-3">
+                        <TableRow key={e.inscription_id}>
+                          <TableCell>
                             <Link to={`/app/eleves/${e.matricule}`} className="flex items-center gap-2.5 group">
                               <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
                               <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">{e.prenom} {e.nom}</span>
                             </Link>
-                          </td>
-                          <td className="px-5 py-3 text-[var(--color-ink-dim)]">{formatMoyenne(e.moyenne_annuelle, baremeNiveau(resultats.classe.niveau))}</td>
-                          <td className="px-5 py-3">
+                          </TableCell>
+                          <TableCell className="text-[var(--color-ink-dim)]">{formatMoyenne(e.moyenne_annuelle, baremeNiveau(resultats.classe.niveau))}</TableCell>
+                          <TableCell>
                             {canDecide ? (
                               <Select
                                 value={e.statut_passage}
@@ -187,14 +195,14 @@ export default function ResultatListPage() {
                             ) : (
                               <Badge tone={info.tone}>{info.label}</Badge>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )
                     })}
-                  </tbody>
-                </table>
-              )}
-            </CardBody>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Card>
 
           <ConfirmDialog

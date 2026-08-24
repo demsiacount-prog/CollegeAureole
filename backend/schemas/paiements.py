@@ -6,7 +6,6 @@ from typing import Optional
 class PaiementBase(BaseModel):
     date: date
     montant: float = Field(gt=0)
-    numero_recu: Optional[str] = None
     mode: Optional[str] = None
     observation: Optional[str] = None
 

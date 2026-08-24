@@ -1,13 +1,13 @@
 import { test, expect, request, type APIRequestContext } from '@playwright/test'
-import { loginViaApi } from './helpers'
+import { login } from './helpers'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = 'http://localhost:3001'
 const PREFIX = `PERIODES E2E ${Date.now()}`
 
 async function creerApiContexte(): Promise<APIRequestContext> {
   const auth = await request.newContext({ baseURL: BASE_URL })
   const res = await auth.post('/api/auth/connexion', {
-    data: { email: 'admin@collegeaureole.ml', mot_de_passe: 'Password123!' },
+    data: { email: 'admin@etablissement.com', mot_de_passe: 'Password123!' },
   })
   if (res.status() !== 200) throw new Error(`Login API échoué (${res.status()})`)
   const { access_token } = await res.json()
@@ -33,7 +33,7 @@ test('bouton « Générer les périodes par défaut » dans Paramètres', async 
     ).json()
     for (const t of trimestres) await api.delete(`/api/trimestres/${t.id}`)
 
-    await loginViaApi(page, 'admin')
+    await login(page, 'admin')
     await page.goto('/app/parametres')
 
     const ligne = page.getByRole('row').filter({ hasText: PREFIX })

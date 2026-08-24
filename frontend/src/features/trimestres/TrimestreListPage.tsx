@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, Trash2, Lock, Unlock } from 'lucide-react'
-import { Card, CardBody } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
@@ -128,79 +128,75 @@ export default function TrimestreListPage() {
             <EmptyState message={search ? 'Aucune période ne correspond à cette recherche.' : 'Aucune période enregistrée.'} />
           </div>
         ) : (
-          <Card>
-            <CardBody>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Nom</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Type</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Période</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Année scolaire</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Statut</th>
-                      <th className="pb-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border-soft)]">
-                    {filtered.map((t) => (
-                      <tr key={t.id} className="hover:bg-[var(--color-surface-2)]">
-                        <td className="py-3 text-[var(--color-ink)] font-medium">{t.nom}</td>
-                        <td className="py-3">
-                          <Badge tone={t.type === 'COMPOSITION' ? 'warning' : 'info'}>
-                            {TYPE_PERIODE_LABELS[t.type as TypePeriode]}
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">
-                          {new Date(t.date_debut).toLocaleDateString('fr-FR')} — {new Date(t.date_fin).toLocaleDateString('fr-FR')}
-                        </td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">{getAnneeLabel(t.annee_scolaire_id)}</td>
-                        <td className="py-3">
-                          {t.verrouille ? (
-                            <span className="text-xs text-[var(--color-ink-dim)]">Verrouillé</span>
-                          ) : (
-                            <span className="text-xs font-medium text-[var(--color-success)]">Ouvert</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            {canLock && (t.verrouille ? (
-                              <button
-                                onClick={() => deverrouillerMut.mutate(t.id)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]"
-                                aria-label={`Déverrouiller ${t.nom}`}
-                                title="Déverrouiller"
-                              >
-                                <Unlock size={14} strokeWidth={1.75} />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => verrouillerMut.mutate(t.id)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-warning-wash)] hover:text-[var(--color-warning)]"
-                                aria-label={`Verrouiller ${t.nom}`}
-                                title="Verrouiller"
-                              >
-                                <Lock size={14} strokeWidth={1.75} />
-                              </button>
-                            ))}
-                            {canDelete && (
-                              <button
-                                onClick={() => setDeleting(t)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
-                                aria-label={`Supprimer ${t.nom}`}
-                              >
-                                <Trash2 size={14} strokeWidth={1.75} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Période</TableHead>
+                  <TableHead>Année scolaire</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="text-[var(--color-ink)] font-medium">{t.nom}</TableCell>
+                    <TableCell>
+                      <Badge tone={t.type === 'COMPOSITION' ? 'warning' : 'info'}>
+                        {TYPE_PERIODE_LABELS[t.type as TypePeriode]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">
+                      {new Date(t.date_debut).toLocaleDateString('fr-FR')} — {new Date(t.date_fin).toLocaleDateString('fr-FR')}
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">{getAnneeLabel(t.annee_scolaire_id)}</TableCell>
+                    <TableCell>
+                      {t.verrouille ? (
+                        <span className="text-xs text-[var(--color-ink-dim)]">Verrouillé</span>
+                      ) : (
+                        <span className="text-xs font-medium text-[var(--color-success)]">Ouvert</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {canLock && (t.verrouille ? (
+                          <button
+                            onClick={() => deverrouillerMut.mutate(t.id)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]"
+                            aria-label={`Déverrouiller ${t.nom}`}
+                            title="Déverrouiller"
+                          >
+                            <Unlock size={14} strokeWidth={1.75} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => verrouillerMut.mutate(t.id)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-warning-wash)] hover:text-[var(--color-warning)]"
+                            aria-label={`Verrouiller ${t.nom}`}
+                            title="Verrouiller"
+                          >
+                            <Lock size={14} strokeWidth={1.75} />
+                          </button>
+                        ))}
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeleting(t)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            aria-label={`Supprimer ${t.nom}`}
+                          >
+                            <Trash2 size={14} strokeWidth={1.75} />
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </div>
 

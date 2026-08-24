@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { loginViaApi } from './helpers'
+import { login } from './helpers'
 
 const HALO = '217, 167, 92' // #d9a75c
 const BRAND = 'rgb(45, 110, 232)' // #2d6ee8
@@ -26,7 +26,7 @@ test.describe('Design system v3 — halo réservé (focus + sidebar + marque), a
 
   test('focus clavier : anneau halo sur les champs (focus réservé au halo)', async ({ page }) => {
     await page.goto('/connexion')
-    const email = page.getByPlaceholder('prenom.nom@aureole.ml')
+    const email = page.getByPlaceholder('prenom.nom@etablissement.com')
     await email.focus()
     await page.waitForTimeout(150)
     const shadow = await email.evaluate((el) => getComputedStyle(el).boxShadow)
@@ -34,7 +34,7 @@ test.describe('Design system v3 — halo réservé (focus + sidebar + marque), a
   })
 
   test('après connexion : item actif de la sidebar en halo, bouton primaire et contenu en brand', async ({ page }) => {
-    await loginViaApi(page, 'admin')
+    await login(page, 'admin')
     await page.goto('/app/salles')
 
     const actif = page.locator('a[href="/app/salles"]')

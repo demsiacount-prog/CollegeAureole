@@ -1,40 +1,72 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
+  ImagePlus,
+  KeyRound,
   Loader2,
   Moon,
+  RotateCcw,
   Sun,
+  Trash2,
+  XCircle,
 } from 'lucide-react'
-import { api, extractErrorMessage } from '@/lib/api'
+import { api, extractErrorMessage, TOKEN_STORAGE_KEY } from '@/lib/api'
+import { urlAbsolue } from '@/lib/server'
+import type { TokenResponse } from '@/types'
+import { uploadSetupLogo } from '@/features/etablissement/api'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/hooks/useTheme'
 import { clsx } from 'clsx'
+import {
+  required, minLength, email as emailVal, phone,
+  dateFinApresDebut, validateFields, hasErrors, type Errors,
+} from '@/lib/validation'
 
-type Step = 'checking' | 'configured' | 'form' | 'seeding'
+type WizardStep = 'checking' | 'configured' | 'form' | 'running'
+type FormStep = 1 | 2 | 3
 
-const MESSAGES = [
-  'Création des comptes...',
-  'Génération des élèves et enseignants...',
-  'Création des notes et bulletins...',
-  'Génération des paiements et absences...',
-  'Presque terminé...',
+interface Progress {
+  run_id: string | null
+  en_cours: boolean
+  etape: number
+  nb_etapes: number
+  message: string
+  pourcent: number
+  termine: boolean
+  erreur: string | null
+}
+
+interface SetupStatus {
+  configured: boolean
+  progression: Progress | null
+}
+
+const FORM_STEPS = [
+  { n: 1, label: 'Établissement' },
+  { n: 2, label: 'Compte admin' },
+  { n: 3, label: 'Année scolaire' },
 ]
 
-const STEP_ITEMS = [
-  { n: 1, label: 'Compte' },
-  { n: 2, label: 'Données' },
-  { n: 3, label: 'Initialisation' },
-]
+function anneeScolaireParDefaut() {
+  const now = new Date()
+  const annee = now.getFullYear()
+  if (now.getMonth() >= 9) {
+    return { date_debut: `${annee}-10-01`, date_fin: `${annee + 1}-07-31` }
+  }
+  return { date_debut: `${annee - 1}-10-01`, date_fin: `${annee}-07-31` }
+}
 
 function StepIndicator({ current }: { current: number }) {
+  const items = [...FORM_STEPS, { n: 4, label: 'Initialisation' }]
   return (
     <ol className="mb-8 flex items-center">
-      {STEP_ITEMS.map((it, i) => {
+      {items.map((it, i) => {
         const done = current > it.n
         const active = current === it.n
         return (
@@ -47,7 +79,7 @@ function StepIndicator({ current }: { current: number }) {
                 )}
               />
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-1">
               <span
                 className={clsx(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium transition-all duration-300',
@@ -60,7 +92,7 @@ function StepIndicator({ current }: { current: number }) {
               </span>
               <span
                 className={clsx(
-                  'text-xs font-medium',
+                  'hidden whitespace-nowrap text-xs font-medium sm:block',
                   done || active ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]',
                 )}
               >
@@ -76,53 +108,210 @@ function StepIndicator({ current }: { current: number }) {
 
 export default function SetupWizard() {
   const { theme, toggle: toggleTheme } = useTheme()
-  const [step, setStep] = useState<Step>('checking')
+  const [step, setStep] = useState<WizardStep>('checking')
+  const [formStep, setFormStep] = useState<FormStep>(1)
+
+  // Fiche établissement
+  const [etNom, setEtNom] = useState('')
+  const [etSigle, setEtSigle] = useState('')
+  const [etDevise, setEtDevise] = useState('')
+  const [etAdresse, setEtAdresse] = useState('')
+  const [etTelephone, setEtTelephone] = useState('')
+  const [etEmail, setEtEmail] = useState('')
+  const [etLogo, setEtLogo] = useState('')
+  const logoFileRef = useRef<HTMLInputElement>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+
+  // Compte administrateur
   const [nom, setNom] = useState('')
   const [prenom, setPrenom] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
-  const [seedData, setSeedData] = useState(true)
+
+  // Année scolaire
+  const defaut = useMemo(anneeScolaireParDefaut, [])
+  const [dateDebut, setDateDebut] = useState(defaut.date_debut)
+  const [dateFin, setDateFin] = useState(defaut.date_fin)
+  const [donneesExemple, setDonneesExemple] = useState(true)
+
   const [error, setError] = useState('')
-  const [progress, setProgress] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Errors>({})
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const runIdRef = useRef<string | null>(null)
+  const autoLoginRef = useRef(false)
 
+  // ── État initial ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (step !== 'seeding') return
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const idx = MESSAGES.indexOf(prev)
-        return MESSAGES[(idx + 1) % MESSAGES.length]
+    api.get<SetupStatus>('/api/setup/status')
+      .then((res) => {
+        if (res.data.configured) {
+          setStep('configured')
+        } else if (res.data.progression?.en_cours) {
+          setProgress(res.data.progression)
+          setStep('running')
+        } else {
+          setStep('form')
+        }
       })
-    }, 6000)
-    return () => clearInterval(timer)
-  }, [step])
-
-  useEffect(() => {
-    api.get<{ configured: boolean }>('/api/setup/status')
-      .then((res) => setStep(res.data.configured ? 'configured' : 'form'))
       .catch(() => setStep('form'))
   }, [])
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  // ── Progression (polling tant que l'initialisation tourne) ────────────────
+  useEffect(() => {
+    if (step !== 'running') return
+    let cancelled = false
+    const poll = () => {
+      api.get<Progress>('/api/setup/progress')
+        .then((res) => {
+          if (cancelled) return
+          setProgress(res.data)
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setProgress((prev) => prev ? { ...prev, erreur: 'Progression indisponible.' } : null)
+          }
+        })
+    }
+    const timer = setInterval(poll, 1500)
+    poll()
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [step])
+
+  // ── Auto-connexion de l'administrateur à la fin de l'initialisation ─────
+  // L'écran de succès (avec « Se connecter ») reste le filet de sécurité si la
+  // connexion automatique échoue.
+  useEffect(() => {
+    if (step !== 'running') return
+    if (progress?.termine !== true || progress?.erreur != null) return
+    if (autoLoginRef.current) return
+    autoLoginRef.current = true
+    api
+      .post<TokenResponse>('/api/auth/connexion', { email, mot_de_passe: password })
+      .then((res) => {
+        localStorage.setItem(TOKEN_STORAGE_KEY, res.data.access_token)
+        window.location.href = '/app'
+      })
+      .catch(() => {
+        // Silencieux : l'utilisateur peut toujours se connecter via l'écran de succès.
+      })
+  }, [step, progress, email, password])
+
+  async function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Veuillez choisir un fichier image (PNG, JPG, WebP ou GIF).')
+      return
+    }
+    setLogoUploading(true)
     setError('')
-    setStep('seeding')
-    setProgress(MESSAGES[0])
     try {
-      await api.post(
-        '/api/setup/run',
-        { nom, prenom, email, mot_de_passe: password, seed_data: seedData },
-        { timeout: 600_000 },
-      )
-      setProgress('Configuration terminée, redirection...')
-      window.location.href = '/connexion'
+      const path = await uploadSetupLogo(file)
+      setEtLogo(path)
     } catch (err) {
-      setError(extractErrorMessage(err, 'Erreur lors de la configuration.'))
-      setStep('form')
+      setError(extractErrorMessage(err, 'Erreur lors de l’import du logo.'))
+    } finally {
+      setLogoUploading(false)
     }
   }
 
-  const activeStep = step === 'form' ? 1 : step === 'seeding' || step === 'configured' ? 3 : 0
+  async function handleRun() {
+    setError('')
+    setFieldErrors({})
+    setStep('running')
+    setProgress({ run_id: null, en_cours: true, etape: 0, nb_etapes: 5, message: 'Initialisation lancée…', pourcent: 0, termine: false, erreur: null })
+    try {
+      const res = await api.post(
+        '/api/setup/run',
+        {
+          etablissement: {
+            nom: etNom.trim(),
+            sigle: etSigle.trim() || null,
+            devise: etDevise.trim() || null,
+            adresse: etAdresse.trim() || null,
+            telephone: etTelephone.trim() || null,
+            email: etEmail.trim() || null,
+            logo: etLogo || null,
+          },
+          admin: { nom: nom.trim(), prenom: prenom.trim(), email, mot_de_passe: password },
+          annee_scolaire: { date_debut: dateDebut, date_fin: dateFin },
+          donnees_exemple: donneesExemple,
+        },
+        { timeout: 30_000 },
+      )
+      runIdRef.current = res.data.run_id
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Erreur lors de la configuration.')
+      if (message.includes('déjà configurée')) {
+        window.location.href = '/connexion'
+      } else if (message.includes('en cours')) {
+        setError(message)
+        setProgress({ run_id: null, en_cours: false, etape: 0, nb_etapes: 5, message: '', pourcent: 0, termine: true, erreur: message })
+      } else {
+        setError(message)
+        setStep('form')
+      }
+    }
+  }
+
+  const etablissementValide =
+    etNom.trim().length >= 2 &&
+    (etEmail.trim() === '' || emailVal(etEmail) === undefined) &&
+    (etTelephone.trim() === '' || phone(etTelephone) === undefined)
+  const adminValide =
+    nom.trim().length >= 2 && prenom.trim().length >= 2 &&
+    emailVal(email) === undefined && password.length >= 8
+
+  function validerEtape1(): boolean {
+    const errs = validateFields({
+      nom: required(etNom, "Le nom de l'établissement") ?? minLength(etNom, 2, "Le nom de l'établissement"),
+      email: etEmail.trim() !== '' ? emailVal(etEmail) : undefined,
+      telephone: etTelephone.trim() !== '' ? phone(etTelephone) : undefined,
+    })
+    setFieldErrors(errs)
+    return !hasErrors(errs)
+  }
+
+  function validerEtape2(): boolean {
+    const errs = validateFields({
+      nom: required(nom, 'Le nom') ?? minLength(nom, 2, 'Le nom'),
+      prenom: required(prenom, 'Le prénom') ?? minLength(prenom, 2, 'Le prénom'),
+      email: required(email, "L'e-mail") ?? emailVal(email),
+      mot_de_passe: required(password, 'Le mot de passe') ?? minLength(password, 8, 'Le mot de passe'),
+    })
+    setFieldErrors(errs)
+    return !hasErrors(errs)
+  }
+
+  function validerEtape3(): boolean {
+    const errs = validateFields({
+      date_debut: required(dateDebut, 'La date de rentrée'),
+      date_fin: required(dateFin, "La date de fin") ?? dateFinApresDebut(dateDebut, dateFin),
+    })
+    setFieldErrors(errs)
+    return !hasErrors(errs)
+  }
+
+  function suivant(event: FormEvent) {
+    event.preventDefault()
+    if (formStep === 1 && validerEtape1()) setFormStep(2)
+    else if (formStep === 2 && validerEtape2()) setFormStep(3)
+  }
+
+  function retourner() {
+    setError('')
+    if (formStep > 1) setFormStep((s) => (s - 1) as FormStep)
+  }
+
+  const runTerminee = progress?.termine === true
+  const runEnEchec = runTerminee && progress?.erreur != null
+
+  const activeStep = step === 'form' ? formStep : step === 'running' || step === 'configured' ? 4 : 0
 
   return (
     <div className="min-h-screen bg-[var(--color-base)] text-[var(--color-ink)]">
@@ -133,17 +322,23 @@ export default function SetupWizard() {
           <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--color-brand-blue)]/10 blur-3xl" />
 
           <div className="relative flex items-center gap-3">
-            <img
-              src="/logo-aureole.jpeg"
-              alt="Logo"
-              className="h-12 w-12 rounded-lg object-cover ring-1 ring-[var(--color-border)]"
-            />
+            {etLogo ? (
+              <img
+                src={urlAbsolue(etLogo)}
+                alt="Logo de l’établissement"
+                className="h-12 w-12 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+              />
+            ) : (
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--color-brand-wash)] text-[var(--color-brand)] ring-1 ring-[var(--color-border)]">
+                <GraduationCap className="h-6 w-6" />
+              </span>
+            )}
             <div>
               <p className="text-xl font-semibold text-[var(--color-halo)]">
-                Collège Auréole
+                {etNom.trim() || 'Gestion Scolaire'}
               </p>
               <p className="text-xs text-[var(--color-ink-dim)]">
-                Système de Gestion Intégrée
+                {etDevise.trim() || 'Système de Gestion Intégrée'}
               </p>
             </div>
           </div>
@@ -153,13 +348,14 @@ export default function SetupWizard() {
               Prêt à piloter votre établissement&nbsp;?
             </h1>
             <p className="max-w-md text-sm leading-relaxed text-[var(--color-ink-dim)]">
-              Créez votre compte administrateur et commencez la gestion pédagogique,
-              administrative et financière.
+              Renseignez la fiche de l’établissement, créez le compte administrateur
+              puis choisissez l’année scolaire. L’initialisation est effectuée une
+              seule fois, au premier lancement.
             </p>
           </div>
 
           <p className="relative text-xs text-[var(--color-ink-faint)]">
-            © {new Date().getFullYear()} Collège Auréole — Tous droits réservés.
+            © {new Date().getFullYear()} Gestion Scolaire — Tous droits réservés.
           </p>
         </section>
 
@@ -168,17 +364,23 @@ export default function SetupWizard() {
           <div className="w-full max-w-md">
             {/* Mobile logo */}
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <img
-                src="/logo-aureole.jpeg"
-                alt="Logo"
-                className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--color-border)]"
-              />
+              {etLogo ? (
+                <img
+                  src={urlAbsolue(etLogo)}
+                  alt="Logo de l’établissement"
+                  className="h-10 w-10 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                />
+              ) : (
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-brand-wash)] text-[var(--color-brand)] ring-1 ring-[var(--color-border)]">
+                  <GraduationCap className="h-5 w-5" />
+                </span>
+              )}
               <div>
                 <p className="text-base font-semibold text-[var(--color-halo)]">
-                  Collège Auréole
+                  {etNom.trim() || 'Gestion Scolaire'}
                 </p>
                 <p className="text-xs text-[var(--color-ink-dim)]">
-                  Système de Gestion Intégrée
+                  {etDevise.trim() || 'Système de Gestion Intégrée'}
                 </p>
               </div>
             </div>
@@ -211,24 +413,100 @@ export default function SetupWizard() {
               </div>
             )}
 
-            {step === 'seeding' && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-10 text-center shadow-[var(--shadow-soft)]">
+            {step === 'running' && (
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-soft)]">
                 <StepIndicator current={activeStep} />
-                <div className="relative mx-auto mb-6 h-20 w-20">
-                  <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-brand)]/20" />
-                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--color-brand-wash)]">
-                    <Loader2 className="size-8 animate-spin text-[var(--color-brand)]" />
-                  </span>
-                </div>
-                <h2 className="text-xl font-semibold text-[var(--color-ink)]">
-                  Initialisation en cours
-                </h2>
-                <p className="mt-2 min-h-5 text-sm text-[var(--color-ink-dim)]">
-                  {progress || 'Veuillez patienter, cela ne prend que quelques secondes...'}
-                </p>
-                <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-3)]">
-                  <div className="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-transparent via-[var(--color-brand)] to-transparent" />
-                </div>
+                {runEnEchec ? (
+                  <div>
+                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-danger)] text-white">
+                      <XCircle className="size-7" />
+                    </span>
+                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                      Échec de l’initialisation
+                    </h2>
+                    <p className="mt-2 text-sm text-[var(--color-ink-dim)]">
+                      {progress?.erreur}
+                    </p>
+                    <div className="mt-6 flex justify-center gap-3">
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setError(''); setStep('form'); setFormStep(1) }}
+                      >
+                        <RotateCcw className="size-4" />
+                        Recommencer
+                      </Button>
+                      <Button variant="primary" onClick={handleRun}>
+                        Réessayer
+                      </Button>
+                    </div>
+                  </div>
+                ) : runTerminee ? (
+                  <div>
+                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-success)] text-white">
+                      <CheckCircle2 className="size-7" />
+                    </span>
+                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                      Initialisation terminée
+                    </h2>
+                    <p className="mt-2 text-sm text-[var(--color-ink-dim)]">
+                      L’application est prête. Conservez précieusement vos identifiants.
+                    </p>
+
+                    <div className="mt-6 space-y-2 text-left">
+                      <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+                          <KeyRound className="size-3.5" />
+                          Administrateur
+                        </div>
+                        <div className="mt-2 space-y-1 break-all font-mono text-xs text-[var(--color-ink-dim)]">
+                          <p>E-mail : <span className="text-[var(--color-ink)]">{email}</span></p>
+                          <p>Mot de passe : <span className="text-[var(--color-ink)]">{password}</span></p>
+                        </div>
+                      </div>
+                      {donneesExemple && (
+                        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+                            <KeyRound className="size-3.5" />
+                            Comptes de démonstration
+                          </div>
+                          <div className="mt-2 space-y-1 break-all font-mono text-xs text-[var(--color-ink-dim)]">
+                            <p>Directeur : <span className="text-[var(--color-ink)]">directeur@{(email.split('@')[1] ?? 'etablissement.com')}</span> — Password123!</p>
+                            <p>Comptable : <span className="text-[var(--color-ink)]">comptable@{(email.split('@')[1] ?? 'etablissement.com')}</span> — Password123!</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button variant="primary" href="/connexion" className="mt-6">
+                      Se connecter
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative mx-auto mb-6 h-20 w-20">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-brand)]/20" />
+                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--color-brand-wash)]">
+                        <Loader2 className="size-8 animate-spin text-[var(--color-brand)]" />
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                      Initialisation en cours
+                    </h2>
+                    <p className="mt-2 min-h-5 text-sm text-[var(--color-ink-dim)]">
+                      {progress?.message || 'Veuillez patienter…'}
+                    </p>
+                    <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-3)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--color-brand)] transition-all duration-500"
+                        style={{ width: `${progress?.pourcent ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--color-ink-faint)]">
+                      Étape {progress?.etape ?? 0}/{progress?.nb_etapes ?? 5}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -241,10 +519,14 @@ export default function SetupWizard() {
                         <GraduationCap className="h-4 w-4" />
                       </div>
                       <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                        Configuration initiale
+                        {formStep === 1 && 'Configuration initiale'}
+                        {formStep === 2 && 'Compte administrateur'}
+                        {formStep === 3 && 'Année scolaire & données'}
                       </h2>
                       <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-                        Créez le compte administrateur de l’établissement.
+                        {formStep === 1 && 'Renseignez la fiche de votre établissement.'}
+                        {formStep === 2 && 'Ce compte pilotera l’ensemble de l’application.'}
+                        {formStep === 3 && 'Définissez la période scolaire et le niveau de données.'}
                       </p>
                     </div>
                     <button
@@ -257,77 +539,293 @@ export default function SetupWizard() {
                     </button>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        label="Nom"
-                        type="text"
-                        autoComplete="family-name"
-                        value={nom}
-                        onChange={(e) => setNom(e.target.value)}
-                        required
-                      />
-                      <Input
-                        label="Prénom"
-                        type="text"
-                        autoComplete="given-name"
-                        value={prenom}
-                        onChange={(e) => setPrenom(e.target.value)}
-                        required
-                      />
-                    </div>
+                  <StepIndicator current={formStep} />
 
-                    <Input
-                      label="Adresse e-mail administrateur"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      hint="Cet e-mail sera utilisé pour vous connecter."
-                      required
-                    />
-
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="setup-password" className="text-sm font-medium text-[var(--color-ink-dim)]">
-                        Mot de passe
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="setup-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          type={showPwd ? 'text' : 'password'}
-                          autoComplete="new-password"
-                          required
-                          className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (formStep < 3) {
+                        suivant(e)
+                      } else {
+                        if (validerEtape3()) handleRun()
+                      }
+                    }}
+                    className="flex flex-col gap-3"
+                    noValidate
+                  >
+                    {formStep === 1 && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            label="Nom de l’établissement"
+                            type="text"
+                            autoComplete="organization"
+                            value={etNom}
+                            onChange={(e) => {
+                              setEtNom(e.target.value)
+                              if (fieldErrors.nom) setFieldErrors((p) => ({ ...p, nom: undefined }))
+                            }}
+                            placeholder="Ex. Complexe Scolaire"
+                            required
+                            error={fieldErrors.nom}
+                          />
+                          <Input
+                            label="Sigle"
+                            type="text"
+                            value={etSigle}
+                            onChange={(e) => setEtSigle(e.target.value)}
+                            placeholder="Ex. CSX"
+                          />
+                          <Input
+                            label="Devise"
+                            type="text"
+                            value={etDevise}
+                            onChange={(e) => setEtDevise(e.target.value)}
+                            placeholder="Ex. Savoir, rigueur, réussite"
+                          />
+                        </div>
+                        <Input
+                          label="Adresse"
+                          type="text"
+                          autoComplete="street-address"
+                          value={etAdresse}
+                          onChange={(e) => setEtAdresse(e.target.value)}
+                          placeholder="Ex. Quartier, ville"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPwd((v) => !v)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)]"
-                          aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                        >
-                          {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            label="Téléphone"
+                            type="tel"
+                            autoComplete="tel"
+                            value={etTelephone}
+                            onChange={(e) => {
+                              setEtTelephone(e.target.value.replace(/[^+\d\s]/g, ''))
+                              if (fieldErrors.telephone) setFieldErrors((p) => ({ ...p, telephone: undefined }))
+                            }}
+                            placeholder="+000 00 00 00 00"
+                            error={fieldErrors.telephone}
+                          />
+                          <Input
+                            label="E-mail de contact"
+                            type="email"
+                            value={etEmail}
+                            onChange={(e) => {
+                              setEtEmail(e.target.value)
+                              if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }))
+                            }}
+                            placeholder="contact@etablissement.com"
+                            error={fieldErrors.email}
+                          />
+                        </div>
 
-                    <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 transition-all duration-150 hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface-3)]">
-                      <input
-                        type="checkbox"
-                        checked={seedData}
-                        onChange={(e) => setSeedData(e.target.checked)}
-                        className="mt-0.5 size-4 shrink-0 accent-[var(--color-brand)]"
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-[var(--color-ink)]">
-                          Données d’exemple
-                        </span>
-                        <span className="block text-xs text-[var(--color-ink-dim)]">
-                          Élèves, enseignants, notes et paiements pour tester immédiatement.
-                        </span>
-                      </span>
-                    </label>
+                        <div>
+                          <div className="mb-1 text-xs font-medium text-[var(--color-ink-dim)]">
+                            Logo de l’établissement 
+                          </div>
+                          <input
+                            ref={logoFileRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            onChange={handleLogoChange}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => logoFileRef.current?.click()}
+                            disabled={logoUploading}
+                            className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+                          >
+                            {etLogo ? (
+                              <img
+                                src={urlAbsolue(etLogo)}
+                                alt="Aperçu du logo"
+                                className="h-14 w-14 shrink-0 rounded-lg bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                              />
+                            ) : (
+                              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
+                                {logoUploading
+                                  ? <Loader2 size={20} strokeWidth={1.75} className="animate-spin" />
+                                  : <ImagePlus size={20} strokeWidth={1.75} />}
+                              </span>
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-[var(--color-ink)]">
+                                {logoUploading ? 'Envoi du logo…' : etLogo ? 'Modifier le logo' : 'Importer le logo de l’établissement'}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] text-[var(--color-ink-faint)]">
+                                PNG, JPG, WebP ou GIF — 2 Mo maximum. 
+                              </span>
+                            </span>
+                            {etLogo && !logoUploading && (
+                              <CheckCircle2 className="size-5 shrink-0 text-[var(--color-success)]" strokeWidth={1.75} />
+                            )}
+                          </button>
+                          {etLogo && (
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEtLogo('')}
+                              >
+                                <Trash2 size={14} strokeWidth={1.75} className="mr-1.5" />
+                                Retirer le logo
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {formStep === 2 && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            label="Nom"
+                            type="text"
+                            autoComplete="family-name"
+                            value={nom}
+                            onChange={(e) => {
+                              setNom(e.target.value)
+                              if (fieldErrors.nom) setFieldErrors((p) => ({ ...p, nom: undefined }))
+                            }}
+                            required
+                            error={fieldErrors.nom}
+                          />
+                          <Input
+                            label="Prénom"
+                            type="text"
+                            autoComplete="given-name"
+                            value={prenom}
+                            onChange={(e) => {
+                              setPrenom(e.target.value)
+                              if (fieldErrors.prenom) setFieldErrors((p) => ({ ...p, prenom: undefined }))
+                            }}
+                            required
+                            error={fieldErrors.prenom}
+                          />
+                        </div>
+
+                        <Input
+                          label="Adresse e-mail administrateur"
+                          type="email"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => {
+                            setEmail(e.target.value)
+                            if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }))
+                          }}
+                          hint="Cet e-mail sera utilisé pour vous connecter."
+                          required
+                          error={fieldErrors.email}
+                        />
+
+                        <div className="flex flex-col gap-1.5">
+                          <label htmlFor="setup-password" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                            Mot de passe
+                          </label>
+                          <div className="relative">
+                            <input
+                              id="setup-password"
+                              value={password}
+                              onChange={(e) => {
+                                setPassword(e.target.value)
+                                if (fieldErrors.mot_de_passe) setFieldErrors((p) => ({ ...p, mot_de_passe: undefined }))
+                              }}
+                              type={showPwd ? 'text' : 'password'}
+                              autoComplete="new-password"
+                              required
+                              minLength={8}
+                              className={clsx(
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                fieldErrors.mot_de_passe ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                              )}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPwd((v) => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)]"
+                              aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                            >
+                              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                          {fieldErrors.mot_de_passe ? (
+                            <p className="text-xs text-[var(--color-danger)]">{fieldErrors.mot_de_passe}</p>
+                          ) : (
+                            <p className="text-xs text-[var(--color-ink-faint)]">
+                              Au moins 8 caractères.
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {formStep === 3 && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-1.5">
+                            <label htmlFor="date-debut" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                              Rentrée
+                            </label>
+                            <input
+                              id="date-debut"
+                              type="date"
+                              value={dateDebut}
+                              onChange={(e) => {
+                                setDateDebut(e.target.value)
+                                if (fieldErrors.date_debut) setFieldErrors((p) => ({ ...p, date_debut: undefined }))
+                              }}
+                              className={clsx(
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                fieldErrors.date_debut ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                              )}
+                            />
+                            {fieldErrors.date_debut && (
+                              <p className="text-xs text-[var(--color-danger)]">{fieldErrors.date_debut}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label htmlFor="date-fin" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                              Fin d’année
+                            </label>
+                            <input
+                              id="date-fin"
+                              type="date"
+                              value={dateFin}
+                              onChange={(e) => {
+                                setDateFin(e.target.value)
+                                if (fieldErrors.date_fin) setFieldErrors((p) => ({ ...p, date_fin: undefined }))
+                              }}
+                              className={clsx(
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                fieldErrors.date_fin ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                              )}
+                            />
+                            {fieldErrors.date_fin && (
+                              <p className="text-xs text-[var(--color-danger)]">{fieldErrors.date_fin}</p>
+                            )}
+                          </div>
+                        </div>
+                        <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 transition-all duration-150 hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface-3)]">
+                          <input
+                            type="checkbox"
+                            checked={donneesExemple}
+                            onChange={(e) => setDonneesExemple(e.target.checked)}
+                            data-testid="seed-checkbox"
+                            className="mt-0.5 size-4 shrink-0 accent-[var(--color-brand)]"
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-[var(--color-ink)]">
+                              Données d’exemple
+                            </span>
+                            <span className="block text-xs text-[var(--color-ink-dim)]">
+                              Élèves, enseignants, notes et paiements pour tester immédiatement.
+                            </span>
+                          </span>
+                        </label>
+                      </>
+                    )}
 
                     {error && (
                       <p
@@ -338,16 +836,36 @@ export default function SetupWizard() {
                       </p>
                     )}
 
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="md"
-                      disabled={!nom.trim() || !prenom.trim() || !email || !password}
-                      className="mt-2 w-full"
-                    >
-                      Initialiser l’établissement
-                      <ArrowRight className="size-4" />
-                    </Button>
+                    <div className="mt-2 flex gap-3">
+                      {formStep > 1 && (
+                        <Button variant="ghost" onClick={retourner} type="button">
+                          <ArrowLeft className="size-4" />
+                          Retour
+                        </Button>
+                      )}
+                      {formStep < 3 ? (
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="md"
+                          disabled={formStep === 1 ? !etablissementValide : !adminValide}
+                          className="flex-1"
+                        >
+                          Continuer
+                          <ArrowRight className="size-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="md"
+                          className="flex-1"
+                        >
+                          Initialiser l’établissement
+                          <ArrowRight className="size-4" />
+                        </Button>
+                      )}
+                    </div>
                   </form>
                 </div>
 

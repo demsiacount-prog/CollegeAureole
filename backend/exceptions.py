@@ -57,7 +57,7 @@ class ValidationError(AureoleException):
     def __init__(self, field: str, reason: str):
         super().__init__(
             error_code="VALIDATION_ERROR",
-            message=f"Données invalides : {field}",
+            message="Champ invalide",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             details={"field": field, "reason": reason},
         )
@@ -89,7 +89,7 @@ class UnauthorizedError(AureoleException):
 class ForbiddenError(AureoleException):
     """Accès refusé."""
 
-    def __init__(self, reason: str = "Vous n'avez pas la permission d'accéder à cette ressource"):
+    def __init__(self, reason: str = "Accès refusé"):
         super().__init__(
             error_code="FORBIDDEN",
             message=reason,
@@ -109,13 +109,24 @@ class ConflictError(AureoleException):
         )
 
 
+class TooManyRequestsError(AureoleException):
+    """Trop de requêtes (rate limiting)."""
+
+    def __init__(self, message: str = "Requêtes trop fréquentes"):
+        super().__init__(
+            error_code="TOO_MANY_REQUESTS",
+            message=message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+
 class InternalError(AureoleException):
     """Erreur interne du serveur."""
 
     def __init__(self, operation: str, details: dict | None = None):
         super().__init__(
             error_code="INTERNAL_ERROR",
-            message=f"Erreur lors de {operation}",
+            message="Erreur interne",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             details=details,
         )
@@ -127,7 +138,7 @@ class InvalidStateError(AureoleException):
     def __init__(self, current_state: str, required_state: str):
         super().__init__(
             error_code="INVALID_STATE",
-            message=f"État invalide : {current_state}",
+            message="État invalide",
             status_code=status.HTTP_409_CONFLICT,
             details={
                 "current_state": current_state,
@@ -154,7 +165,7 @@ class ConstraintError(AureoleException):
     def __init__(self, constraint: str, details: dict | None = None):
         super().__init__(
             error_code="CONSTRAINT_ERROR",
-            message=f"Violation de contrainte : {constraint}",
+            message="Contrainte violée",
             status_code=status.HTTP_400_BAD_REQUEST,
             details=details,
         )

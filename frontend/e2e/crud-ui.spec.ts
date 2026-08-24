@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { loginViaApi } from './helpers'
+import { login } from './helpers'
 
 test.describe('CRUD UI — salle (créer / voir / supprimer)', () => {
   test('création, présence en liste puis suppression', async ({ page }) => {
-    await loginViaApi(page, 'admin')
+    await login(page, 'admin')
     await page.goto('/app/salles')
 
     const nom = `__TEST__ UI ${Date.now()}`

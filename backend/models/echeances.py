@@ -1,6 +1,6 @@
-# models/echeances.py
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, UniqueConstraint
+
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, UniqueConstraint
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -40,16 +40,20 @@ class Echeances(Base):
     id_echeance_origine = Column(Integer, ForeignKey("echeances.id", ondelete="SET NULL"),
                                  nullable=True)
 
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     # Relations
     inscription      = relationship("Inscriptions", back_populates="echeances")
     classe           = relationship("Classes", back_populates="echeances")
     paiements        = relationship("Paiements", back_populates="echeance")
+    remises          = relationship("Remises", back_populates="echeance", cascade="all, delete-orphan")
     echeance_origine = relationship("Echeances", remote_side="Echeances.id")
 
     @property
     def reste_a_payer(self):
         return max(self.montant_du - self.montant_paye, 0.0)
+
+    @property
+    def total_remises(self):
+        return sum(r.montant for r in self.remises) if self.remises else 0.0

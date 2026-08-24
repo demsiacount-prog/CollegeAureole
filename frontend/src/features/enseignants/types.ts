@@ -1,15 +1,6 @@
-export interface Enseignant {
-  matricule: string
-  nom: string
-  prenom: string
-  email: string
-  telephone: string
-  adresse: string
-  specialite: string
-  heures_hebdo_max: number | null
-  created_at: string
-  updated_at: string
-}
+import type { Enseignant } from '@/features/shared/types'
+
+export type { Enseignant } from '@/features/shared/types'
 
 export interface EnseignantCreateInput {
   nom: string
@@ -18,7 +9,6 @@ export interface EnseignantCreateInput {
   telephone: string
   adresse: string
   specialite: string
-  heures_hebdo_max?: number | null
 }
 
 export interface EnseignantDossier {

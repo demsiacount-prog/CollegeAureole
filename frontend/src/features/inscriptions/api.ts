@@ -1,6 +1,4 @@
 import { api } from '@/lib/api'
-import { createTuteur } from '@/features/tuteurs/api'
-import { createEleve } from '@/features/eleves/api'
 import type { Inscription, InscriptionDetail, InscriptionCreateInput } from './types'
 import type { TuteurCreateInput } from '@/features/tuteurs/api'
 import type { EleveCreateInput } from '@/features/eleves/types'
@@ -55,40 +53,13 @@ export interface DossierCompletInput {
 }
 
 export async function creerDossierComplet(input: DossierCompletInput): Promise<Inscription> {
-  let tuteurId: number
-  if (input.tuteur_id) {
-    tuteurId = input.tuteur_id
-  } else if (input.tuteur) {
-    const t = await createTuteur({
-      nom: input.tuteur.nom,
-      prenom: input.tuteur.prenom,
-      telephone: input.tuteur.telephone,
-      email: input.tuteur.email,
-      adresse: input.tuteur.adresse,
-      profession: input.tuteur.profession ?? '',
-    })
-    tuteurId = t.id
-  } else {
-    throw new Error("Aucun tuteur fourni")
-  }
-
-  const e = await createEleve({
-    nom: input.eleve.nom,
-    prenom: input.eleve.prenom,
-    date_de_naissance: input.eleve.date_de_naissance,
-    lieu_de_naissance: input.eleve.lieu_de_naissance,
-    sexe: input.eleve.sexe,
-    adresse: input.eleve.adresse ?? null,
-    statut: 'actif',
-    tuteur_id: tuteurId,
+  const res = await api.post<Inscription>('/api/inscriptions/dossier-complet', {
+    tuteur_id: input.tuteur_id ?? undefined,
+    tuteur: input.tuteur ?? undefined,
+    eleve: input.eleve,
     classe_id: input.classe_id,
-    annee_scolaire_id: input.id_annee_scolaire,
-  })
-
-  return createInscription({
-    matricule_eleve: e.matricule,
-    id_classe: input.classe_id,
     id_annee_scolaire: input.id_annee_scolaire,
     observation: input.observation ?? null,
   })
+  return res.data
 }

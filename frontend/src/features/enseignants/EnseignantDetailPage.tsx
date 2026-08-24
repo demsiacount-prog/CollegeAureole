@@ -10,9 +10,10 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
-import { ENSEIGNANT_DOCS_LABELS } from '@/features/documents/labels'
+import { countVisibleDocuments, ENSEIGNANT_DOCS_LABELS } from '@/features/documents/labels'
 import { fetchDocumentsEnseignant, uploadDocumentEnseignant } from '@/features/documents/api'
 import { formatDate } from '@/lib/format'
 import { fetchEnseignantDossier } from './api'
@@ -104,7 +105,6 @@ export default function EnseignantDetailPage() {
                     <Row label="Email" value={e.email} />
                     <Row label="Téléphone" value={e.telephone} />
                     <Row label="Adresse" value={e.adresse} />
-                    <Row label="Quota horaire" value={e.heures_hebdo_max != null ? `${e.heures_hebdo_max}h / semaine` : 'Aucun'} />
                     <Row label="Inscrit le" value={formatDate(e.created_at)} />
                   </CardBody>
                 </Card>
@@ -120,7 +120,7 @@ export default function EnseignantDetailPage() {
           {
             key: 'documents',
             label: 'Documents',
-            count: documents?.length ?? 0,
+            count: countVisibleDocuments(documents ?? [], ENSEIGNANT_DOCS_LABELS),
             content: (
               <DocumentsTab
                 documents={documents ?? []}
@@ -166,35 +166,33 @@ function HistoriqueTab({ historique }: { historique: import('./types').AnneeHist
               {h.annee_scolaire?.cloturee && <Badge tone="neutral">Clôturée</Badge>}
             </div>
           </div>
-          <CardBody>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)]">
-                    <th className="pb-2 text-left font-medium text-[var(--color-ink-dim)]">Cours</th>
-                    <th className="pb-2 text-left font-medium text-[var(--color-ink-dim)]">Classe</th>
-                    <th className="pb-2 text-left font-medium text-[var(--color-ink-dim)]">Volume</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border-soft)]">
-                  {h.affectations.map((a, i) => (
-                    <tr key={i}>
-                      <td className="py-2 text-[var(--color-ink)]">
-                        <span className="flex items-center gap-1.5">
-                          <BookOpen size={14} strokeWidth={1.75} className="text-[var(--color-ink-faint)]" />
-                          {a.cours.nom}
-                        </span>
-                      </td>
-                      <td className="py-2 text-[var(--color-ink-dim)]">
-                        {a.classe ? `${a.classe.niveau} — ${a.classe.nom}` : '—'}
-                      </td>
-                      <td className="py-2 text-[var(--color-ink-dim)]">{a.cours.volume_horaire}h</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
+          <TableContainer className="rounded-none border-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cours</TableHead>
+                  <TableHead>Classe</TableHead>
+                  <TableHead>Volume</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {h.affectations.map((a, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-[var(--color-ink)]">
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen size={14} strokeWidth={1.75} className="text-[var(--color-ink-faint)]" />
+                        {a.cours.nom}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">
+                      {a.classe ? `${a.classe.niveau} — ${a.classe.nom}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">{a.cours.volume_horaire}h</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Card>
       ))}
     </div>

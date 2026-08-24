@@ -1,6 +1,5 @@
-# models/bulletins.py
-from datetime import datetime
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -21,11 +20,10 @@ class Bulletins(Base):
     appreciation = Column(String, nullable=True)
     # Étape de relecture par la direction avant diffusion aux familles
     statut = Column(String, nullable=False, default="BROUILLON")  # BROUILLON | PUBLIE
-    generated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    generated_at = Column(DateTime, nullable=False, default=now_utc)
     published_at = Column(DateTime, nullable=True)
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     # Relations
     eleve = relationship("Eleves", back_populates="bulletins")
@@ -42,10 +40,9 @@ class BulletinDetails(Base):
     id_cours = Column(Integer, ForeignKey("cours.id", ondelete="CASCADE"), nullable=False)
 
     moyenne = Column(Float, nullable=False)
-    coefficient = Column(Float, nullable=False, default=1.0)  # remplace volume_horaire
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    coefficient = Column(Float, nullable=False, default=1.0)
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     bulletin = relationship("Bulletins", back_populates="details")
     cours = relationship("Cours")

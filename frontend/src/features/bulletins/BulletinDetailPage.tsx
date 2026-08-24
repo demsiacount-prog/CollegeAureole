@@ -1,9 +1,10 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { formatDate, formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
@@ -48,6 +49,7 @@ export default function BulletinDetailPage() {
   }
 
   const bareme = baremeNiveau(bulletin.classe.niveau)
+  const estEf1 = bareme === 10
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,7 +83,7 @@ export default function BulletinDetailPage() {
               </Badge>
             </div>
             {bulletin.rang != null && (
-              <p className="mt-1 text-sm text-[var(--color-ink-dim)]">Rang {bulletin.rang}ᵉ</p>
+              <p className="mt-1 text-sm text-[var(--color-ink-dim)]">Rang {bulletin.rang}{bulletin.rang === 1 ? 'er' : 'e'}</p>
             )}
           </div>
         </div>
@@ -100,36 +102,55 @@ export default function BulletinDetailPage() {
         <CardHeader>
           <CardTitle>Détail par matière</CardTitle>
         </CardHeader>
-        <CardBody>
-          {bulletin.details.length === 0 ? (
-            <p className="text-sm text-[var(--color-ink-dim)]">Aucun détail disponible.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)]">
-                    <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Matière</th>
-                    <th className="pb-3 text-center font-medium text-[var(--color-ink-dim)]">Coefficient</th>
-                    <th className="pb-3 text-center font-medium text-[var(--color-ink-dim)]">Moyenne</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border-soft)]">
-                  {bulletin.details.map((d) => (
-                    <tr key={d.id}>
-                      <td className="py-3 font-medium text-[var(--color-ink)]">{d.cours_nom}</td>
-                      <td className="py-3 text-center text-[var(--color-ink-dim)]">{d.coefficient}</td>
-                      <td className="py-3 text-center">
+        {bulletin.details.length === 0 ? (
+          <p className="p-5 text-sm text-[var(--color-ink-dim)]">Aucun détail disponible.</p>
+        ) : (
+          <TableContainer className="rounded-none border-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Matière</TableHead>
+                  {/* EF1 : notes /10, aucun coefficient — on n'affiche que la moyenne. */}
+                  {estEf1 ? (
+                    <TableHead className="text-center">Moyenne</TableHead>
+                  ) : (
+                    <>
+                      <TableHead className="text-center">Coefficient</TableHead>
+                      <TableHead className="text-center">Moyenne</TableHead>
+                      <TableHead className="text-center">Note × Coefficient</TableHead>
+                    </>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bulletin.details.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-medium text-[var(--color-ink)]">{d.cours_nom}</TableCell>
+                    {estEf1 ? (
+                      <TableCell className="text-center">
                         <Badge tone={getMoyenneTone(d.moyenne, bareme)}>
                           {formatMoyenne(d.moyenne, bareme)}
                         </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardBody>
+                      </TableCell>
+                    ) : (
+                      <>
+                        <TableCell className="text-center text-[var(--color-ink-dim)]">{d.coefficient}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge tone={getMoyenneTone(d.moyenne, bareme)}>
+                            {formatMoyenne(d.moyenne, bareme)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center font-medium text-[var(--color-ink)]">
+                          {(d.moyenne * d.coefficient).toFixed(2)}
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Card>
 
       <div className="text-xs text-[var(--color-ink-faint)]">

@@ -10,7 +10,9 @@ export function formatMontant(value: number | null | undefined): string {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(value)
 }
 
-export function formatMoyenne(value: number | null | undefined, bareme: number = 20): string {
+// Le barème est obligatoire : EF1 est noté /10, EF2/lycée sur /20 — aucun
+// défaut implicite pour ne jamais afficher un mauvais dénominateur.
+export function formatMoyenne(value: number | null | undefined, bareme: number): string {
   if (value === null || value === undefined) return '—'
   return `${value.toFixed(2)} / ${bareme}`
 }

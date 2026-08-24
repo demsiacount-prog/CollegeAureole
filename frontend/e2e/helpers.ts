@@ -1,14 +1,32 @@
-import { request, type Page } from '@playwright/test'
+import { request, type APIRequestContext, type Page } from '@playwright/test'
 
-const CREDENTIALS: Record<string, { email: string; password: string }> = {
-  admin: { email: 'admin@collegeaureole.ml', password: 'Password123!' },
-  directeur: { email: 'directeur@collegeaureole.ml', password: 'Password123!' },
-  comptable: { email: 'comptable@collegeaureole.ml', password: 'Password123!' },
+export const API_BASE = 'http://localhost:3001'
+
+export type Role = 'admin' | 'directeur' | 'comptable'
+
+export const CREDENTIALS: Record<Role, { email: string; password: string }> = {
+  admin: { email: 'admin@etablissement.com', password: 'Password123!' },
+  directeur: { email: 'directeur@etablissement.com', password: 'Password123!' },
+  comptable: { email: 'comptable@etablissement.com', password: 'Password123!' },
 }
 
-export async function loginViaApi(page: Page, role: 'admin' | 'directeur' | 'comptable' = 'admin') {
+/** Connexion via le formulaire de connexion réel (workflow utilisateur). */
+export async function login(page: Page, role: Role = 'admin') {
   const creds = CREDENTIALS[role]
-  const ctx = await request.newContext({ baseURL: 'http://localhost:3000' })
+  await page.goto('/')
+  await page.evaluate(() => localStorage.removeItem('aureole_token'))
+  await page.goto('/connexion')
+  await page.getByPlaceholder('prenom.nom@etablissement.com').fill(creds.email)
+  await page.getByPlaceholder('••••••••').fill(creds.password)
+  await page.getByRole('button', { name: 'Se connecter' }).click()
+  await page.waitForURL('**/app', { timeout: 15_000 })
+  await page.locator('nav').first().waitFor({ timeout: 15_000 })
+}
+
+/** Connexion via l'API (base isolée e2e) — utilitaire quand le formulaire n'est pas l'objet du test. */
+export async function loginViaApi(page: Page, role: Role = 'admin') {
+  const creds = CREDENTIALS[role]
+  const ctx = await request.newContext({ baseURL: API_BASE })
   const res = await ctx.post('/api/auth/connexion', {
     data: { email: creds.email, mot_de_passe: creds.password },
   })
@@ -18,11 +36,25 @@ export async function loginViaApi(page: Page, role: 'admin' | 'directeur' | 'com
   await page.goto('/connexion')
   await page.evaluate((token) => {
     localStorage.setItem('aureole_token', token)
-    localStorage.setItem('aureole-install-id', 'e2e-install')
-    localStorage.setItem('aureole-demo-state-web-e2e-install', '1')
   }, body.access_token)
   await page.goto('/app')
-  await page.locator('main h2').first().waitFor({ timeout: 15_000 })
+  await page.locator('nav').first().waitFor({ timeout: 15_000 })
+}
+
+/** Contexte API authentifié sur la base isolée e2e (3001) : vérifications et nettoyage. */
+export async function apiContext(role: Role = 'admin'): Promise<APIRequestContext> {
+  const creds = CREDENTIALS[role]
+  const auth = await request.newContext({ baseURL: API_BASE })
+  const res = await auth.post('/api/auth/connexion', {
+    data: { email: creds.email, mot_de_passe: creds.password },
+  })
+  if (res.status() !== 200) throw new Error(`Login API échoué (${res.status()})`)
+  const { access_token } = await res.json()
+  await auth.dispose()
+  return request.newContext({
+    baseURL: API_BASE,
+    extraHTTPHeaders: { Authorization: `Bearer ${access_token}` },
+  })
 }
 
 export const ROUTES: { label: string; path: string }[] = [

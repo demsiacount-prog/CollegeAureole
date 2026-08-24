@@ -35,6 +35,8 @@ export interface Classe {
   nom: string
   frais_inscription: number
   mensualite: number
+  id_salle: number | null
+  salle: { id: number; nom: string; capacite: number | null } | null
   created_at: string
   updated_at: string
 }
@@ -46,11 +48,16 @@ export interface AnneeScolaire {
   date_fin: string
   active: boolean
   cloturee: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface AffectationCoursClasse {
   id_classe: number
   coefficient: number
+}
+
+export interface AffectationCoursClasseResponse extends AffectationCoursClasse {
   created_at: string
   updated_at: string
 }
@@ -65,7 +72,7 @@ export interface Cours {
   created_at: string
   updated_at: string
   classes: Classe[]
-  coefficients: AffectationCoursClasse[]
+  coefficients: AffectationCoursClasseResponse[]
   enseignant: Enseignant | null
 }
 
@@ -76,12 +83,21 @@ export interface Trimestre {
   annee_scolaire_id: number
   date_debut: string
   date_fin: string
+  verrouille: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface Enseignant {
   matricule: string
   nom: string
   prenom: string
+  email: string
+  telephone: string
+  adresse: string
+  specialite: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Paiement {
@@ -90,7 +106,9 @@ export interface Paiement {
   id_inscription: number
   date: string
   montant: number
-  numero_recu: string | null
   mode: string | null
   observation: string | null
+  matricule_eleve: string | null
+  eleve_nom: string | null
+  eleve_prenom: string | null
 }

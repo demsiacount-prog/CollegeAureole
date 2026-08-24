@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from schemas.paiements import PaiementResponse
 from schemas.noteParMatieres import NoteParMatiere
+from schemas.tuteurs import TuteurCreate
 
 if TYPE_CHECKING:
     from schemas.classes import ClasseResponse
@@ -21,14 +22,14 @@ class MoyenneTrimestre(BaseModel):
 
 
 class InscriptionBase(BaseModel):
-    matricule_eleve: str
+    matricule_eleve: str = Field(min_length=1, max_length=20)
     id_classe: Optional[int] = None
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
     montant_total: float = Field(default=0.0, ge=0)
-    date_inscription: date = date.today()
+    date_inscription: date = Field(default_factory=date.today)
     date_fin: Optional[date] = None
-    observation: Optional[str] = None
+    observation: Optional[str] = Field(default=None, max_length=500)
 
 
 class InscriptionCreate(InscriptionBase):
@@ -42,7 +43,7 @@ class InscriptionUpdate(BaseModel):
     diplome: Optional[bool] = None
     montant_total: Optional[float] = Field(default=None, ge=0)
     date_fin: Optional[date] = None
-    observation: Optional[str] = None
+    observation: Optional[str] = Field(default=None, max_length=500)
 
 
 class InscriptionResponse(InscriptionBase):
@@ -77,6 +78,28 @@ class PassageAnneeRequest(BaseModel):
     id_classe_destination: Optional[int] = None
     matricules_redoublants: List[str] = []
     matricules_exclus: List[str] = []
+
+
+class DossierCompletEleve(BaseModel):
+    nom: str = Field(min_length=1, max_length=100)
+    prenom: str = Field(min_length=1, max_length=100)
+    photo: Optional[str] = Field(default=None, max_length=500)
+    date_de_naissance: date
+    lieu_de_naissance: str = Field(min_length=1, max_length=200)
+    sexe: Literal["M", "F"]
+    adresse: str = Field(default="", max_length=300)
+    statut: Literal["actif", "inactif"] = "actif"
+    acte_naissance: bool = False
+    carnet_sante: bool = False
+
+
+class DossierCompletCreate(BaseModel):
+    tuteur: Optional[TuteurCreate] = None
+    tuteur_id: Optional[int] = None
+    eleve: DossierCompletEleve
+    classe_id: Optional[int] = None
+    id_annee_scolaire: int
+    observation: Optional[str] = Field(default=None, max_length=500)
 
 
 class PassageAnneeResponse(BaseModel):

@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Literal, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,13 +16,13 @@ class BulletinDetailResponse(BaseModel):
     cours_nom: str
     moyenne: float
     coefficient: float  # remplace volume_horaire
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     model_config = {"from_attributes": True}
 
 
 class BulletinGenerateRequest(BaseModel):
-    matricule_eleve: str
+    matricule_eleve: str = Field(min_length=1, max_length=20)
     id_trimestre: int
 
 
@@ -51,12 +51,12 @@ class BulletinResponse(BaseModel):
     id_classe: int
     moyenne_generale: float
     rang: Optional[int] = None
-    appreciation: Optional[str] = None
+    appreciation: Optional[str] = Field(default=None, max_length=1000)
     statut: StatutBulletin = "BROUILLON"
     generated_at: datetime
     published_at: Optional[datetime] = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     details: List[BulletinDetailResponse] = []
     eleve: Optional[BulletinEleveResponse] = None
     model_config = {"from_attributes": True}

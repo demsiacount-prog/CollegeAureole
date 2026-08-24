@@ -1,25 +1,32 @@
-import { CheckCircle, XCircle, Info, X } from 'lucide-react'
+import { CheckCircle, XCircle, Info, X, TriangleAlert } from 'lucide-react'
 import { useToasts, type ToastTone } from './toast'
+import { useModalStackCount } from './modalStack'
 
 const toneStyles: Record<ToastTone, string> = {
   success: 'border-[var(--color-success)]/20 bg-[var(--color-success)]/10 text-[var(--color-success)]',
   error: 'border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 text-[var(--color-danger)]',
   info: 'border-[var(--color-info)]/20 bg-[var(--color-info)]/10 text-[var(--color-info)]',
+  warning: 'border-[var(--color-warning, #f59e0b)]/30 bg-[var(--color-warning, #f59e0b)]/10 text-[var(--color-warning, #b45309)]',
 }
 
 const toneIcons: Record<ToastTone, typeof CheckCircle> = {
   success: CheckCircle,
   error: XCircle,
   info: Info,
+  warning: TriangleAlert,
 }
 
 export function ToastContainer() {
   const { toasts, dismiss } = useToasts()
+  const modalOpen = useModalStackCount() > 0
 
   if (toasts.length === 0) return null
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex flex-col items-center gap-2" role="status">
+    <div
+      className={`pointer-events-none fixed top-4 z-[70] flex flex-col gap-2 ${modalOpen ? 'left-4 items-start pr-24' : 'inset-x-0 items-center'}`}
+      role="status"
+    >
       {toasts.map((t) => {
         const Icon = toneIcons[t.tone]
         return (

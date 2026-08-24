@@ -1,5 +1,7 @@
-from datetime import date, datetime
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, UniqueConstraint
+from datetime import date
+
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Float, UniqueConstraint
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -9,11 +11,10 @@ class Notes(Base):
         UniqueConstraint("matricule_eleve", "id_cours", "id_trimestre", name="uq_note_eleve_cours_trimestre"),
     )
     id = Column(Integer, primary_key=True)
-    date = Column(String, nullable=False, default=lambda: date.today().isoformat())
+    date = Column(Date, nullable=False, default=date.today)
     note = Column(Float, nullable=False)
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     
     matricule_eleve = Column(String, ForeignKey("eleves.matricule", ondelete="CASCADE"), nullable=False, index=True)
     id_cours = Column(Integer, ForeignKey("cours.id", ondelete="CASCADE"), nullable=False)

@@ -10,17 +10,7 @@ export const TYPE_PERIODE_LABELS: Record<TypePeriode, string> = {
   COMPOSITION: 'Composition',
 }
 
-export interface Trimestre {
-  id: number
-  nom: string
-  type: TypePeriode
-  date_debut: string
-  date_fin: string
-  verrouille: boolean
-  annee_scolaire_id: number
-  created_at: string
-  updated_at: string
-}
+export type { Trimestre } from '@/features/shared/types'
 
 export interface TrimestreCreateInput {
   nom: string

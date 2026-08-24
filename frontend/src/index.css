@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+@import "./components/print/print.css";
 
 @theme {
   /* ---- Auréole design tokens ---- */
@@ -174,12 +175,6 @@
     text-wrap: balance;
   }
 
-  /* DemoTour : surbrillance du lien de navigation actif dans le menu latéral */
-  nav a.demo-highlight {
-    box-shadow: 0 0 0 2px var(--color-halo), 0 0 16px -4px var(--color-halo);
-    border-radius: var(--radius-sm);
-  }
-
   @keyframes page-in {
     from {
       opacity: 0;
@@ -216,3 +211,4 @@
     }
   }
 }
+

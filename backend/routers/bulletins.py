@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import datetime
+from timeutils import now_utc
 from database import get_db
 import models
 import schemas
@@ -13,20 +13,29 @@ router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[De
 
 
 def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> dict:
-    """Calcule la moyenne générale pondérée par le COEFFICIENT de chaque matière
-    dans la classe de l'élève (et non plus par le volume horaire du cours)."""
+    """Calcule la moyenne générale de la période.
+
+    Règle métier :
+    - EF1 (1ère–6ème Année, barème /10) : notes sur 10, moyennes SIMPLES,
+      aucun coefficient ;
+    - EF2/lycée (barème /20) : moyennes pondérées par le coefficient de
+      chaque matière dans la classe de l'élève.
+
+    Les détails stockent toujours la MOYENNE BRUTE de la matière (jamais
+    note × coefficient) ; le produit s'affiche côté interface.
+    """
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first()
     if not eleve:
-        raise HTTPException(status_code=404, detail="Élève introuvable.")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
 
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == id_trimestre).first()
     if not trimestre:
-        raise HTTPException(status_code=404, detail="Trimestre introuvable.")
+        raise HTTPException(status_code=404, detail="Trimestre introuvable")
 
     if not eleve.classe_id:
         raise HTTPException(
             status_code=400,
-            detail="Cet élève n'est rattaché à aucune classe, impossible de générer un bulletin.",
+            detail="Classe introuvable",
         )
 
     # Cours attendus pour cette classe (avec leur coefficient)
@@ -50,7 +59,7 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     if not moyennes_par_cours:
         raise HTTPException(
             status_code=400,
-            detail="Aucune note trouvée pour cet élève sur ce trimestre, impossible de générer le bulletin.",
+            detail="Aucune note",
         )
 
     # Blocage si un cours de la classe n'a aucune note saisie pour cet élève
@@ -70,30 +79,42 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
         ]
         raise HTTPException(
             status_code=400,
-            detail=f"Notes manquantes pour : {', '.join(noms)}. Génération du bulletin impossible.",
+            detail=f"Notes manquantes pour : {', '.join(noms)}",
         )
+
+    classe = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
+    bareme = bareme_niveau(classe.niveau) if classe else 20
 
     details = []
     total_pondere = 0.0
     total_coefficients = 0.0
+    total_simple = 0.0
+    nb_matieres = 0
+
+    # EF1 (barème /10) : aucune pondération, moyenne simple des matières.
+    est_ef1 = bareme == 10
 
     for id_cours, moyenne in moyennes_par_cours:
         coefficient = coefficients_par_cours.get(id_cours)
         if coefficient is None:
             # Cours noté mais non affecté à la classe actuelle (ex: changement de classe en cours d'année) : ignoré
             continue
+        if est_ef1:
+            coefficient = 1.0
         details.append({
             "id_cours": id_cours,
             "moyenne": round(float(moyenne), 2),
             "coefficient": coefficient,
         })
-        total_pondere += float(moyenne) * coefficient
+        total_pondere += round(float(moyenne), 2) * coefficient
         total_coefficients += coefficient
+        total_simple += float(moyenne)
+        nb_matieres += 1
 
-    moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else 0.0
-
-    classe = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
-    bareme = bareme_niveau(classe.niveau) if classe else 20
+    if est_ef1:
+        moyenne_generale = round(total_simple / nb_matieres, 2) if nb_matieres else 0.0
+    else:
+        moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else 0.0
 
     return {
         "matricule_eleve": matricule_eleve,
@@ -118,7 +139,7 @@ def _upsert_bulletin(db: Session, calcul: dict) -> models.Bulletins:
     if bulletin and bulletin.statut == "PUBLIE":
         raise HTTPException(
             status_code=409,
-            detail="Ce bulletin a déjà été publié. Dépubliez-le avant de le régénérer.",
+            detail="Bulletin déjà publié",
         )
 
     if bulletin:
@@ -156,12 +177,13 @@ def _upsert_bulletin(db: Session, calcul: dict) -> models.Bulletins:
 
 
 def _calculer_rangs_classe(db: Session, id_classe: int, id_trimestre: int) -> None:
+    """Calcule le rang de tous les bulletins de la classe/trimestre, y compris
+    les brouillons, afin de permettre un contrôle du classement avant publication."""
     bulletins = (
         db.query(models.Bulletins)
         .filter(
             models.Bulletins.id_classe == id_classe,
             models.Bulletins.id_trimestre == id_trimestre,
-            models.Bulletins.statut == "PUBLIE",
         )
         .order_by(models.Bulletins.moyenne_generale.desc())
         .all()
@@ -184,9 +206,9 @@ def generer_bulletin(payload: schemas.BulletinGenerateRequest, db: Session = Dep
 def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first()
     if not classe:
-        raise HTTPException(status_code=404, detail="Classe introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
     if not db.query(models.Trimestres).filter(models.Trimestres.id == payload.id_trimestre).first():
-        raise HTTPException(status_code=404, detail="Trimestre introuvable.")
+        raise HTTPException(status_code=404, detail="Trimestre introuvable")
 
     eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe).all()
 
@@ -204,7 +226,7 @@ def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db:
         db.refresh(bulletin)
 
     if erreurs and not bulletins_generes:
-        raise HTTPException(status_code=400, detail=f"Aucun bulletin n'a pu être généré. Détails : {erreurs}")
+        raise HTTPException(status_code=400, detail="Aucun bulletin généré")
 
     return bulletins_generes
 
@@ -219,10 +241,10 @@ def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sessio
         .all()
     )
     if not bulletins:
-        raise HTTPException(status_code=404, detail="Aucun bulletin à publier pour cette classe/trimestre.")
+        raise HTTPException(status_code=404, detail="Aucun bulletin à publier")
     for b in bulletins:
         b.statut = "PUBLIE"
-        b.published_at = datetime.utcnow()
+        b.published_at = now_utc()
     db.flush()
     _calculer_rangs_classe(db, payload.id_classe, payload.id_trimestre)
     db.commit()

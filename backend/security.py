@@ -25,16 +25,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8h
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 
 if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET_KEY ne peut pas être vide.")
+    raise RuntimeError("Clé JWT manquante")
 
 if _ENVIRONMENT == "production" and (SECRET_KEY == _DEFAULT_SECRET or len(SECRET_KEY) < 32):
     # En production, un secret par défaut ou trop court rendrait les JWT
     # falsifiables. On refuse de démarrer plutôt que de servir une API non sécurisée.
-    raise RuntimeError(
-        "JWT_SECRET_KEY manquant ou trop faible pour ENVIRONMENT=production. "
-        "Définissez une valeur aléatoire d'au moins 32 caractères "
-        "(par ex. `python -c \"import secrets; print(secrets.token_urlsafe(48))\"`)."
-    )
+    raise RuntimeError("Clé JWT invalide")
 elif SECRET_KEY == _DEFAULT_SECRET:
     logger.warning(
         "JWT_SECRET_KEY n'est pas défini : utilisation de la valeur par défaut "
@@ -62,7 +58,7 @@ def decode_access_token(token: str) -> dict:
     except jwt.ExpiredSignatureError:
         raise UnauthorizedError("Session expirée, veuillez vous reconnecter.")
     except jwt.InvalidTokenError:
-        raise UnauthorizedError("Token invalide.")
+        raise UnauthorizedError("Token invalide")
 
 
 def get_current_user(
@@ -72,7 +68,7 @@ def get_current_user(
     payload = decode_access_token(credentials.credentials)
     utilisateur = db.query(models.Utilisateurs).filter(models.Utilisateurs.id == int(payload["sub"])).first()
     if not utilisateur or not utilisateur.actif:
-        raise UnauthorizedError("Utilisateur invalide ou désactivé.")
+        raise UnauthorizedError("Compte invalide")
     return utilisateur
 
 
@@ -82,7 +78,7 @@ def require_role(*roles_autorises: str):
 
     def dependance(utilisateur: models.Utilisateurs = Depends(get_current_user)):
         if utilisateur.role.value not in roles_autorises:
-            raise HTTPException(status_code=403, detail="Accès refusé pour ce rôle.")
+            raise HTTPException(status_code=403, detail="Accès refusé")
         return utilisateur
 
     return dependance

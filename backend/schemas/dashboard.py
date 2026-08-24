@@ -4,6 +4,7 @@ from typing import List
 class MoyenneClasse(BaseModel):
     classe: str
     moy: float
+    bareme: int
 
 class RepartitionNiveau(BaseModel):
     name: str
@@ -28,6 +29,25 @@ class DashboardStatsResponse(BaseModel):
     moyennes_par_classe: List[MoyenneClasse]
     repartition_niveaux: List[RepartitionNiveau]
     absences_par_mois: List[AbsenceMois]
+    dernieres_activites: List[ActiviteRecente]
+
+    model_config = {"from_attributes": True}
+
+
+class EvolutionMensuelle(BaseModel):
+    mois: str
+    paiements: float
+    depenses: float
+
+
+class DashboardFinanceResponse(BaseModel):
+    """Tableau de bord du comptable : flux financiers uniquement."""
+    paiements_mois: float
+    depenses_mois: float
+    solde_mois: float
+    echeances_en_retard: int
+    montant_en_retard: float
+    evolution_mensuelle: List[EvolutionMensuelle]
     dernieres_activites: List[ActiviteRecente]
 
     model_config = {"from_attributes": True}

@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react'
 import { clsx } from 'clsx'
+import type { Role } from '@/types'
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
 
@@ -34,7 +35,7 @@ const ROLE_LABELS: Record<string, string> = {
   comptable: 'Comptable',
 }
 
-export function RoleBadge({ role }: { role: string }) {
+export function RoleBadge({ role }: { role: Role }) {
   const tone: Tone = role === 'admin' ? 'danger' : role === 'directeur' ? 'info' : 'success'
   return <Badge tone={tone}>{ROLE_LABELS[role] ?? role}</Badge>
 }

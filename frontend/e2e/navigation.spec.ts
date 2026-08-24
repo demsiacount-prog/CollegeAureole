@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { loginViaApi, ROUTES } from './helpers'
+import { login, ROUTES } from './helpers'
 
 test.describe('Navigation — chaque page se charge sans crash', () => {
   test.beforeEach(async ({ page }) => {
-    await loginViaApi(page, 'admin')
+    await login(page, 'admin')
   })
 
   for (const route of ROUTES) {

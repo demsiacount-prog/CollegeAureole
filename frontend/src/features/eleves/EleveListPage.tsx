@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { UserCheck, UserX, Pencil } from 'lucide-react'
+import { UserCheck, UserX, Pencil, GraduationCap } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -10,7 +10,10 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { activerEleve, createEleve, desactiverEleve, fetchEleves, fetchElevesTotal, updateEleve } from './api'
+import { createInscription } from '@/features/inscriptions/api'
+import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import type { Eleve } from './types'
 
@@ -34,7 +37,7 @@ export default function EleveListPage() {
     setPage(1)
   }, [debouncedSearch])
 
-  const { data: eleves = [], isLoading, isFetching } = useQuery({
+  const { data: eleves = [], isLoading, isFetching, isError } = useQuery({
     queryKey: ['eleves', 'liste', page, debouncedSearch],
     queryFn: () => fetchEleves({ skip: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE, q: debouncedSearch }),
   })
@@ -52,6 +55,8 @@ export default function EleveListPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Eleve | null>(null)
+  const [inscriptionOpen, setInscriptionOpen] = useState(false)
+  const [inscriptionMatricule, setInscriptionMatricule] = useState('')
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['eleves'] })
@@ -87,58 +92,71 @@ export default function EleveListPage() {
           onAction={canWrite ? openCreate : undefined}
         />
 
-      <SearchInput
-        placeholder="Rechercher par nom, matricule, classe…"
-        value={search}
-        onChange={setSearch}
-      />
+        <SearchInput
+          placeholder="Rechercher par nom, matricule, classe…"
+          value={search}
+          onChange={setSearch}
+        />
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]">
         {isLoading ? (
           <TableSkeleton rows={8} />
+        ) : isError ? (
+          <div className="py-16">
+            <EmptyState message="Impossible de charger la liste des élèves." />
+          </div>
         ) : eleves.length === 0 ? (
           <div className="py-16">
             <EmptyState message={debouncedSearch ? 'Aucun élève ne correspond à cette recherche.' : 'Aucun élève enregistré pour le moment.'} />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] text-sm font-medium text-[var(--color-ink-dim)]">
-                <th className="px-5 py-3 font-medium">Élève</th>
-                <th className="px-5 py-3 font-medium">Matricule</th>
-                <th className="px-5 py-3 font-medium">Classe</th>
-                <th className="px-5 py-3 font-medium">Tuteur</th>
-                <th className="px-5 py-3 font-medium">Statut</th>
-                <th className="px-5 py-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <TableContainer>
+            <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Élève</TableHead>
+                <TableHead>Matricule</TableHead>
+                <TableHead>Classe</TableHead>
+                <TableHead>Tuteur</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {eleves.map((eleve) => (
-                <tr key={eleve.matricule} className="group border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]">
-                  <td className="px-5 py-3">
+                <TableRow key={eleve.matricule} className="group">
+                  <TableCell>
                     <Link to={`/app/eleves/${eleve.matricule}`} className="flex items-center gap-3 group">
                       <Avatar nom={eleve.nom} prenom={eleve.prenom} photo={eleve.photo} size="sm" />
                       <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">
                         {eleve.prenom} {eleve.nom}
                       </span>
                     </Link>
-                  </td>
-                  <td className="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{eleve.matricule}</td>
-                  <td className="px-5 py-3 text-[var(--color-ink-dim)]">
+                  </TableCell>
+                  <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{eleve.matricule}</TableCell>
+                  <TableCell className="text-[var(--color-ink-dim)]">
                     {eleve.classe ? `${eleve.classe.niveau} — ${eleve.classe.nom}` : <span className="text-[var(--color-ink-faint)]">Non affecté</span>}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--color-ink-dim)]">
+                  </TableCell>
+                  <TableCell className="text-[var(--color-ink-dim)]">
                     {eleve.tuteur.prenom} {eleve.tuteur.nom}
-                  </td>
-                  <td className="px-5 py-3">
+                  </TableCell>
+                  <TableCell>
                     <Badge tone={eleve.statut === 'actif' ? 'success' : 'neutral'}>
                       {eleve.statut === 'actif' ? 'Actif' : 'Inactif'}
                     </Badge>
-                  </td>
-                  <td className="px-5 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-1 opacity-0 transition-all group-hover:opacity-100">
                       {canWrite && (
                         <>
+                          {!eleve.classe && (
+                            <button
+                              title="Inscrire"
+                              onClick={() => { setInscriptionMatricule(eleve.matricule); setInscriptionOpen(true) }}
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-brand-wash)] hover:text-[var(--color-brand-bright)]"
+                            >
+                              <GraduationCap strokeWidth={1.75} className="size-4" />
+                            </button>
+                          )}
                           <button
                             title="Modifier"
                             onClick={() => openEdit(eleve)}
@@ -166,15 +184,15 @@ export default function EleveListPage() {
                         </>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
 
-      {total > 0 && (
+        {total > 0 && (
         <Pagination page={page} totalPages={totalPages} onChange={setPage} isFetching={isFetching} />
       )}
 
@@ -184,6 +202,18 @@ export default function EleveListPage() {
         eleve={editing}
         onCreate={(payload) => createMutation.mutateAsync(payload)}
         onUpdate={(matricule, payload) => updateMutation.mutateAsync({ matricule, payload })}
+        canImport={user?.role === 'admin'}
+      />
+
+      <InscriptionFormDrawer
+        open={inscriptionOpen}
+        onClose={() => setInscriptionOpen(false)}
+        initialMatricule={inscriptionMatricule}
+        onSubmit={async (data) => {
+          await createInscription(data)
+          setInscriptionOpen(false)
+          invalidate()
+        }}
       />
       </div>
     </div>

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel
 from database import get_db
@@ -8,23 +7,9 @@ import models
 import schemas
 from security import get_current_user, require_role
 from bareme import bareme_niveau, seuil_passage, niveau_ordre
+from services.moyennes import calculer_moyenne_annuelle
 
 router = APIRouter(prefix="/api/resultats", tags=["Résultats de passage"], dependencies=[Depends(get_current_user)])
-
-
-def _moyenne_annuelle(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> Optional[float]:
-    result = (
-        db.query(func.avg(models.Bulletins.moyenne_generale))
-        .join(models.Trimestres, models.Bulletins.id_trimestre == models.Trimestres.id)
-        .filter(
-            models.Bulletins.matricule_eleve == matricule_eleve,
-            models.Trimestres.annee_scolaire_id == id_annee_scolaire,
-        )
-        .scalar()
-    )
-    if result is None:
-        return None
-    return round(float(result), 2)
 
 
 class EleveResultat(BaseModel):
@@ -68,7 +53,7 @@ class RapportAutoResponse(BaseModel):
 def _annee_active(db: Session) -> models.AnneesScolaires:
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
     if not annee:
-        raise HTTPException(status_code=404, detail="Aucune année scolaire active.")
+        raise HTTPException(status_code=404, detail="Aucune année scolaire active")
     return annee
 
 
@@ -90,7 +75,7 @@ def _determiner_statut_passage(moyenne: float, seuil: float, est_fin_cycle: bool
 def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
-        raise HTTPException(status_code=404, detail="Classe introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
     annee = _annee_active(db)
 
     inscriptions = (
@@ -112,7 +97,7 @@ def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
         compteurs[insc.statut_passage] = compteurs.get(insc.statut_passage, 0) + 1
         eleves_out.append(EleveResultat(
             inscription_id=insc.id, matricule=eleve.matricule, nom=eleve.nom, prenom=eleve.prenom,
-            photo=eleve.photo, moyenne_annuelle=_moyenne_annuelle(db, eleve.matricule, annee.id),
+            photo=eleve.photo, moyenne_annuelle=calculer_moyenne_annuelle(db, eleve.matricule, annee.id),
             statut_passage=insc.statut_passage,
         ))
 
@@ -126,11 +111,11 @@ def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
 def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
-        raise HTTPException(status_code=404, detail="Classe introuvable.")
+        raise HTTPException(status_code=404, detail="Classe introuvable")
     annee = _annee_active(db)
     n_ordre = niveau_ordre(classe.niveau)
     if n_ordre is None:
-        raise HTTPException(status_code=400, detail="Niveau de la classe non reconnu.")
+        raise HTTPException(status_code=400, detail="Niveau non reconnu")
 
     est_fin_cycle = n_ordre == 9
     bareme = bareme_niveau(classe.niveau)
@@ -161,7 +146,7 @@ def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
                                              moyenne=None, ancien_statut=ancien_statut, nouveau_statut="EXCLU"))
             continue
 
-        moyenne = _moyenne_annuelle(db, eleve.matricule, annee.id)
+        moyenne = calculer_moyenne_annuelle(db, eleve.matricule, annee.id)
         if moyenne is None:
             en_attente += 1
             detail.append(DetailRapportAuto(matricule=eleve.matricule, nom=f"{eleve.prenom} {eleve.nom}",
@@ -212,9 +197,7 @@ class StatutPassageRequest(BaseModel):
 def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, db: Session = Depends(get_db)):
     insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
-        raise HTTPException(status_code=404, detail="Inscription introuvable.")
-    if payload.statut not in ("EN_ATTENTE", "ADMIS", "RECALE", "EXCLU"):
-        raise HTTPException(status_code=400, detail="Statut de passage invalide.")
+        raise HTTPException(status_code=404, detail="Inscription introuvable")
     insc.statut_passage = payload.statut
     db.commit()
     db.refresh(insc)

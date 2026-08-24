@@ -4,12 +4,12 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card, CardBody } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
@@ -26,7 +26,7 @@ const ROLE_COLORS: Record<string, string> = {
 export default function UtilisateurListPage() {
   const qc = useQueryClient()
 
-  const { data: utilisateurs = [], isLoading } = useQuery({
+  const { data: utilisateurs = [], isLoading, isError } = useQuery({
     queryKey: ['utilisateurs'],
     queryFn: fetchUtilisateurs,
   })
@@ -69,73 +69,73 @@ export default function UtilisateurListPage() {
 
         {isLoading ? (
           <TableSkeleton rows={8} />
+        ) : isError ? (
+          <div className="py-16">
+            <EmptyState message="Impossible de charger la liste des utilisateurs." />
+          </div>
         ) : filtered.length === 0 ? (
           <div className="py-16">
             <EmptyState message={search ? 'Aucun compte ne correspond à cette recherche.' : 'Aucun compte utilisateur enregistré.'} />
           </div>
         ) : (
-          <Card>
-            <CardBody className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Utilisateur</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Rôle</th>
-                      <th className="px-5 py-3 text-center font-medium text-[var(--color-ink-dim)]">Statut</th>
-                      <th className="px-5 py-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((u) => (
-                      <tr key={u.id} className="border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar nom={u.nom} prenom={u.prenom} size="sm" />
-                            <div>
-                              <p className="font-medium text-[var(--color-ink)]">{u.prenom} {u.nom}</p>
-                              <p className="text-xs text-[var(--color-ink-faint)]">{u.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <Badge tone={(ROLE_COLORS[u.role] as 'danger' | 'info' | 'success') ?? 'neutral'}>
-                            {ROLE_LABELS[u.role]}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-3 text-center">
-                          <span className="text-sm text-[var(--color-ink-dim)]">
-                            {u.actif ? 'Actif' : 'Inactif'}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="icon"
-                              size="icon"
-                              onClick={() => { setEditing(u); setDrawerOpen(true) }}
-                              aria-label={`Modifier ${u.prenom} ${u.nom}`}
-                            >
-                              <Pencil strokeWidth={1.75} className="size-4" />
-                            </Button>
-                            <Button
-                              variant="icon"
-                              tone="danger"
-                              size="icon"
-                              onClick={() => setDeleting(u)}
-                              aria-label={`Supprimer ${u.prenom} ${u.nom}`}
-                            >
-                              <Trash2 strokeWidth={1.75} className="size-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Rôle</TableHead>
+                  <TableHead className="text-center">Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar nom={u.nom} prenom={u.prenom} size="sm" />
+                        <div>
+                          <p className="font-medium text-[var(--color-ink)]">{u.prenom} {u.nom}</p>
+                          <p className="text-xs text-[var(--color-ink-faint)]">{u.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={(ROLE_COLORS[u.role] as 'danger' | 'info' | 'success') ?? 'neutral'}>
+                        {ROLE_LABELS[u.role]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm text-[var(--color-ink-dim)]">
+                        {u.actif ? 'Actif' : 'Inactif'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="icon"
+                          size="icon"
+                          onClick={() => { setEditing(u); setDrawerOpen(true) }}
+                          aria-label={`Modifier ${u.prenom} ${u.nom}`}
+                        >
+                          <Pencil strokeWidth={1.75} className="size-4" />
+                        </Button>
+                        <Button
+                          variant="icon"
+                          tone="danger"
+                          size="icon"
+                          onClick={() => setDeleting(u)}
+                          aria-label={`Supprimer ${u.prenom} ${u.nom}`}
+                        >
+                          <Trash2 strokeWidth={1.75} className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </div>
 

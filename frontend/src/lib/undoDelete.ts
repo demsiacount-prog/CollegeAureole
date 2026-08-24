@@ -13,7 +13,7 @@ export function scheduleDeleteWithUndo(
     if (!cancelled) performDelete()
   }, UNDO_WINDOW_MS)
 
-  toast(message, 'success', {
+  toast(message, 'warning', {
     duration: UNDO_WINDOW_MS,
     action: {
       label: undoLabel,

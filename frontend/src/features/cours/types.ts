@@ -1,9 +1,6 @@
-import type { Classe, Enseignant } from '@/features/shared/types'
+import type { Classe, Enseignant, AffectationCoursClasse } from '@/features/shared/types'
 
-export interface AffectationCoursClasse {
-  id_classe: number
-  coefficient: number
-}
+export type { AffectationCoursClasse }
 
 export interface AffectationCoursClasseResponse {
   id_classe: number

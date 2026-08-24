@@ -1,0 +1,300 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Système d'impression des documents officiels (bulletins, reçus, …).
+
+   Principe : WYSIWYG. Les classes .print-doc / .doc-* décrivent une feuille A4
+   monochrome qui se rend identique à l'écran (aperçu dans un overlay) et sur
+   papier. L'impression n'expédie QUE le contenu de .print-root : l'overlay
+   ouvert au moment de window.print(), jamais le reste de l'application.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.print-doc {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 10mm 12mm;
+  background: #fff;
+  color: #111;
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+
+/* En-tête officiel (papier à en-tête) */
+.doc-letterhead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 2px solid #111;
+  padding-bottom: 10px;
+}
+
+.doc-letterhead img {
+  height: 56px;
+  width: 56px;
+  object-fit: contain;
+}
+
+.doc-school-block {
+  flex: 1;
+  text-align: center;
+}
+
+.doc-school-name {
+  font-size: 14pt;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.doc-school-sub {
+  margin-top: 2px;
+  font-size: 8pt;
+  color: #444;
+}
+
+.doc-school-contact {
+  margin-top: 1px;
+  font-size: 7.5pt;
+  color: #555;
+}
+
+.doc-year-box {
+  border: 1.5px solid #111;
+  padding: 7px 12px;
+  text-align: center;
+  font-size: 9pt;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* Bandeau titre du document */
+.doc-title {
+  margin-top: 14px;
+  border-top: 2.5px solid #111;
+  border-bottom: 2.5px solid #111;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13pt;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.doc-title-sub {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 9.5pt;
+  color: #333;
+}
+
+/* Grille d'informations (élève, période…) */
+.doc-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid #999;
+  margin-top: 14px;
+}
+
+.doc-info-cell {
+  border-right: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+  padding: 6px 9px;
+  min-width: 0;
+}
+
+.doc-info-cell.last-col {
+  border-right: none;
+}
+
+.doc-info-cell.last-row {
+  border-bottom: none;
+}
+
+.doc-info-label {
+  font-size: 7.5pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.doc-info-value {
+  margin-top: 1px;
+  font-size: 10.5pt;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+/* Tableau de notes */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 10pt;
+}
+
+.doc-table th {
+  border-bottom: 1.5px solid #111;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 8.5pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #333;
+}
+
+.doc-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 5px 8px;
+}
+
+.doc-table tbody tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+.doc-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.doc-table tfoot td {
+  border-top: 1.5px solid #111;
+  border-bottom: none;
+  font-weight: 700;
+}
+
+/* Bandeau récapitulatif (moyenne + mention) */
+.doc-summary {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+  margin-top: 12px;
+  border: 1.5px solid #111;
+}
+
+.doc-summary-item {
+  padding: 7px 16px;
+  text-align: center;
+}
+
+.doc-summary-item + .doc-summary-item {
+  border-left: 1px solid #999;
+}
+
+.doc-summary-label {
+  font-size: 7.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.doc-summary-value {
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+/* Bloc appréciation */
+.doc-appreciation {
+  margin-top: 12px;
+  border: 1px solid #bbb;
+  padding: 7px 10px;
+}
+
+.doc-appreciation-label {
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.doc-appreciation-text {
+  margin-top: 2px;
+  font-size: 9.5pt;
+  font-style: italic;
+}
+
+/* Pied de page (lieu + date d'émission) */
+.doc-footer {
+  margin-top: 18px;
+  font-size: 9.5pt;
+}
+
+/* Zones de signature */
+.doc-signatures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 26px;
+}
+
+.doc-signature {
+  text-align: center;
+}
+
+.doc-signature-role {
+  font-size: 8.5pt;
+  color: #333;
+}
+
+.doc-signature-space {
+  height: 58px;
+  border-bottom: 1px solid #111;
+  margin-bottom: 4px;
+}
+
+/* ── Impression ─────────────────────────────────────────────────────────── */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0; /* les marges sont gérées par le padding de .print-doc */
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-root,
+  .print-root * {
+    visibility: visible !important;
+  }
+
+  .print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* Barre d'actions de l'aperçu (Fermer / Imprimer) */
+  .no-print {
+    display: none !important;
+  }
+
+  .print-doc {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 8mm 10mm;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-doc:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

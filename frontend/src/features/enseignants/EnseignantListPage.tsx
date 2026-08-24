@@ -5,13 +5,13 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { Card, CardBody } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
@@ -96,64 +96,60 @@ export default function EnseignantListPage() {
             <EmptyState message={debouncedSearch ? 'Aucun enseignant ne correspond à cette recherche.' : 'Aucun enseignant enregistré pour le moment.'} />
           </div>
         ) : (
-          <Card>
-            <CardBody className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Enseignant</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Spécialité</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Téléphone</th>
-                      <th className="px-5 py-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enseignants.map((e) => (
-                      <tr key={e.matricule} className="border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar nom={e.nom} prenom={e.prenom} size="sm" />
-                            <div>
-                              <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]">
-                                {e.prenom} {e.nom}
-                              </Link>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <Badge tone="neutral">{e.specialite}</Badge>
-                        </td>
-                        <td className="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{e.telephone}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            {canWrite && (
-                              <button
-                                onClick={() => openEdit(e)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                                aria-label={`Modifier ${e.prenom} ${e.nom}`}
-                              >
-                                <Pencil strokeWidth={1.75} className="size-4" />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                onClick={() => setDeleting(e)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
-                                aria-label={`Supprimer ${e.prenom} ${e.nom}`}
-                              >
-                                <Trash2 strokeWidth={1.75} className="size-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Enseignant</TableHead>
+                  <TableHead>Spécialité</TableHead>
+                  <TableHead>Téléphone</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {enseignants.map((e) => (
+                  <TableRow key={e.matricule}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar nom={e.nom} prenom={e.prenom} size="sm" />
+                        <div>
+                          <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]">
+                            {e.prenom} {e.nom}
+                          </Link>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone="neutral">{e.specialite}</Badge>
+                    </TableCell>
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{e.telephone}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {canWrite && (
+                          <button
+                            onClick={() => openEdit(e)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            aria-label={`Modifier ${e.prenom} ${e.nom}`}
+                          >
+                            <Pencil strokeWidth={1.75} className="size-4" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeleting(e)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            aria-label={`Supprimer ${e.prenom} ${e.nom}`}
+                          >
+                            <Trash2 strokeWidth={1.75} className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
         {total > 0 && (

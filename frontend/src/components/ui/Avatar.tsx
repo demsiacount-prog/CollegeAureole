@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { clsx } from 'clsx'
+import { urlAbsolue } from '@/lib/server'
 
 function initials(nom: string, prenom: string) {
   return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase()
@@ -28,7 +29,7 @@ export function Avatar({
   if (photo && !failed) {
     return (
       <img
-        src={photo}
+        src={urlAbsolue(photo)}
         alt={`${prenom} ${nom}`}
         onError={() => setFailed(true)}
         className={clsx(

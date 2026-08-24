@@ -12,6 +12,6 @@ class DocumentResponse(BaseModel):
     filename: str
     taille: Optional[int] = None
     mime_type: Optional[str] = None
-    uploaded_at: str
+    uploaded_at: datetime
 
     model_config = {"from_attributes": True}

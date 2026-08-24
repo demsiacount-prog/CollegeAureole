@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/enseignants", tags=["Enseignants"], dependencies
 @router.post("/", response_model=schemas.EnseignantResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def create_enseignant(enseignant: schemas.EnseignantCreate, db: Session = Depends(get_db)):
     if db.query(models.Enseignants).filter(models.Enseignants.email == enseignant.email).first():
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé.")
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
     nouveau_prof = models.Enseignants(**enseignant.model_dump())
     db.add(nouveau_prof)
     db.commit()
@@ -70,7 +70,7 @@ def update_enseignant(matricule: str, enseignant_update: schemas.EnseignantCreat
         models.Enseignants.matricule != matricule
     ).first()
     if email_existant:
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un autre enseignant.")
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
     for key, value in enseignant_update.model_dump().items():
         setattr(db_ens, key, value)
     db.commit()
@@ -196,14 +196,8 @@ def get_dossier_enseignant(matricule: str, db: Session = Depends(get_db)):
         .filter(models.Enseignants.matricule == matricule)
         .first()
     )
-    if not enseignant and hasattr(models.Enseignants, "id"):
-        enseignant = (
-            db.query(models.Enseignants)
-            .filter(models.Enseignants.id == matricule)
-            .first()
-        )
     if not enseignant:
-        raise HTTPException(status_code=404, detail="Enseignant non trouvé")
+        raise HTTPException(status_code=404, detail="Enseignant introuvable")
 
     historique = _construire_historique(db, enseignant.matricule)
     stats      = _construire_stats(historique)

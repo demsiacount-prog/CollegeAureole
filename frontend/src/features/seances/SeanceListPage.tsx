@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, LayoutGrid, List as ListIcon, MapPin } from 'lucide-react'
-import { Card, CardBody } from '@/components/ui/Card'
+import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
@@ -45,7 +44,6 @@ export default function SeanceListPage() {
   }, [annees, filterAnnee])
   const [filterClasse, setFilterClasse] = useState('')
   const [filterEnseignant, setFilterEnseignant] = useState('')
-  const [vue, setVue] = useState<'grille' | 'liste'>('grille')
 
   const { data: seances = [], isLoading, isError } = useQuery({
     queryKey: ['seances', filterAnnee],
@@ -100,17 +98,6 @@ export default function SeanceListPage() {
       return true
     })
   }, [seances, filterClasse, filterEnseignant])
-
-  const sorted = useMemo(
-    () =>
-      [...filtered].sort((a, b) => {
-        const ja = JOURS.indexOf(a.jour_semaine)
-        const jb = JOURS.indexOf(b.jour_semaine)
-        if (ja !== jb) return ja - jb
-        return a.heure_debut.localeCompare(b.heure_debut)
-      }),
-    [filtered],
-  )
 
   // Les créneaux ne sont pas figés dans le modèle : on déduit la liste des
   // horaires réellement utilisés plutôt que d'en imposer un fixe.
@@ -180,21 +167,6 @@ export default function SeanceListPage() {
               <option key={e.matricule} value={e.matricule}>{e.prenom} {e.nom}</option>
             ))}
           </Select>
-
-          <div className="ml-auto flex gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] p-0.5">
-            <button
-              onClick={() => setVue('grille')}
-              className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium transition-colors ${vue === 'grille' ? 'bg-[var(--color-surface-3)] text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]'}`}
-            >
-              <LayoutGrid size={13} strokeWidth={1.75} /> Grille
-            </button>
-            <button
-              onClick={() => setVue('liste')}
-              className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1.5 text-xs font-medium transition-colors ${vue === 'liste' ? 'bg-[var(--color-surface-3)] text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]'}`}
-            >
-              <ListIcon size={13} strokeWidth={1.75} /> Liste
-            </button>
-          </div>
         </div>
 
         {!filterClasse && !filterEnseignant ? (
@@ -211,7 +183,7 @@ export default function SeanceListPage() {
           <div className="py-16">
             <EmptyState message="Aucune séance pour ce filtre." />
           </div>
-        ) : vue === 'grille' ? (
+        ) : (
           <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)]">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -287,66 +259,6 @@ export default function SeanceListPage() {
               </tbody>
             </table>
           </div>
-        ) : (
-          <Card>
-            <CardBody>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Jour</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Horaire</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Cours</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Enseignant</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Classe</th>
-                      <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Salle</th>
-                      <th className="pb-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border-soft)]">
-                    {sorted.map((s) => (
-                      <tr key={s.id} className="group hover:bg-[var(--color-surface-2)]">
-                        <td className="py-3 font-medium text-[var(--color-ink)]">{s.jour_semaine}</td>
-                        <td className="py-3 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
-                          {hhmm(s.heure_debut)} — {hhmm(s.heure_fin)}
-                        </td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">{s.cours?.nom ?? '—'}</td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">
-                          {s.cours?.enseignant ? `${s.cours.enseignant.prenom} ${s.cours.enseignant.nom}` : '—'}
-                        </td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">
-                          {s.classe ? `${s.classe.niveau} — ${s.classe.nom}` : '—'}
-                        </td>
-                        <td className="py-3 text-[var(--color-ink-dim)]">{s.salle?.nom ?? '—'}</td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1 opacity-0 transition-all group-hover:opacity-100">
-                            {canWrite && (
-                              <button
-                                onClick={() => handleEdit(s)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                                aria-label="Modifier"
-                              >
-                                <Pencil size={14} strokeWidth={1.75} />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                onClick={() => setDeleting(s)}
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
-                                aria-label="Supprimer"
-                              >
-                                <Trash2 size={14} strokeWidth={1.75} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
         )}
       </div>
 

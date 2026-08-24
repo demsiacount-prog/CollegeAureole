@@ -16,9 +16,10 @@ interface Props {
   labels: Record<string, string>
   invalidateKey: string[]
   upload: (typeDocument: string, file: File) => Promise<Document>
+  canEdit?: boolean
 }
 
-export function DocumentsTab({ documents, labels, invalidateKey, upload }: Props) {
+export function DocumentsTab({ documents, labels, invalidateKey, upload, canEdit = true }: Props) {
   const qc = useQueryClient()
   const [deleting, setDeleting] = useState<Document | null>(null)
   const [preview, setPreview] = useState<Document | null>(null)
@@ -67,34 +68,38 @@ export function DocumentsTab({ documents, labels, invalidateKey, upload }: Props
                         <FileText size={14} strokeWidth={1.75} className="shrink-0" />
                         <span className="truncate">{doc.filename}</span>
                       </button>
-                      <Button
-                        variant="icon"
-                        tone="danger"
-                        size="icon"
-                        onClick={() => setDeleting(doc)}
-                        aria-label="Supprimer ce document"
-                      >
-                        <Trash2 size={14} strokeWidth={1.75} />
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="icon"
+                          tone="danger"
+                          size="icon"
+                          onClick={() => setDeleting(doc)}
+                          aria-label="Supprimer ce document"
+                        >
+                          <Trash2 size={14} strokeWidth={1.75} />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-[var(--color-ink-faint)]">Aucun fichier</p>
               )}
-              <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded border border-dashed border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
-                <Upload size={14} strokeWidth={1.75} />
-                Importer
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) uploadMut.mutate({ typeDocument: type, file })
-                  }}
-                />
-              </label>
+              {canEdit && (
+                <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded border border-dashed border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
+                  <Upload size={14} strokeWidth={1.75} />
+                  Importer
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadMut.mutate({ typeDocument: type, file })
+                    }}
+                  />
+                </label>
+              )}
             </Card>
           )
         })}

@@ -4,9 +4,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
+from migrations import migrer_schema
 from routers import (
     auth,
     classes,
@@ -27,9 +29,11 @@ from routers import (
     cloture,
     documents,
     setup,
+    etablissement,
+    import_export,
 )
-from database import engine, Base, SessionLocal
-from exceptions import AureoleException, ErrorResponse
+from database import SessionLocal
+from exceptions import AureoleException
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("college_aureole")
@@ -44,10 +48,13 @@ AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "true").strip().lower() not
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Le schéma est géré par les migrations Alembic (idempotent, exécuté à
+    # chaque démarrage). AUTO_CREATE_TABLES=false désactive ce bootstrap pour
+    # les environnements où les migrations sont appliquées manuellement.
     if AUTO_CREATE_TABLES:
-        Base.metadata.create_all(bind=engine)
+        migrer_schema()
     else:
-        logger.info("AUTO_CREATE_TABLES=false : création de schéma ignorée, migrations Alembic attendues.")
+        logger.info("AUTO_CREATE_TABLES=false : bootstrap des migrations ignoré.")
     yield
 
 
@@ -58,12 +65,25 @@ app = FastAPI(title="College Aureole Management API", version="2.2", lifespan=li
 _default_origins = "http://localhost:5173,http://localhost:5174"
 allow_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", _default_origins).split(",") if o.strip()]
 
+# Méthodes et en-têtes restreints au strict nécessaire de l'API :
+# l'ancien "*" autorisait n'importe quel site à appeler l'API depuis un
+# navigateur (CSRF / exfiltration si un compte est déjà authentifié).
+_ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+_ALLOWED_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "X-Requested-With",
+    "X-Confirm",
+    "X-Filename",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=_ALLOWED_METHODS,
+    allow_headers=_ALLOWED_HEADERS,
 )
 
 
@@ -89,7 +109,7 @@ async def unhandled_exception_handler(request, exc):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error_code": "INTERNAL_SERVER_ERROR",
-            "message": "Une erreur interne est survenue.",
+            "message": "Erreur interne",
             "details": None,
         },
     )
@@ -118,6 +138,19 @@ app.include_router(resultats.router)
 app.include_router(cloture.router)
 app.include_router(documents.router)
 app.include_router(setup.router)
+app.include_router(etablissement.router)
+app.include_router(import_export.router)
+
+
+# Fichiers téléversés (logos, …) servis en statique depuis le même serveur.
+# Sous exécutable gelé (service Windows), __file__ pointe vers un dossier
+# temporaire : l'installeur impose alors AUREOLE_UPLOADS_DIR pour persister
+# les fichiers dans le répertoire d'installation.
+_UPLOADS_DIR = os.environ.get("AUREOLE_UPLOADS_DIR") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+)
+os.makedirs(_UPLOADS_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
 
 
 @app.get("/api/health")
@@ -137,28 +170,3 @@ def health_check():
 
     return {"status": "running", "database": db_status}
 
-
-# --- Mode serveur : sert le frontend buildé (SPA) depuis la même origine ---
-# Permet aux postes du réseau d'ouvrir http://<ip-serveur>:3000 sans installer
-# quoi que ce soit. Répertoire configurable via FRONTEND_DIST.
-FRONTEND_DIST = os.getenv(
-    "FRONTEND_DIST",
-    os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist")),
-)
-
-if os.path.isdir(FRONTEND_DIST):
-    _index = os.path.join(FRONTEND_DIST, "index.html")
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def servir_frontend(full_path: str):
-        # Les routes /api/* non trouvées restent des erreurs JSON (pas de fallback SPA)
-        if full_path.startswith("api/"):
-            return JSONResponse({"detail": "Not Found"}, status_code=status.HTTP_404_NOT_FOUND)
-        candidat = os.path.normpath(os.path.join(FRONTEND_DIST, full_path))
-        if full_path and candidat.startswith(FRONTEND_DIST) and os.path.isfile(candidat):
-            return FileResponse(candidat)
-        return FileResponse(_index)
-
-    logger.info("Mode serveur : interface servie depuis %s", FRONTEND_DIST)
-else:
-    logger.warning("FRONTEND_DIST introuvable (%s) : interface non servie.", FRONTEND_DIST)

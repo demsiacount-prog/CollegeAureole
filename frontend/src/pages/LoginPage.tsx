@@ -1,16 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LockKeyhole, Moon, Sun } from 'lucide-react'
+import { clsx } from 'clsx'
 import { useAuth } from '@/auth/useAuth'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { LogoEtablissement } from '@/components/ui/LogoEtablissement'
 import { useTheme } from '@/hooks/useTheme'
-import { APP_VERSION, APP_BUILD_TIME } from '@/lib/buildInfo'
-import { api, extractErrorMessage } from '@/lib/api'
+import { useEtablissement } from '@/features/etablissement/useEtablissement'
+import { required, email as emailVal, validateFields, hasErrors, type Errors } from '@/lib/validation'
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const { theme, toggle: toggleTheme } = useTheme()
+  const { data: etab } = useEtablissement()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
@@ -18,8 +21,12 @@ export function LoginPage() {
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isResetting, setIsResetting] = useState(false)
-  const [resetError, setResetError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Errors>({})
+ 
+
+  const logo = etab?.logo
+  const nom = etab?.nom ?? 'Gestion Scolaire'
+  const sigle = etab?.sigle?.trim() ? ` (${etab.sigle.trim()})` : ''
 
   if (isAuthenticated) {
     const from = (location.state as { from?: Location })?.from?.pathname ?? '/app'
@@ -29,6 +36,12 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    const errs = validateFields({
+      email: required(email, 'Adresse e-mail') ?? emailVal(email),
+      mot_de_passe: required(motDePasse, 'Mot de passe'),
+    })
+    setFieldErrors(errs)
+    if (hasErrors(errs)) return
     setIsSubmitting(true)
     try {
       await login(email, motDePasse)
@@ -40,22 +53,6 @@ export function LoginPage() {
     }
   }
 
-  async function handleReset() {
-    if (isResetting) return
-    const ok = window.confirm(
-      'Vider toutes les données et revenir à la configuration initiale ?\n\nCette action est irréversible.',
-    )
-    if (!ok) return
-    setResetError(null)
-    setIsResetting(true)
-    try {
-      await api.post('/api/setup/reset', { confirm: true }, { timeout: 60_000 })
-      window.location.reload()
-    } catch (err) {
-      setResetError(extractErrorMessage(err, 'Réinitialisation impossible.'))
-      setIsResetting(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[var(--color-base)] px-6 py-8 text-[var(--color-ink)]">
@@ -63,14 +60,16 @@ export function LoginPage() {
         {/* Left brand panel */}
         <section className="hidden flex-1 lg:block">
           <div className="mb-8 flex items-center gap-3">
-            <img
-              src="/logo-aureole.jpeg"
-              alt="Logo"
-              className="h-12 w-12 rounded-lg object-cover ring-1 ring-[var(--color-border)]"
+            <LogoEtablissement
+              src={logo}
+              nom={nom}
+              label
+              className="h-14 w-14 rounded-lg bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
             />
             <div>
               <p className="font-[var(--font-display)] text-xl font-semibold text-[var(--color-halo)]">
-                Collège Auréole
+                {nom}
+                {sigle}
               </p>
               <p className="text-xs text-[var(--color-ink-dim)]">
                 Système de Gestion Intégrée
@@ -87,14 +86,15 @@ export function LoginPage() {
         <section className="mx-auto w-full max-w-md">
           {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <img
-              src="/logo-aureole.jpeg"
-              alt="Logo"
-              className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--color-border)]"
+            <LogoEtablissement
+              src={logo}
+              nom={nom}
+              className="h-11 w-11 rounded-lg bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
             />
             <div>
               <p className="font-[var(--font-display)] text-base font-semibold text-[var(--color-halo)]">
-                Collège Auréole
+                {nom}
+                {sigle}
               </p>
               <p className="text-xs text-[var(--color-ink-dim)]">
                 Système de Gestion Intégrée
@@ -133,9 +133,13 @@ export function LoginPage() {
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="prenom.nom@aureole.ml"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }))
+                }}
+                placeholder="prenom.nom@etablissement.com"
                 required
+                error={fieldErrors.email}
               />
 
               {/* Password field with visibility toggle */}
@@ -146,12 +150,18 @@ export function LoginPage() {
                 <div className="relative">
                   <input
                     value={motDePasse}
-                    onChange={(e) => setMotDePasse(e.target.value)}
+                    onChange={(e) => {
+                      setMotDePasse(e.target.value)
+                      if (fieldErrors.mot_de_passe) setFieldErrors((p) => ({ ...p, mot_de_passe: undefined }))
+                    }}
                     type={showPwd ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••"
                     required
-                    className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+                    className={clsx(
+                      'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                      fieldErrors.mot_de_passe ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                    )}
                   />
                   <button
                     type="button"
@@ -161,6 +171,9 @@ export function LoginPage() {
                     {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {fieldErrors.mot_de_passe && (
+                  <p className="text-xs text-[var(--color-danger)]">{fieldErrors.mot_de_passe}</p>
+                )}
               </div>
 
               {error && (
@@ -178,22 +191,7 @@ export function LoginPage() {
           <p className="mt-8 text-center text-xs text-[var(--color-ink-faint)]">
             Accès réservé au personnel administratif de l'établissement.
           </p>
-          <p className="mt-2 text-center text-[10px] text-[var(--color-ink-faint)]">
-            v{APP_VERSION} · build {new Date(APP_BUILD_TIME).toLocaleString('fr-FR')}
-          </p>
-          {resetError && (
-            <p role="alert" className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-center text-xs text-[var(--color-danger)]">
-              {resetError}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={isResetting}
-            className="mt-4 text-[10px] text-[var(--color-ink-faint)] underline underline-offset-2 transition-colors hover:text-[var(--color-ink-dim)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isResetting ? 'Réinitialisation en cours…' : 'Réinitialiser l’application (première configuration)'}
-          </button>
+         
         </section>
       </div>
     </div>

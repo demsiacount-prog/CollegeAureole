@@ -1,5 +1,8 @@
 import type { Tuteur, Classe, AnneeScolaire, Cours, Trimestre, Enseignant, Paiement } from '@/features/shared/types'
 import type { Document } from '@/features/documents/types'
+import type { BulletinDetail } from '@/features/bulletins/types'
+
+export type { BulletinDetail }
 
 export type StatutEleve = 'actif' | 'inactif'
 
@@ -15,9 +18,6 @@ export interface Eleve {
   statut: string
   acte_naissance: boolean
   carnet_sante: boolean
-  jugement_tutelle: boolean
-  photo_id: boolean
-  certificat_radiation: boolean
   created_at: string
   updated_at: string
   tuteur: Tuteur
@@ -38,9 +38,6 @@ export interface EleveCreateInput {
   annee_scolaire_id?: number | null
   acte_naissance?: boolean
   carnet_sante?: boolean
-  jugement_tutelle?: boolean
-  photo_id?: boolean
-  certificat_radiation?: boolean
 }
 
 export interface EleveUpdateInput {
@@ -56,9 +53,6 @@ export interface EleveUpdateInput {
   photo?: string | null
   acte_naissance?: boolean
   carnet_sante?: boolean
-  jugement_tutelle?: boolean
-  photo_id?: boolean
-  certificat_radiation?: boolean
 }
 
 export interface MoyenneTrimestre {
@@ -120,16 +114,6 @@ export interface AbsenceEleve {
   justifiee: boolean
   motif: string | null
   cours: Cours | null
-}
-
-export interface BulletinDetail {
-  id: number
-  id_cours: number
-  cours_nom: string
-  moyenne: number
-  coefficient: number
-  created_at: string
-  updated_at: string
 }
 
 export interface BulletinEleve {

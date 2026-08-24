@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { extractErrorMessage } from '@/lib/api'
 import { toast } from '@/components/ui/toast'
 import { createUtilisateur, updateUtilisateur } from './api'
+import { required, email as validEmail, minLength, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { Role } from '@/types'
 import { ROLES, type Utilisateur } from './types'
 
@@ -27,6 +28,7 @@ export default function UtilisateurFormDrawer({ open, onClose, utilisateur }: Pr
   const [role, setRole] = useState<Role>('comptable')
   const [actif, setActif] = useState(true)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState<Errors>({})
 
   useEffect(() => {
     if (open) {
@@ -37,8 +39,21 @@ export default function UtilisateurFormDrawer({ open, onClose, utilisateur }: Pr
       setRole(utilisateur?.role ?? 'comptable')
       setActif(utilisateur?.actif ?? true)
       setError('')
+      setErrors({})
     }
   }, [open, utilisateur])
+
+  const handleSubmit = () => {
+    const errs = validateFields({
+      prenom: required(prenom, 'Le prénom'),
+      nom: required(nom, 'Le nom'),
+      email: required(email, "L'e-mail") ?? validEmail(email),
+      mot_de_passe: isEdit ? undefined : required(motDePasse, 'Le mot de passe') ?? minLength(motDePasse, 8, 'Le mot de passe'),
+    })
+    setErrors(errs)
+    if (hasErrors(errs)) return
+    mutation.mutate()
+  }
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -57,22 +72,57 @@ export default function UtilisateurFormDrawer({ open, onClose, utilisateur }: Pr
 
   return (
     <Drawer open={open} onClose={onClose} title={isEdit ? 'Modifier le compte' : 'Nouveau compte'}>
-      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate() }} className="flex flex-col h-full">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} noValidate className="flex flex-col h-full">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Prénom" placeholder="ex. Aminata" value={prenom} onChange={(e) => setPrenom(e.target.value)} required />
-            <Input label="Nom" placeholder="ex. Diallo" value={nom} onChange={(e) => setNom(e.target.value)} required />
+            <Input
+              label="Prénom"
+              placeholder="ex. Aminata"
+              value={prenom}
+              onChange={(e) => {
+                setPrenom(e.target.value)
+                if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
+              }}
+              required
+              error={errors.prenom}
+            />
+            <Input
+              label="Nom"
+              placeholder="ex. Diallo"
+              value={nom}
+              onChange={(e) => {
+                setNom(e.target.value)
+                if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
+              }}
+              required
+              error={errors.nom}
+            />
           </div>
-          <Input label="E-mail" type="email" placeholder="ex. aminata.diallo@ecole.ml" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            label="E-mail"
+            type="email"
+            placeholder="ex. aminata.diallo@ecole.ml"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+            }}
+            required
+            error={errors.email}
+          />
           {!isEdit && (
             <Input
               label="Mot de passe"
               type="password"
               placeholder="8 caractères minimum"
               value={motDePasse}
-              onChange={(e) => setMotDePasse(e.target.value)}
+              onChange={(e) => {
+                setMotDePasse(e.target.value)
+                if (errors.mot_de_passe) setErrors((prev) => ({ ...prev, mot_de_passe: undefined }))
+              }}
               required
               minLength={8}
+              error={errors.mot_de_passe}
             />
           )}
           <Select label="Rôle" value={role} onChange={(e) => setRole(e.target.value as Role)}>

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useModalStack } from './modalStack'
 
 export function Drawer({
   open,
@@ -17,6 +18,8 @@ export function Drawer({
   footer?: ReactNode
   children: ReactNode
 }) {
+  useModalStack(open)
+
   useEffect(() => {
     if (!open) return
     function handleKey(e: KeyboardEvent) {

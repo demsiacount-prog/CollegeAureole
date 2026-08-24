@@ -9,7 +9,6 @@ from exceptions import (
     DuplicateError,
     ValidationError,
     ForbiddenError,
-    InvalidStateError,
 )
 import models
 
@@ -39,7 +38,7 @@ def assert_valid_email(email: str):
 
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if not re.match(pattern, email):
-        raise ValidationError("email", "Format d'email invalide")
+        raise ValidationError("email", "Email invalide")
 
 
 def assert_valid_phone(phone: str):
@@ -48,7 +47,7 @@ def assert_valid_phone(phone: str):
 
     pattern = r"^\+?[\d\s\-()]{7,}$"
     if not re.match(pattern, phone):
-        raise ValidationError("telephone", "Numéro de téléphone invalide")
+        raise ValidationError("telephone", "Téléphone invalide")
 
 
 def assert_active_school_year(db: Session):
@@ -62,9 +61,7 @@ def assert_active_school_year(db: Session):
 def assert_user_can_write(user, required_roles: list[str]):
     """Vérifie que l'utilisateur a les permissions d'écriture."""
     if user.role not in required_roles:
-        raise ForbiddenError(
-            f"Rôle insuffisant. Rôles requis : {', '.join(required_roles)}"
-        )
+        raise ForbiddenError("Accès refusé")
 
 
 def assert_valid_status(status_value: str, valid_statuses: list[str]):
@@ -72,5 +69,5 @@ def assert_valid_status(status_value: str, valid_statuses: list[str]):
     if status_value not in valid_statuses:
         raise ValidationError(
             "status",
-            f"Statut invalide. Valeurs acceptées : {', '.join(valid_statuses)}",
+            "Statut invalide",
         )

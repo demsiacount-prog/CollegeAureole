@@ -27,7 +27,7 @@ def inscription(payload: schemas.UtilisateurInscription, db: Session = Depends(g
         models.Utilisateurs.email == payload.email
     ).first()
     if email_existant:
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé.")
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
 
     nouvel_utilisateur = models.Utilisateurs(
         nom=payload.nom,
@@ -84,7 +84,7 @@ def update_utilisateur(
         models.Utilisateurs.id != utilisateur_id,
     ).first()
     if email_existant:
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un autre utilisateur.")
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
 
     # exclude_unset : un PUT partiel n'écrase plus silencieusement `actif`
     # (qui avait une valeur par défaut True côté schéma) sur les champs omis.

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { useAuth } from '@/auth/useAuth'
@@ -57,8 +58,12 @@ export default function AbsenceListPage() {
   })
 
   const { data: total = 0 } = useQuery({
-    queryKey: ['absences', 'total'],
-    queryFn: () => fetchAbsencesTotal(),
+    queryKey: ['absences', 'total', debouncedSearch, filterJustifiee],
+    queryFn: () =>
+      fetchAbsencesTotal({
+        q: debouncedSearch,
+        justifiee: justifieeParam(filterJustifiee),
+      }),
   })
 
   const { data: totalNonJustifiees = 0 } = useQuery({
@@ -165,26 +170,23 @@ export default function AbsenceListPage() {
             <EmptyState message="Aucune absence trouvée." />
           </div>
         ) : (
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-border-soft)] text-xs font-[var(--font-mono)] text-[var(--color-ink-faint)]">
-                  <th className="px-5 py-3 text-left font-medium">Élève</th>
-                  <th className="px-5 py-3 text-left font-medium">Classe</th>
-                  <th className="px-5 py-3 text-left font-medium">Cours</th>
-                  <th className="px-5 py-3 text-left font-medium">Date</th>
-                  <th className="px-5 py-3 text-center font-medium">Statut</th>
-                  <th className="px-5 py-3 text-left font-medium">Motif</th>
-                  <th className="px-5 py-3 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Élève</TableHead>
+                  <TableHead>Classe</TableHead>
+                  <TableHead>Cours</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-center">Statut</TableHead>
+                  <TableHead>Motif</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {absences.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]"
-                  >
-                    <td className="px-5 py-3 text-[var(--color-ink)]">
+                  <TableRow key={a.id}>
+                    <TableCell className="text-[var(--color-ink)]">
                       {a.eleve ? (
                         <Link to={`/app/eleves/${a.matricule_eleve}`} className="hover:text-[var(--color-brand-bright)]">
                           {a.eleve.prenom} {a.eleve.nom}
@@ -192,21 +194,21 @@ export default function AbsenceListPage() {
                       ) : (
                         <span className="text-[var(--color-ink-faint)]">—</span>
                       )}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-ink-dim)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">
                       {a.eleve?.classe ? `${a.eleve.classe.niveau} ${a.eleve.classe.nom}` : '—'}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-ink-dim)]">{a.cours?.nom ?? '—'}</td>
-                    <td className="px-5 py-3 text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</td>
-                    <td className="px-5 py-3 text-center">
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">{a.cours?.nom ?? '—'}</TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</TableCell>
+                    <TableCell className="text-center">
                       {a.justifiee ? (
                         <Badge tone="success">Justifiée</Badge>
                       ) : (
                         <Badge tone="danger">Non justifiée</Badge>
                       )}
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-ink-dim)]">{a.motif ?? '—'}</td>
-                    <td className="px-5 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="text-[var(--color-ink-dim)]">{a.motif ?? '—'}</TableCell>
+                    <TableCell className="text-right">
                       {!a.justifiee && canWrite && (
                         <button
                           onClick={() => setJustifying({ id: a.id, label: `${a.eleve?.prenom} ${a.eleve?.nom}` })}
@@ -216,12 +218,12 @@ export default function AbsenceListPage() {
                           <Check size={14} strokeWidth={1.75} />
                         </button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </Card>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
         {total > 0 && (

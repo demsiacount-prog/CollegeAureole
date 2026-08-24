@@ -1,6 +1,6 @@
-# models/classes.py
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, event
+
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, event
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -13,11 +13,12 @@ class Classes(Base):
     nom = Column(String, nullable=False)
     frais_inscription = Column(Float, nullable=False, default=0.0)
     mensualite = Column(Float, nullable=False, default=0.0)
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    id_salle = Column(Integer, ForeignKey("salles.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     # Relations
+    salle = relationship("Salles", back_populates="classes")
     eleves = relationship("Eleves", back_populates="classe_relation")
     cours_affectations = relationship(
         "AffectationCoursClasse", back_populates="classe", cascade="all, delete-orphan"
@@ -43,7 +44,8 @@ def generer_code_classe(mapper, connection, target):
     """CLA{année de création}{n°} — compteur global."""
     from sqlalchemy.orm import object_session
     from identifiants import generer_code, annee_creation
+    session = object_session(target)
     target.code_classe = generer_code(
         connection, Classes.__table__.c.code_classe, "CLA", annee_creation(),
-        session=object_session(target),
+        session=session,
     )

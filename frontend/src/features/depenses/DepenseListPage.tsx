@@ -4,14 +4,15 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card, CardBody } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Input } from '@/components/ui/Input'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
@@ -42,6 +43,8 @@ export default function DepenseListPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
+  const [dateDebut, setDateDebut] = useState('')
+  const [dateFin, setDateFin] = useState('')
   const [page, setPage] = useState(1)
 
   useEffect(() => {
@@ -51,21 +54,28 @@ export default function DepenseListPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, catFilter])
+  }, [debouncedSearch, catFilter, dateDebut, dateFin])
 
-  const { data: depenses = [], isLoading, isFetching } = useQuery({
-    queryKey: ['depenses', 'liste', page, debouncedSearch, catFilter],
+  const { data: depenses = [], isLoading, isFetching, isError } = useQuery({
+    queryKey: ['depenses', 'liste', page, debouncedSearch, catFilter, dateDebut, dateFin],
     queryFn: () => fetchDepenses({
       skip: (page - 1) * PAGE_SIZE,
       limit: PAGE_SIZE,
       q: debouncedSearch,
       categorie: catFilter || undefined,
+      date_debut: dateDebut || undefined,
+      date_fin: dateFin || undefined,
     }),
   })
 
   const { data: compte = { total: 0, total_montant: 0 } } = useQuery({
-    queryKey: ['depenses', 'total', debouncedSearch, catFilter],
-    queryFn: () => fetchDepensesCompte({ q: debouncedSearch, categorie: catFilter || undefined }),
+    queryKey: ['depenses', 'total', debouncedSearch, catFilter, dateDebut, dateFin],
+    queryFn: () => fetchDepensesCompte({
+      q: debouncedSearch,
+      categorie: catFilter || undefined,
+      date_debut: dateDebut || undefined,
+      date_fin: dateFin || undefined,
+    }),
   })
 
   const total = compte.total
@@ -96,13 +106,29 @@ export default function DepenseListPage() {
           onAction={canWrite ? () => { setEditing(null); setDrawerOpen(true) } : undefined}
         />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <SearchInput
             className="flex-1"
             placeholder="Rechercher par libellé, description…"
             value={search}
             onChange={setSearch}
           />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Input
+              type="date"
+              label="Du"
+              className="w-full sm:w-44"
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+            />
+            <Input
+              type="date"
+              label="Au"
+              className="w-full sm:w-44"
+              value={dateFin}
+              onChange={(e) => setDateFin(e.target.value)}
+            />
+          </div>
           <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="w-full sm:w-48">
             <option value="">Toutes catégories</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORIE_LABELS[c]}</option>)}
@@ -111,79 +137,79 @@ export default function DepenseListPage() {
 
         {isLoading ? (
           <TableSkeleton rows={8} />
+        ) : isError ? (
+          <div className="py-16">
+            <EmptyState message="Impossible de charger les dépenses." />
+          </div>
         ) : depenses.length === 0 ? (
           <div className="py-16">
-            <EmptyState message={debouncedSearch || catFilter ? 'Aucune dépense ne correspond à ce filtre.' : 'Aucune dépense enregistrée pour le moment.'} />
+            <EmptyState message={debouncedSearch || catFilter || dateDebut || dateFin ? 'Aucune dépense ne correspond à ce filtre.' : 'Aucune dépense enregistrée pour le moment.'} />
           </div>
         ) : (
-          <Card>
-            <CardBody className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border)]">
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Code</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Date</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Libellé</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)]">Catégorie</th>
-                      <th className="px-5 py-3 text-right font-medium text-[var(--color-ink-dim)]">Montant</th>
-                      <th className="px-5 py-3 text-left font-medium text-[var(--color-ink-dim)] hidden lg:table-cell">Description</th>
-                      <th className="px-5 py-3 text-right font-medium text-[var(--color-ink-dim)]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {depenses.map((d) => (
-                      <tr key={d.id} className="border-b border-[var(--color-border-soft)] last:border-0 hover:bg-[var(--color-surface-2)]">
-                        <td className="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
-                          {d.code_depense ?? '—'}
-                        </td>
-                        <td className="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
-                          {formatDate(d.date)}
-                        </td>
-                        <td className="px-5 py-3 font-medium text-[var(--color-ink)]">{d.libelle}</td>
-                        <td className="px-5 py-3">
-                          <Badge tone={(CATEGORIE_COLORS[d.categorie] as 'success' | 'warning' | 'info' | 'neutral' | 'danger') ?? 'neutral'}>
-                            {CATEGORIE_LABELS[d.categorie]}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-3 text-right font-medium text-[var(--color-ink)]">
-                          {formatMontant(d.montant)}
-                        </td>
-                        <td className="px-5 py-3 text-xs text-[var(--color-ink-faint)] hidden lg:table-cell max-w-[200px] truncate">
-                          {d.description ?? '—'}
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            {canWrite && (
-                              <Button
-                                variant="icon"
-                                size="icon"
-                                onClick={() => { setEditing(d); setDrawerOpen(true) }}
-                                aria-label={`Modifier ${d.libelle}`}
-                              >
-                                <Pencil strokeWidth={1.75} className="size-4" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button
-                                variant="icon"
-                                tone="danger"
-                                size="icon"
-                                onClick={() => setDeleting(d)}
-                                aria-label={`Supprimer ${d.libelle}`}
-                              >
-                                <Trash2 strokeWidth={1.75} className="size-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Libellé</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                  <TableHead className="hidden lg:table-cell">Description</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {depenses.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                      {d.code_depense ?? '—'}
+                    </TableCell>
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                      {formatDate(d.date)}
+                    </TableCell>
+                    <TableCell className="font-medium text-[var(--color-ink)]">{d.libelle}</TableCell>
+                    <TableCell>
+                      <Badge tone={(CATEGORIE_COLORS[d.categorie] as 'success' | 'warning' | 'info' | 'neutral' | 'danger') ?? 'neutral'}>
+                        {CATEGORIE_LABELS[d.categorie]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                      {formatMontant(d.montant)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--color-ink-faint)]">
+                      {d.description ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {canWrite && (
+                          <Button
+                            variant="icon"
+                            size="icon"
+                            onClick={() => { setEditing(d); setDrawerOpen(true) }}
+                            aria-label={`Modifier ${d.libelle}`}
+                          >
+                            <Pencil strokeWidth={1.75} className="size-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="icon"
+                            tone="danger"
+                            size="icon"
+                            onClick={() => setDeleting(d)}
+                            aria-label={`Supprimer ${d.libelle}`}
+                          >
+                            <Trash2 strokeWidth={1.75} className="size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
         {total > 0 && (

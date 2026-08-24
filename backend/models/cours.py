@@ -1,6 +1,6 @@
-# models/cours.py
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, ForeignKey, event
+
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, event
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,9 +12,8 @@ class Cours(Base):
     nom = Column(String, nullable=False)
     description = Column(String, nullable=False)
     volume_horaire = Column(Integer, nullable=False)  # utilisé pour l'emploi du temps, plus pour la pondération
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(),
-                        onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     matricule_enseignant = Column(String, ForeignKey("enseignants.matricule", ondelete="SET NULL"), nullable=True)
 
@@ -43,7 +42,8 @@ def generer_code_cours(mapper, connection, target):
     """COU{année de création}{n°} — compteur global."""
     from sqlalchemy.orm import object_session
     from identifiants import generer_code, annee_creation
+    session = object_session(target)
     target.code_cours = generer_code(
         connection, Cours.__table__.c.code_cours, "COU", annee_creation(),
-        session=object_session(target),
+        session=session,
     )

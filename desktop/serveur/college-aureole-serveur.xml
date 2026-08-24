@@ -1,0 +1,31 @@
+<!--
+Définition du service Windows pour le backend College Aureole.
+Consommé par le wrapper WinSW renommé `college-aureole-service.exe`
+installé à côté par l'installeur NSIS (%BASE% = répertoire du service).
+-->
+<service>
+  <id>CollegeAureoleServeur</id>
+  <name>College Aureole - Serveur</name>
+  <description>Serveur applicatif FastAPI de l'application de gestion scolaire College Aureole. Arrêtez ce service avant toute mise à jour.</description>
+
+  <executable>%BASE%\college-aureole-serveur.exe</executable>
+  <workingdirectory>%BASE%</workingdirectory>
+
+  <startmode>Automatic</startmode>
+  <delayedautostart>true</delayedautostart>
+
+  <!-- Redémarre automatiquement en cas de crash (10 s puis 60 s) -->
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <!-- Les fichiers téléversés persistent dans le répertoire d'installation -->
+  <env name="AUREOLE_UPLOADS_DIR" value="%BASE%\uploads"/>
+  <env name="ENVIRONMENT" value="production"/>
+
+  <!-- Journaux rotatifs : college-aureole-service.out.log (≈10 Mo × 3) -->
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+</service>

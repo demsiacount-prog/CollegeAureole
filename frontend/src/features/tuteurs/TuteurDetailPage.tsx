@@ -10,9 +10,10 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
-import { TUTEUR_DOCS_LABELS } from '@/features/documents/labels'
+import { countVisibleDocuments, TUTEUR_DOCS_LABELS } from '@/features/documents/labels'
 import { fetchDocumentsTuteur, uploadDocumentTuteur } from '@/features/documents/api'
 import { formatDate } from '@/lib/format'
 import { fetchTuteurById } from './api'
@@ -114,7 +115,7 @@ export default function TuteurDetailPage() {
           {
             key: 'documents',
             label: 'Documents',
-            count: documents?.length ?? 0,
+            count: countVisibleDocuments(documents ?? [], TUTEUR_DOCS_LABELS),
             content: (
               <DocumentsTab
                 documents={documents ?? []}
@@ -150,47 +151,43 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 function ElevesTab({ eleves }: { eleves: import('@/features/shared/types').EleveResume[] }) {
   if (eleves.length === 0) return <EmptyState message="Aucun élève rattaché à ce tuteur." />
   return (
-    <Card>
-      <CardBody>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)]">
-                <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Élève</th>
-                <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Classe</th>
-                <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Date de naissance</th>
-                <th className="pb-3 text-left font-medium text-[var(--color-ink-dim)]">Statut</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border-soft)]">
-              {eleves.map((e) => (
-                <tr key={e.matricule}>
-                  <td className="py-3">
-                    <Link
-                      to={`/app/eleves/${e.matricule}`}
-                      className="flex items-center gap-3 text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]"
-                    >
-                      <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
-                      <div>
-                        <span className="font-medium">{e.prenom} {e.nom}</span>
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="py-3 text-[var(--color-ink-dim)]">
-                    {e.classe ? `${e.classe.niveau} — ${e.classe.nom}` : '—'}
-                  </td>
-                  <td className="py-3 text-[var(--color-ink-dim)]">{formatDate(e.date_de_naissance)}</td>
-                  <td className="py-3">
-                    <Badge tone={e.statut === 'actif' ? 'success' : 'neutral'}>
-                      {e.statut === 'actif' ? 'Actif' : 'Inactif'}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardBody>
-    </Card>
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Élève</TableHead>
+            <TableHead>Classe</TableHead>
+            <TableHead>Date de naissance</TableHead>
+            <TableHead>Statut</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {eleves.map((e) => (
+            <TableRow key={e.matricule}>
+              <TableCell>
+                <Link
+                  to={`/app/eleves/${e.matricule}`}
+                  className="flex items-center gap-3 text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]"
+                >
+                  <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
+                  <div>
+                    <span className="font-medium">{e.prenom} {e.nom}</span>
+                  </div>
+                </Link>
+              </TableCell>
+              <TableCell className="text-[var(--color-ink-dim)]">
+                {e.classe ? `${e.classe.niveau} — ${e.classe.nom}` : '—'}
+              </TableCell>
+              <TableCell className="text-[var(--color-ink-dim)]">{formatDate(e.date_de_naissance)}</TableCell>
+              <TableCell>
+                <Badge tone={e.statut === 'actif' ? 'success' : 'neutral'}>
+                  {e.statut === 'actif' ? 'Actif' : 'Inactif'}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }

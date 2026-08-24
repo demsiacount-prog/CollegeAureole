@@ -1,5 +1,6 @@
-from datetime import datetime
+
 from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
+from timeutils import now_utc
 from database import Base
 from enums import RoleUtilisateur
 
@@ -19,5 +20,5 @@ class Utilisateurs(Base):
     tentatives_echouees = Column(Integer, nullable=False, default=0)
     verrouille_jusqua = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)

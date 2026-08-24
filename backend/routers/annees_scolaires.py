@@ -13,15 +13,15 @@ router = APIRouter(prefix="/api/anneesScolaires", tags=["Années Scolaires"], de
 @router.post("/", response_model=schemas.AnneeScolaireResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
 def create_annee_scolaire(payload: schemas.AnneeScolaireCreate, db: Session = Depends(get_db)):
     if db.query(models.AnneesScolaires).filter(models.AnneesScolaires.libelle == payload.libelle).first():
-        raise HTTPException(status_code=400, detail="Cette année scolaire existe déjà.")
+        raise HTTPException(status_code=400, detail="Année scolaire déjà existante")
     if payload.active:
         db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
     nouvelle_annee = models.AnneesScolaires(**payload.model_dump())
     db.add(nouvelle_annee)
-    db.commit()
-    db.refresh(nouvelle_annee)
+    db.flush()
     generer_periodes_par_defaut(db, nouvelle_annee.id, nouvelle_annee.date_debut, nouvelle_annee.date_fin)
     db.commit()
+    db.refresh(nouvelle_annee)
     return nouvelle_annee
 
 
@@ -34,7 +34,7 @@ def get_all_annees_scolaires(db: Session = Depends(get_db)):
 def get_annee_scolaire_active(db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
     if not annee:
-        raise HTTPException(status_code=404, detail="Aucune année scolaire active n'est définie.")
+        raise HTTPException(status_code=404, detail="Aucune année scolaire active")
     return annee
 
 
@@ -52,13 +52,13 @@ def update_annee_scolaire(annee_id: int, payload: schemas.AnneeScolaireCreate, d
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
-        raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée et ne peut plus être modifiée.")
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
 
     doublon = db.query(models.AnneesScolaires).filter(
         models.AnneesScolaires.libelle == payload.libelle, models.AnneesScolaires.id != annee_id
     ).first()
     if doublon:
-        raise HTTPException(status_code=400, detail="Cette année scolaire existe déjà.")
+        raise HTTPException(status_code=400, detail="Année scolaire déjà existante")
     if payload.active and not annee.active:
         db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
     for key, value in payload.model_dump().items():
@@ -74,7 +74,7 @@ def activer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
-        raise HTTPException(status_code=409, detail="Cette année scolaire est clôturée.")
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
     db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
     annee.active = True
     db.commit()
@@ -90,7 +90,7 @@ def cloturer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.active:
-        raise HTTPException(status_code=400, detail="Impossible de clôturer l'année active. Activez d'abord l'année suivante.")
+        raise HTTPException(status_code=400, detail="Année active")
     annee.cloturee = True
     db.query(models.Trimestres).filter(models.Trimestres.annee_scolaire_id == annee_id).update({models.Trimestres.verrouille: True})
     db.commit()

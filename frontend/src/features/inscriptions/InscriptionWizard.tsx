@@ -13,14 +13,13 @@ import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
 import { fetchTuteurs } from '@/features/tuteurs/api'
 import { creerDossierComplet } from './api'
 import { uploadDocument } from '@/features/documents/api'
+import { extractErrorMessage } from '@/lib/api'
+import { required, email, phone, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { DossierCompletInput } from './api'
 
 const DOCS_LABELS: Record<string, string> = {
   acte_naissance: 'Acte de naissance',
   carnet_sante: 'Carnet de santé',
-  jugement_tutelle: 'Jugement de tutelle (si applicable)',
-  photo_id: "Photo d'identité",
-  certificat_radiation: 'Certificat de radiation',
 }
 
 const STEPS = [
@@ -34,19 +33,20 @@ const STEPS = [
 interface Props {
   onComplete: () => void
   onCancel: () => void
+  canImport?: boolean
 }
 
 const emptyForm = {
   nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: 'M',
   tuteurNom: '', tuteurPrenom: '', tuteurEmail: '', tuteurTelephone: '', tuteurAdresse: '', tuteurProfession: '',
   niveauId: '', classeId: '', anneeScolaireId: '',
-  acte_naissance: false, carnet_sante: false, jugement_tutelle: false, photo_id: false, certificat_radiation: false,
+  acte_naissance: false, carnet_sante: false,
   observation: '',
 }
 
-const DOCS_FIELDS = ['acte_naissance', 'carnet_sante', 'jugement_tutelle', 'photo_id', 'certificat_radiation'] as const
+const DOCS_FIELDS = ['acte_naissance', 'carnet_sante'] as const
 
-export default function InscriptionWizard({ onComplete, onCancel }: Props) {
+export default function InscriptionWizard({ onComplete, onCancel, canImport = true }: Props) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(emptyForm)
   const [tuteurMode, setTuteurMode] = useState<'create' | 'select'>('create')
@@ -55,6 +55,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
   const [submitted, setSubmitted] = useState(false)
   const [codeInscription, setCodeInscription] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Errors>({})
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({})
   const [uploadProgress, setUploadProgress] = useState<string | null>(null)
 
@@ -77,7 +78,38 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
 
   const pct = Math.round(((step - 1) / (STEPS.length - 1)) * 100)
 
+  function validateStep(stepNum: number): boolean {
+    let errs: Errors = {}
+    if (stepNum === 1) {
+      errs = validateFields({
+        nom: required(form.nom, 'Le nom'),
+        prenom: required(form.prenom, 'Le prénom'),
+        dateNaissance: required(form.dateNaissance, 'La date de naissance'),
+        lieuNaissance: required(form.lieuNaissance, 'Le lieu de naissance'),
+      })
+    } else if (stepNum === 2) {
+      errs = tuteurMode === 'select'
+        ? validateFields({ tuteurId: required(tuteurId, 'Le tuteur') })
+        : validateFields({
+            tuteurNom: required(form.tuteurNom, 'Le nom du tuteur'),
+            tuteurPrenom: required(form.tuteurPrenom, 'Le prénom du tuteur'),
+            tuteurEmail: required(form.tuteurEmail, "L'e-mail") ?? email(form.tuteurEmail),
+            tuteurTelephone: required(form.tuteurTelephone, 'Le téléphone') ?? phone(form.tuteurTelephone),
+            tuteurAdresse: required(form.tuteurAdresse, "L'adresse"),
+            tuteurProfession: required(form.tuteurProfession, 'La profession'),
+          })
+    }
+    setErrors(errs)
+    return !hasErrors(errs)
+  }
+
+  function handleNext() {
+    if (validateStep(step)) setStep((s) => s + 1)
+  }
+
   async function handleSubmit() {
+    if (!validateStep(1)) return setStep(1)
+    if (!validateStep(2)) return setStep(2)
     setSubmitting(true)
     setError(null)
     setUploadProgress(null)
@@ -104,9 +136,6 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
           statut: 'actif',
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
-          jugement_tutelle: form.jugement_tutelle,
-          photo_id: form.photo_id,
-          certificat_radiation: form.certificat_radiation,
         },
         classe_id: form.classeId ? Number(form.classeId) : null,
         id_annee_scolaire: anneeActive?.id ?? Number(form.anneeScolaireId),
@@ -126,8 +155,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
       setSubmitted(true)
       setTimeout(() => onComplete(), 2000)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erreur lors de l'enregistrement."
-      setError(msg)
+      setError(extractErrorMessage(err, "Erreur lors de l'enregistrement."))
       setSubmitting(false)
     }
   }
@@ -233,11 +261,45 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                       <option value="M">Masculin</option>
                       <option value="F">Féminin</option>
                     </Select>
-                    <Input label="Nom" placeholder="Traoré" value={form.nom} onChange={(e) => set('nom', e.target.value)} required />
-                    <Input label="Prénom" placeholder="Fatoumata" value={form.prenom} onChange={(e) => set('prenom', e.target.value)} required />
-                    <Input label="Date de naissance" type="date" value={form.dateNaissance} onChange={(e) => set('dateNaissance', e.target.value)} max={new Date().toISOString().split('T')[0]} required />
+                    <Input
+                      label="Nom"
+                      placeholder="Traoré"
+                      value={form.nom}
+                      onChange={(e) => {
+                        set('nom', e.target.value)
+                        if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
+                      }}
+                      required
+                      error={errors.nom}
+                    />
+                    <Input
+                      label="Prénom"
+                      placeholder="Fatoumata"
+                      value={form.prenom}
+                      onChange={(e) => {
+                        set('prenom', e.target.value)
+                        if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
+                      }}
+                      required
+                      error={errors.prenom}
+                    />
+                    <Input
+                      label="Date de naissance"
+                      type="date"
+                      value={form.dateNaissance}
+                      onChange={(e) => {
+                        set('dateNaissance', e.target.value)
+                        if (errors.dateNaissance) setErrors((prev) => ({ ...prev, dateNaissance: undefined }))
+                      }}
+                      max={new Date().toISOString().split('T')[0]}
+                      required
+                      error={errors.dateNaissance}
+                    />
                   </div>
-                  <Input label="Lieu de naissance" placeholder="Bamako" value={form.lieuNaissance} onChange={(e) => set('lieuNaissance', e.target.value)} />
+                  <Input label="Lieu de naissance" placeholder="Bamako" value={form.lieuNaissance} onChange={(e) => {
+                    set('lieuNaissance', e.target.value)
+                    if (errors.lieuNaissance) setErrors((prev) => ({ ...prev, lieuNaissance: undefined }))
+                  }} required error={errors.lieuNaissance} />
                   <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-info)]/30 bg-[var(--color-info-wash)] px-3 py-2">
                     <AlertCircle size={14} className="mt-0.5 shrink-0 text-[var(--color-info)]" />
                     <span className="text-xs text-[var(--color-info)]">
@@ -256,7 +318,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
                         background: tuteurMode === 'select' ? 'var(--color-brand)' : 'var(--color-surface)',
-                        color: tuteurMode === 'select' ? '#fff' : 'var(--color-ink-dim)',
+                        color: tuteurMode === 'select' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
                       }}
                     >
                       Tuteur existant
@@ -267,7 +329,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
                         background: tuteurMode === 'create' ? 'var(--color-brand)' : 'var(--color-surface)',
-                        color: tuteurMode === 'create' ? '#fff' : 'var(--color-ink-dim)',
+                        color: tuteurMode === 'create' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
                       }}
                     >
                       Nouveau tuteur
@@ -278,7 +340,10 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                     <SearchableSelect
                       label="Choisir un tuteur"
                       value={tuteurId}
-                      onChange={setTuteurId}
+                      onChange={(v) => {
+                        setTuteurId(v)
+                        if (errors.tuteurId) setErrors((prev) => ({ ...prev, tuteurId: undefined }))
+                      }}
                       options={tuteurs.map((t) => ({
                         value: String(t.id),
                         label: `${t.prenom} ${t.nom}`.trim(),
@@ -286,19 +351,81 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                       }))}
                       placeholder="Rechercher un tuteur…"
                       emptyMessage="Aucun tuteur trouvé"
+                      error={errors.tuteurId}
                     />
                   ) : (
                     <>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Nom du tuteur" placeholder="Touré" value={form.tuteurNom} onChange={(e) => set('tuteurNom', e.target.value)} required />
-                        <Input label="Prénom du tuteur" placeholder="Amadou" value={form.tuteurPrenom} onChange={(e) => set('tuteurPrenom', e.target.value)} required />
+                        <Input
+                          label="Nom du tuteur"
+                          placeholder="Touré"
+                          value={form.tuteurNom}
+                          onChange={(e) => {
+                            set('tuteurNom', e.target.value)
+                            if (errors.tuteurNom) setErrors((prev) => ({ ...prev, tuteurNom: undefined }))
+                          }}
+                          required
+                          error={errors.tuteurNom}
+                        />
+                        <Input
+                          label="Prénom du tuteur"
+                          placeholder="Amadou"
+                          value={form.tuteurPrenom}
+                          onChange={(e) => {
+                            set('tuteurPrenom', e.target.value)
+                            if (errors.tuteurPrenom) setErrors((prev) => ({ ...prev, tuteurPrenom: undefined }))
+                          }}
+                          required
+                          error={errors.tuteurPrenom}
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Email" type="email" placeholder="amadou@email.com" value={form.tuteurEmail} onChange={(e) => set('tuteurEmail', e.target.value)} required />
-                        <Input label="Téléphone" placeholder="+223 XX XX XX XX" value={form.tuteurTelephone} onChange={(e) => set('tuteurTelephone', e.target.value)} required />
+                        <Input
+                          label="Email"
+                          type="email"
+                          placeholder="amadou@email.com"
+                          value={form.tuteurEmail}
+                          onChange={(e) => {
+                            set('tuteurEmail', e.target.value)
+                            if (errors.tuteurEmail) setErrors((prev) => ({ ...prev, tuteurEmail: undefined }))
+                          }}
+                          required
+                          error={errors.tuteurEmail}
+                        />
+                        <Input
+                          label="Téléphone"
+                          placeholder="+223 XX XX XX XX"
+                          value={form.tuteurTelephone}
+                          onChange={(e) => {
+                            set('tuteurTelephone', e.target.value)
+                            if (errors.tuteurTelephone) setErrors((prev) => ({ ...prev, tuteurTelephone: undefined }))
+                          }}
+                          required
+                          error={errors.tuteurTelephone}
+                        />
                       </div>
-                      <Input label="Adresse" placeholder="Badalabougou, Bamako" value={form.tuteurAdresse} onChange={(e) => set('tuteurAdresse', e.target.value)} required />
-                      <Input label="Profession" placeholder="ex. Commerçant" value={form.tuteurProfession} onChange={(e) => set('tuteurProfession', e.target.value)} required />
+                      <Input
+                        label="Adresse"
+                        placeholder="Badalabougou, Bamako"
+                        value={form.tuteurAdresse}
+                        onChange={(e) => {
+                          set('tuteurAdresse', e.target.value)
+                          if (errors.tuteurAdresse) setErrors((prev) => ({ ...prev, tuteurAdresse: undefined }))
+                        }}
+                        required
+                        error={errors.tuteurAdresse}
+                      />
+                      <Input
+                        label="Profession"
+                        placeholder="ex. Commerçant"
+                        value={form.tuteurProfession}
+                        onChange={(e) => {
+                          set('tuteurProfession', e.target.value)
+                          if (errors.tuteurProfession) setErrors((prev) => ({ ...prev, tuteurProfession: undefined }))
+                        }}
+                        required
+                        error={errors.tuteurProfession}
+                      />
                     </>
                   )}
                 </div>
@@ -400,7 +527,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                             <div>
                               <p className="text-[13px] font-medium text-[var(--color-ink)]">
                                 {label}
-                                {field !== 'jugement_tutelle' && <span className="ml-1 text-[var(--color-danger)]">*</span>}
+                                <span className="ml-1 text-[var(--color-danger)]">*</span>
                               </p>
                               <p className="text-[11px] text-[var(--color-ink-faint)]">
                                 {checked ? 'Document reçu' : 'En attente de réception'}
@@ -420,30 +547,36 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                             {checked ? 'Reçu' : 'Marquer reçu'}
                           </button>
                         </div>
-                        <div className="mt-3 flex items-center gap-3">
-                          <label className="flex cursor-pointer items-center gap-2 rounded border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
-                            <Upload size={14} strokeWidth={1.75} />
-                            {file ? file.name : 'Importer le fichier…'}
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0] ?? null
-                                setDocFiles((prev) => ({ ...prev, [field]: f }))
-                              }}
-                            />
-                          </label>
-                          {file && (
-                            <button
-                              type="button"
-                              onClick={() => setDocFiles((prev) => ({ ...prev, [field]: null }))}
-                              className="text-xs text-[var(--color-danger)] hover:underline"
-                            >
-                              Retirer
-                            </button>
-                          )}
-                        </div>
+                        {canImport ? (
+                          <div className="mt-3 flex items-center gap-3">
+                            <label className="flex cursor-pointer items-center gap-2 rounded border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
+                              <Upload size={14} strokeWidth={1.75} />
+                              {file ? file.name : 'Importer le fichier…'}
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0] ?? null
+                                  setDocFiles((prev) => ({ ...prev, [field]: f }))
+                                }}
+                              />
+                            </label>
+                            {file && (
+                              <button
+                                type="button"
+                                onClick={() => setDocFiles((prev) => ({ ...prev, [field]: null }))}
+                                className="text-xs text-[var(--color-danger)] hover:underline"
+                              >
+                                Retirer
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-[11px] text-[var(--color-ink-faint)]">
+                            Les fichiers seront ajoutés par l'administrateur après la création de l'élève.
+                          </p>
+                        )}
                       </div>
                     )
                   })}
@@ -527,7 +660,7 @@ export default function InscriptionWizard({ onComplete, onCancel }: Props) {
                 </Button>
               )}
               {step < STEPS.length ? (
-                <Button variant="primary" onClick={() => setStep((s) => s + 1)}>
+                <Button variant="primary" onClick={handleNext}>
                   Suivant <ChevronRight size={14} strokeWidth={1.75} />
                 </Button>
               ) : (

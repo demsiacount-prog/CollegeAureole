@@ -1,11 +1,11 @@
 import { api } from '@/lib/api'
 import type { Eleve } from '@/features/eleves/types'
-import type { Classe } from '@/features/shared/types'
-import type { Cours } from '@/features/shared/types'
+import type { Classe, Cours } from '@/features/shared/types'
 import type { Trimestre } from '@/features/trimestres/types'
-import { fetchClasses } from '@/features/classes/api'
+import { fetchClasses, fetchClasseDetail } from '@/features/classes/api'
+import { fetchTrimestres } from '@/features/trimestres/api'
 
-export { fetchClasses }
+export { fetchClasses, fetchClasseDetail, fetchTrimestres }
 
 export interface Note {
   id: number
@@ -33,31 +33,6 @@ export interface NoteCreatePayload {
   id_trimestre: number | null
 }
 
-export interface ClasseDetail {
-  id: number
-  niveau: string
-  nom: string
-  frais_inscription: number
-  mensualite: number
-  created_at: string
-  updated_at: string
-  eleves: Eleve[]
-  cours: Cours[]
-  effectif_actuel: number
-}
-
-export async function fetchClasseDetail(id: number): Promise<ClasseDetail> {
-  const res = await api.get<ClasseDetail>(`/api/classes/${id}`)
-  return res.data
-}
-
-export async function fetchTrimestres(anneeScolaireId?: number): Promise<Trimestre[]> {
-  const params: Record<string, string | number> = { limit: 500 }
-  if (anneeScolaireId) params.annee_scolaire_id = anneeScolaireId
-  const res = await api.get<Trimestre[]>('/api/trimestres/', { params })
-  return res.data
-}
-
 export async function fetchExistingNotes(params: {
   id_classe: number
   id_cours: number
@@ -77,4 +52,8 @@ export async function createNote(payload: NoteCreatePayload): Promise<Note> {
 export async function updateNote(id: number, payload: NoteCreatePayload): Promise<Note> {
   const res = await api.put<Note>(`/api/notes/${id}`, payload)
   return res.data
+}
+
+export async function deleteNote(id: number): Promise<void> {
+  await api.delete(`/api/notes/${id}`)
 }

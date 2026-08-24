@@ -70,7 +70,7 @@ def compter_depenses(
 def get_depense(depense_id: int, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
-        raise HTTPException(status_code=404, detail="Dépense introuvable.")
+        raise HTTPException(status_code=404, detail="Dépense introuvable")
     return dep
 
 
@@ -78,7 +78,7 @@ def get_depense(depense_id: int, db: Session = Depends(get_db)):
 def modifier_depense(depense_id: int, payload: schemas.DepenseUpdate, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
-        raise HTTPException(status_code=404, detail="Dépense introuvable.")
+        raise HTTPException(status_code=404, detail="Dépense introuvable")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(dep, k, v)
     db.commit()
@@ -90,7 +90,7 @@ def modifier_depense(depense_id: int, payload: schemas.DepenseUpdate, db: Sessio
 def supprimer_depense(depense_id: int, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
-        raise HTTPException(status_code=404, detail="Dépense introuvable.")
+        raise HTTPException(status_code=404, detail="Dépense introuvable")
     db.delete(dep)
     db.commit()
     return None

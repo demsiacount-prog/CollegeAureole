@@ -1,4 +1,5 @@
-from datetime import datetime, date
+from datetime import date
+from timeutils import now_utc
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
@@ -14,9 +15,9 @@ router = APIRouter(prefix="/api/absences", tags=["Absences"], dependencies=[Depe
 @router.post("/", response_model=schemas.AbsenceResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def creer_absence(payload: schemas.AbsenceCreate, db: Session = Depends(get_db)):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == payload.matricule_eleve).first():
-        raise HTTPException(status_code=404, detail="Élève introuvable.")
+        raise HTTPException(status_code=404, detail="Élève introuvable")
     if payload.id_cours and not db.query(models.Cours).filter(models.Cours.id == payload.id_cours).first():
-        raise HTTPException(status_code=404, detail="Cours introuvable.")
+        raise HTTPException(status_code=404, detail="Cours introuvable")
 
     nouvelle_absence = models.Absences(**payload.model_dump())
     db.add(nouvelle_absence)
@@ -115,7 +116,7 @@ def get_alertes_absences(seuil: int = 3, db: Session = Depends(get_db)):
 def get_absence(absence_id: int, db: Session = Depends(get_db)):
     absence = db.query(models.Absences).options(joinedload(models.Absences.eleve)).filter(models.Absences.id == absence_id).first()
     if not absence:
-        raise HTTPException(status_code=404, detail="Absence introuvable.")
+        raise HTTPException(status_code=404, detail="Absence introuvable")
     return absence
 
 
@@ -123,7 +124,7 @@ def get_absence(absence_id: int, db: Session = Depends(get_db)):
 def update_absence(absence_id: int, payload: schemas.AbsenceCreate, db: Session = Depends(get_db)):
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:
-        raise HTTPException(status_code=404, detail="Absence introuvable.")
+        raise HTTPException(status_code=404, detail="Absence introuvable")
     for key, value in payload.model_dump().items():
         setattr(absence, key, value)
     db.commit()
@@ -137,12 +138,12 @@ def justifier_absence(absence_id: int, payload: schemas.AbsenceJustifierRequest,
     modification générique pour garder un historique fiable."""
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:
-        raise HTTPException(status_code=404, detail="Absence introuvable.")
+        raise HTTPException(status_code=404, detail="Absence introuvable")
 
     absence.justifiee = payload.justifiee
     absence.motif = payload.motif
     absence.justifiee_par_id = payload.utilisateur_id
-    absence.date_justification = datetime.utcnow()
+    absence.date_justification = now_utc()
 
     db.commit()
     db.refresh(absence)
@@ -153,7 +154,7 @@ def justifier_absence(absence_id: int, payload: schemas.AbsenceJustifierRequest,
 def delete_absence(absence_id: int, db: Session = Depends(get_db)):
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:
-        raise HTTPException(status_code=404, detail="Absence introuvable.")
+        raise HTTPException(status_code=404, detail="Absence introuvable")
     db.delete(absence)
     db.commit()
     return None

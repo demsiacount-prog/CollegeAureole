@@ -1,5 +1,6 @@
-from datetime import datetime
-from sqlalchemy import Column, String, Float, event, select, func
+
+from sqlalchemy import Column, String, DateTime, event
+from timeutils import now_utc
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,10 +15,9 @@ class Enseignants(Base):
     telephone = Column(String, nullable=False)
     adresse = Column(String, nullable=False)
     specialite = Column(String, nullable=False)
-    heures_hebdo_max = Column(Float, nullable=True)  # None = pas de quota contrôlé
 
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat())
-    updated_at = Column(String, nullable=False, default=lambda: datetime.now().isoformat(), onupdate=lambda: datetime.now().isoformat())
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     cours = relationship("Cours", back_populates="enseignant")
     notes = relationship("Notes", back_populates="enseignant")
@@ -25,7 +25,12 @@ class Enseignants(Base):
 
 @event.listens_for(Enseignants, "before_insert")
 def receive_before_insert(mapper, connection, target):
-    result = connection.execute(select(func.count()).select_from(Enseignants.__table__))
-    compteur = result.scalar() + 1
-    annee = datetime.now().strftime("%y")
-    target.matricule = f"ENS{annee}{compteur:05d}"
+    if target.matricule:
+        return
+    from identifiants import generer_code, resoudre_annee
+    from sqlalchemy.orm import object_session
+    session = object_session(target)
+    annee = resoudre_annee(connection)
+    target.matricule = generer_code(
+        connection, Enseignants.matricule, "ENS", annee, session=session
+    )

@@ -72,7 +72,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Administration',
     items: [
-      { label: 'Clôture d’année', path: '/app/cloture-annee', icon: FlagTriangleRight, roles: DIRECTION },
+      { label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight, roles: DIRECTION },
       { label: 'Paramètres', path: '/app/parametres', icon: Settings, roles: ['admin', 'directeur'] },
     ],
   },

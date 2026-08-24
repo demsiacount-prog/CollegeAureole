@@ -19,18 +19,9 @@ export interface Inscription {
 }
 
 import type { Paiement } from '@/features/shared/types'
+import type { MoyenneTrimestre, NoteParMatiere } from '@/features/eleves/types'
 
-export interface MoyenneTrimestre {
-  numero: number
-  periode: string
-  moyenne: number | null
-}
-
-export interface NoteParMatiere {
-  matiere: string
-  nb_notes: number
-  moyenne: number | null
-}
+export type { MoyenneTrimestre, NoteParMatiere }
 
 export interface InscriptionDetail extends Inscription {
   classe: { id: number; niveau: string; nom: string } | null

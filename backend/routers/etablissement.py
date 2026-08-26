@@ -1,5 +1,4 @@
 import os
-import re
 import shutil
 import uuid
 
@@ -13,11 +12,22 @@ from security import require_role
 
 router = APIRouter(prefix="/api/etablissement", tags=["Établissement"])
 
-_UPLOADS_LOGOS_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads", "logos")
+_UPLOADS_BASE = os.environ.get("AUREOLE_UPLOADS_DIR") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads")
 )
-_LOGO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-_LOGO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+_UPLOADS_LOGOS_DIR = os.path.join(_UPLOADS_BASE, "logos")
+# Extension dérivée du type MIME (déjà validé), jamais du nom de fichier
+# fourni par le client : un nom de fichier n'est pas fiable (absent,
+# trompeur, ou dans une casse/format inattendu) et le faire dépendre de lui
+# a par le passé provoqué l'enregistrement de tous les logos non-PNG sous
+# une extension .png alors que leur contenu réel restait JPEG/WebP/GIF,
+# ce qui cassait l'affichage dans le WebView du client bureau (Tauri).
+_LOGO_MIME_TO_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
 _LOGO_MAX_SIZE = 2 * 1024 * 1024  # 2 Mo
 
 
@@ -47,7 +57,7 @@ def enregistrer_logo(file: UploadFile) -> str:
     """Valide l'image du logo, l'enregistre sur disque et retourne son chemin
     public. Le lien avec la fiche établissement est établi séparément (PUT de
     l'établissement ou fiche d'initialisation)."""
-    if file.content_type not in _LOGO_MIME_TYPES:
+    if file.content_type not in _LOGO_MIME_TO_EXT:
         raise HTTPException(
             status_code=400,
             detail="Format d'image non autorisé",
@@ -58,10 +68,7 @@ def enregistrer_logo(file: UploadFile) -> str:
     if taille > _LOGO_MAX_SIZE:
         raise HTTPException(status_code=400, detail="Image trop volumineuse")
 
-    ext = os.path.splitext(file.filename or "")[1].lower()
-    ext = re.sub(r"[^a-z0-9]", "", ext)[:10]
-    if ext not in _LOGO_EXTENSIONS:
-        ext = ".png"
+    ext = _LOGO_MIME_TO_EXT[file.content_type]
 
     os.makedirs(_UPLOADS_LOGOS_DIR, exist_ok=True)
     filename = f"logo_{uuid.uuid4().hex[:12]}{ext}"

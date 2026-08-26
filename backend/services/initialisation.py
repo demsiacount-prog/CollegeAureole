@@ -32,7 +32,7 @@ _progress: dict = {
     "erreur": None,
 }
 
-NB_ETAPES = 5
+NB_ETAPES = 4
 
 
 def get_progress() -> dict:
@@ -174,7 +174,7 @@ def executer_initialisation(payload) -> None:
             db.close()
 
         # 3. Compte administrateur personnalisé.
-        _etape(3, "Création du compte administrateur…", 40)
+        _etape(3, "Création du compte administrateur…", 50)
         db = SessionLocal()
         try:
             db.add(models.Utilisateurs(
@@ -188,13 +188,7 @@ def executer_initialisation(payload) -> None:
         finally:
             db.close()
 
-        # 4. Données d'exemple (optionnel) : comptes démo, classes, élèves…
-        if getattr(payload, "donnees_exemple", True) and annee_id is not None:
-            _etape(4, "Création des données d'exemple…", 50)
-            from services.donnees_exemple import peupler
-            peupler(annee_id, annee_debut, annee_fin, admin.email)
-
-        _etape(5, "Configuration de l'application…", 95)
+        _etape(4, "Configuration de l'application…", 90)
         _finir()
     except Exception as e:
         logger.exception("Initialisation échouée")

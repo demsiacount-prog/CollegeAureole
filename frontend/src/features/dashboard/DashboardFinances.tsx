@@ -6,6 +6,7 @@ import {
 import { useAuth } from '@/auth/useAuth'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchDashboardFinances } from './api'
 
 function formatMontant(v: number): string {
@@ -112,28 +113,32 @@ export default function DashboardFinances() {
             </h3>
           </div>
           <div className="h-96 overflow-x-auto">
-            <div style={{ minWidth: '600px', height: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.evolution_mensuelle}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="mois" tick={{ fontSize: 12, fill: 'var(--color-ink-dim)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} tickFormatter={(v: number) => formatMontant(v)} />
-                  <Tooltip
-                    formatter={(value) => formatMontantPlein(Number(value))}
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface-2)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--color-ink)',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend />
-                  <Bar name="Paiements" dataKey="paiements" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-                  <Bar name="Dépenses" dataKey="depenses" fill="var(--color-warning)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {stats.evolution_mensuelle.some((e) => e.paiements > 0 || e.depenses > 0) ? (
+              <div style={{ minWidth: '600px', height: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.evolution_mensuelle}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis dataKey="mois" tick={{ fontSize: 12, fill: 'var(--color-ink-dim)' }} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} tickFormatter={(v: number) => formatMontant(v)} />
+                    <Tooltip
+                      formatter={(value) => formatMontantPlein(Number(value))}
+                      contentStyle={{
+                        backgroundColor: 'var(--color-surface-2)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--color-ink)',
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend />
+                    <Bar name="Paiements" dataKey="paiements" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                    <Bar name="Dépenses" dataKey="depenses" fill="var(--color-warning)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyState message="Aucun paiement ni dépense enregistré. Les données apparaîtront ici après la première transaction." />
+            )}
           </div>
         </Card>
       </div>

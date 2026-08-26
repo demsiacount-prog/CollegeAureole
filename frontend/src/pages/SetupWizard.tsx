@@ -133,8 +133,6 @@ export default function SetupWizard() {
   const defaut = useMemo(anneeScolaireParDefaut, [])
   const [dateDebut, setDateDebut] = useState(defaut.date_debut)
   const [dateFin, setDateFin] = useState(defaut.date_fin)
-  const [donneesExemple, setDonneesExemple] = useState(true)
-
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Errors>({})
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -240,7 +238,6 @@ export default function SetupWizard() {
           },
           admin: { nom: nom.trim(), prenom: prenom.trim(), email, mot_de_passe: password },
           annee_scolaire: { date_debut: dateDebut, date_fin: dateFin },
-          donnees_exemple: donneesExemple,
         },
         { timeout: 30_000 },
       )
@@ -463,18 +460,6 @@ export default function SetupWizard() {
                           <p>Mot de passe : <span className="text-[var(--color-ink)]">{password}</span></p>
                         </div>
                       </div>
-                      {donneesExemple && (
-                        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
-                            <KeyRound className="size-3.5" />
-                            Comptes de démonstration
-                          </div>
-                          <div className="mt-2 space-y-1 break-all font-mono text-xs text-[var(--color-ink-dim)]">
-                            <p>Directeur : <span className="text-[var(--color-ink)]">directeur@{(email.split('@')[1] ?? 'etablissement.com')}</span> — Password123!</p>
-                            <p>Comptable : <span className="text-[var(--color-ink)]">comptable@{(email.split('@')[1] ?? 'etablissement.com')}</span> — Password123!</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <Button variant="primary" href="/connexion" className="mt-6">
@@ -521,12 +506,12 @@ export default function SetupWizard() {
                       <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                         {formStep === 1 && 'Configuration initiale'}
                         {formStep === 2 && 'Compte administrateur'}
-                        {formStep === 3 && 'Année scolaire & données'}
+                        {formStep === 3 && 'Année scolaire'}
                       </h2>
                       <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
                         {formStep === 1 && 'Renseignez la fiche de votre établissement.'}
-                        {formStep === 2 && 'Ce compte pilotera l’ensemble de l’application.'}
-                        {formStep === 3 && 'Définissez la période scolaire et le niveau de données.'}
+                        {formStep === 2 && 'Ce compte pilotera l\u2019ensemble de l\u2019application.'}
+                        {formStep === 3 && 'Définissez la période scolaire.'}
                       </p>
                     </div>
                     <button
@@ -807,23 +792,6 @@ export default function SetupWizard() {
                             )}
                           </div>
                         </div>
-                        <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 transition-all duration-150 hover:border-[var(--color-brand)]/50 hover:bg-[var(--color-surface-3)]">
-                          <input
-                            type="checkbox"
-                            checked={donneesExemple}
-                            onChange={(e) => setDonneesExemple(e.target.checked)}
-                            data-testid="seed-checkbox"
-                            className="mt-0.5 size-4 shrink-0 accent-[var(--color-brand)]"
-                          />
-                          <span>
-                            <span className="block text-sm font-medium text-[var(--color-ink)]">
-                              Données d’exemple
-                            </span>
-                            <span className="block text-xs text-[var(--color-ink-dim)]">
-                              Élèves, enseignants, notes et paiements pour tester immédiatement.
-                            </span>
-                          </span>
-                        </label>
                       </>
                     )}
 

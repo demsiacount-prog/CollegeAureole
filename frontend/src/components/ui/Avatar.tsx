@@ -31,6 +31,8 @@ export function Avatar({
       <img
         src={urlAbsolue(photo)}
         alt={`${prenom} ${nom}`}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         className={clsx(
           'shrink-0 rounded-full border border-[var(--color-border)] object-cover',

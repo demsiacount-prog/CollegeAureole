@@ -23,7 +23,7 @@ class MoyenneTrimestre(BaseModel):
 
 class InscriptionBase(BaseModel):
     matricule_eleve: str = Field(min_length=1, max_length=20)
-    id_classe: Optional[int] = None
+    id_classe: int
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
     montant_total: float = Field(default=0.0, ge=0)
@@ -83,7 +83,7 @@ class PassageAnneeRequest(BaseModel):
 class DossierCompletEleve(BaseModel):
     nom: str = Field(min_length=1, max_length=100)
     prenom: str = Field(min_length=1, max_length=100)
-    photo: Optional[str] = Field(default=None, max_length=500)
+    photo: Optional[str] = None
     date_de_naissance: date
     lieu_de_naissance: str = Field(min_length=1, max_length=200)
     sexe: Literal["M", "F"]
@@ -97,7 +97,7 @@ class DossierCompletCreate(BaseModel):
     tuteur: Optional[TuteurCreate] = None
     tuteur_id: Optional[int] = None
     eleve: DossierCompletEleve
-    classe_id: Optional[int] = None
+    classe_id: int
     id_annee_scolaire: int
     observation: Optional[str] = Field(default=None, max_length=500)
 

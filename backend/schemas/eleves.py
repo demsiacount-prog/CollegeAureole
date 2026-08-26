@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class EleveBase(BaseModel):
     nom: str = Field(min_length=1, max_length=100)
     prenom: str = Field(min_length=1, max_length=100)
-    photo: Optional[str] = Field(default=None, max_length=500)
+    photo: Optional[str] = None
     date_de_naissance: date
     lieu_de_naissance: str = Field(min_length=1, max_length=200)
     sexe: Literal["M", "F"]

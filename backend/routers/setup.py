@@ -58,7 +58,6 @@ class SetupInput(BaseModel):
     etablissement: EtablissementInput
     admin: AdminInput
     annee_scolaire: AnneeScolaireInput | None = None
-    donnees_exemple: bool = True
 
 
 # ─── Réponses ────────────────────────────────────────────────────────────────

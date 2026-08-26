@@ -5,6 +5,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { useAuth } from '@/auth/useAuth'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchDashboardStats } from '@/features/dashboard/api'
 
 const PIE_COLORS = [
@@ -137,31 +138,35 @@ export default function DashboardDirection() {
               </h3>
             </div>
             <div className="h-96 overflow-x-auto">
-              <div style={{ minWidth: `${Math.max(stats.moyennes_par_classe.length * 80, 500)}px`, height: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  {/* EF1 noté /10, EF2 /20 : les barres sont exprimées en % du
-                      barème de chaque classe pour rester comparables entre cycles. */}
-                  <BarChart data={stats.moyennes_par_classe.map((m) => ({ ...m, pct: m.bareme > 0 ? (m.moy / m.bareme) * 100 : 0 }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="classe" tick={{ fontSize: 12, fill: 'var(--color-ink-dim)' }} interval={0} angle={-25} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
-                    <Tooltip
-                      formatter={(_value: unknown, _name: unknown, item: { payload?: { moy?: number; bareme?: number } }) => {
-                        const p = item?.payload
-                        return [`${p?.moy ?? '—'} / ${p?.bareme ?? '—'}`, 'Moyenne']
-                      }}
-                      contentStyle={{
-                        backgroundColor: 'var(--color-surface-2)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-md)',
-                        color: 'var(--color-ink)',
-                        fontSize: 12,
-                      }}
-                    />
-                    <Bar dataKey="pct" fill="var(--color-brand)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {stats.moyennes_par_classe.length > 0 ? (
+                <div style={{ minWidth: `${Math.max(stats.moyennes_par_classe.length * 80, 500)}px`, height: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    {/* EF1 noté /10, EF2 /20 : les barres sont exprimées en % du
+                        barème de chaque classe pour rester comparables entre cycles. */}
+                    <BarChart data={stats.moyennes_par_classe.map((m) => ({ ...m, pct: m.bareme > 0 ? (m.moy / m.bareme) * 100 : 0 }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="classe" tick={{ fontSize: 12, fill: 'var(--color-ink-dim)' }} interval={0} angle={-25} textAnchor="end" height={60} />
+                      <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
+                      <Tooltip
+                        formatter={(_value: unknown, _name: unknown, item: { payload?: { moy?: number; bareme?: number } }) => {
+                          const p = item?.payload
+                          return [`${p?.moy ?? '—'} / ${p?.bareme ?? '—'}`, 'Moyenne']
+                        }}
+                        contentStyle={{
+                          backgroundColor: 'var(--color-surface-2)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-md)',
+                          color: 'var(--color-ink)',
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar dataKey="pct" fill="var(--color-brand)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <EmptyState message="Aucune moyenne calculée. Générez des bulletins pour voir les moyennes par classe." />
+              )}
             </div>
           </Card>
 
@@ -173,23 +178,27 @@ export default function DashboardDirection() {
               </h3>
             </div>
             <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.absences_par_mois}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} angle={-35} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface-2)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--color-ink)',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar dataKey="absences" fill="var(--color-danger)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {stats.absences_par_mois.some((a) => a.absences > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.absences_par_mois}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} angle={-35} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-surface-2)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--color-ink)',
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="absences" fill="var(--color-danger)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState message="Aucune absence enregistrée sur les derniers mois." />
+              )}
             </div>
           </Card>
 
@@ -204,48 +213,52 @@ export default function DashboardDirection() {
               </h3>
             </div>
             <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={niveauxTries}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {niveauxTries.map((_, index) => (
-                      <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface-2)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--color-ink)',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend
-                    content={() => (
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 pt-3">
-                        {niveauxTries.map((item, index) => (
-                        <div key={item.name} className="flex items-center gap-2">
-                          <span
-                            className="inline-block size-3 rounded-sm"
-                            style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
-                          />
-                          <span className="text-sm text-[var(--color-ink)]">
-                            {item.name.replace(/^Niveau\s*/, '')} - {item.value} élèves
-                          </span>
-                        </div>
+              {niveauxTries.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={niveauxTries}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {niveauxTries.map((_, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
-                      </div>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-surface-2)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'var(--color-ink)',
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend
+                      content={() => (
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 pt-3">
+                          {niveauxTries.map((item, index) => (
+                          <div key={item.name} className="flex items-center gap-2">
+                            <span
+                              className="inline-block size-3 rounded-sm"
+                              style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                            />
+                            <span className="text-sm text-[var(--color-ink)]">
+                              {item.name.replace(/^Niveau\s*/, '')} - {item.value} élèves
+                            </span>
+                          </div>
+                        ))}
+                        </div>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState message="Aucune classe ou élève inscrit. Créez des classes et inscrivez des élèves pour voir la répartition." />
+              )}
             </div>
           </Card>
 

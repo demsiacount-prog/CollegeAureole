@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ImageOff } from 'lucide-react'
 import { clsx } from 'clsx'
 import { urlAbsolue } from '@/lib/server'
@@ -10,12 +11,16 @@ interface LogoEtablissementProps {
 }
 
 export function LogoEtablissement({ src, nom, className, label = false }: LogoEtablissementProps) {
-  if (src) {
+  const [enErreur, setEnErreur] = useState(false)
+  if (src && !enErreur) {
     return (
       <img
         src={urlAbsolue(src)}
         alt={nom ? `Logo de ${nom}` : 'Logo de l’établissement'}
         className={clsx('object-contain', className)}
+        loading="lazy"
+        decoding="async"
+        onError={() => setEnErreur(true)}
       />
     )
   }

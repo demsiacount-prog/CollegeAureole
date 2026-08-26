@@ -13,23 +13,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        // Séparer les bibliothèques stables en chunks réutilisables : le
-        // navigateur ne les re-télécharge pas lors d'un déploiement applicatif,
-        // et les pages se chargent plus vite (parallélisme + cache).
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (id.includes('react-router') || id.includes('react-dom') || id.includes('/react/')) return 'react-vendor'
-          if (id.includes('@tanstack') || id.includes('/axios/')) return 'query-vendor'
-          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/redux/')) return 'charts-vendor'
-          if (id.includes('/lucide-react/')) return 'icons'
-          return 'vendor'
-        },
-      },
-    },
-  },
+  // Pas de manualChunks dans build.rollupOptions : le découpage forcé plaçait
+  // les helpers CommonJS (__commonJSMin) dans un chunk applicatif, créant un
+  // cycle entre chunks (query-vendor → api → query-vendor). React plantait alors
+  // à l'évaluation des modules ("__commonJSMin is not a function") → écran noir
+  // au démarrage. Rollup découpe seul, sans cycle.
   server: {
     port: 5173,
     proxy: {

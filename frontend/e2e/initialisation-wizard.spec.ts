@@ -46,9 +46,9 @@ async function loginInit(page: Page) {
 }
 
 test.describe('Assistant d’initialisation', () => {
-  test.setTimeout(240_000)
+  test.setTimeout(120_000)
 
-  test('configure l’établissement puis affiche les identifiants admin et démo', async ({ page }) => {
+  test('configure l’établissement puis crée le compte admin', async ({ page }) => {
     await page.goto('/')
 
     // Écran 1 : fiche établissement
@@ -69,17 +69,15 @@ test.describe('Assistant d’initialisation', () => {
     await page.locator('#setup-password').fill(ADMIN_PASSWORD)
     await page.getByRole('button', { name: 'Continuer' }).click()
 
-    // Écran 3 : année scolaire + données d’exemple
-    await expect(page.getByRole('heading', { name: 'Année scolaire & données' })).toBeVisible()
+    // Écran 3 : année scolaire
+    await expect(page.getByRole('heading', { name: 'Année scolaire' })).toBeVisible()
     await page.locator('#date-debut').fill('2025-09-15')
     await page.locator('#date-fin').fill('2026-07-04')
-    const seedCheckbox = page.locator('label:has-text("Données d’exemple") input[type="checkbox"]')
-    await expect(seedCheckbox).toBeChecked()
     await page.getByRole('button', { name: 'Initialiser l’établissement' }).click()
 
     // L'initialisation réussit : l'administrateur créé est connecté automatiquement
     // puis redirigé vers l'application.
-    await expect(page).toHaveURL(/\/app/, { timeout: 120_000 })
+    await expect(page).toHaveURL(/\/app/, { timeout: 60_000 })
     await expect(page.locator('main h2').first()).toBeVisible({ timeout: 15_000 })
   })
 
@@ -148,69 +146,6 @@ test.describe('Assistant d’initialisation', () => {
     expect(pageErrors, `pageerror: ${pageErrors.join(' | ')}`).toEqual([])
   })
 
-  test('parcours complet : dossier élève, paiement, saisie de note et bulletins', async ({ page }) => {
-    await loginInit(page)
-
-    // Dossier élève : le matricule du seed s'ouvre.
-    await page.goto('/app/eleves')
-    await expect(page.locator('main h2').first()).toBeVisible()
-    await page.goto('/app/eleves/EL2500001')
-    await page.getByText('EL2500001', { exact: true }).first().waitFor({ timeout: 15_000 })
-
-    // Paiement : nouveau reçu sur un élève existant (nom récupéré via l'API,
-    // les données d'exemple étant générées aléatoirement).
-    const apiCtx = await request.newContext({ baseURL: 'http://localhost:3001' })
-    const authRes = await apiCtx.post('/api/auth/connexion', {
-      data: { email: ADMIN_EMAIL, mot_de_passe: ADMIN_PASSWORD },
-    })
-    const { access_token } = await authRes.json()
-    const elevesRes = await apiCtx.get('/api/eleves/', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    })
-    const elevesData = await elevesRes.json()
-    await apiCtx.dispose()
-    const nomEleve = elevesData[0].nom as string
-
-    await page.goto('/app/paiements')
-    await expect(page.locator('main h2').first()).toBeVisible()
-    await page.getByRole('button', { name: 'Nouveau paiement' }).click()
-    await expect(page.getByRole('heading', { name: 'Enregistrer un paiement' })).toBeVisible()
-    const combobox = page.locator('form input[role="combobox"]')
-    await combobox.fill(nomEleve)
-    await expect(page.getByRole('option').first()).toContainText(new RegExp(nomEleve, 'i'))
-    await page.getByRole('option').first().click()
-    await page.getByLabel('Montant (FCFA)').fill('1000')
-    await page.getByRole('button', { name: 'Enregistrer' }).click()
-    await expect(page.getByText(/Paiement enregistré/)).toBeVisible()
-
-    // Saisie d'une note : Mathématiques, 6ème Année — A, année 2025-2026.
-    await page.goto('/app/notes')
-    await expect(page.getByRole('heading', { name: 'Saisie des notes' })).toBeVisible()
-    await page.getByLabel('Année scolaire').selectOption({ label: '2025-2026' })
-    await page.getByLabel('Classe').selectOption({ label: '6ème Année — A' })
-    const periode = page.getByLabel('Période')
-    await expect(periode).toBeEnabled({ timeout: 10_000 })
-    await expect(periode.locator('option:not([value=""])')).not.toHaveCount(0, { timeout: 10_000 })
-    const option = periode.locator('option:not([value=""])').first()
-    await periode.selectOption(String(await option.getAttribute('value')))
-    await page.getByLabel('Matière').selectOption({ label: 'Mathématiques — 6ème Année' })
-    const inputs = page.locator('input[aria-label^="Note de"]')
-    await expect(inputs.first()).toBeVisible({ timeout: 10_000 })
-    await inputs.first().fill('7.5')
-    await page.getByRole('button', { name: 'Enregistrer' }).click()
-    await expect(page.getByRole('status')).toContainText('Notes enregistrées.', { timeout: 10_000 })
-
-    // Bulletins : sélection d'une année/classe/période puis relevés affichés.
-    await page.goto('/app/bulletins')
-    await expect(page.getByRole('heading', { name: 'Bulletins scolaires' })).toBeVisible()
-    await page.getByLabel('Année').selectOption({ label: '2025-2026' })
-    await page.getByLabel('Classe').selectOption({ label: '6ème Année — A' })
-    const periodeBulletins = page.getByLabel('Période')
-    const periodeOption = periodeBulletins.locator('option', { hasText: 'Composition' }).first()
-    await expect(periodeOption).not.toHaveCount(0, { timeout: 10_000 })
-    await periodeBulletins.selectOption(String(await periodeOption.getAttribute('value')))
-    await expect(page.getByRole('table').first()).toBeVisible({ timeout: 15_000 })
-  })
 
   test('la fiche établissement pilote l’application : devise et logo dans la sidebar', async ({ page }) => {
     await loginInit(page)

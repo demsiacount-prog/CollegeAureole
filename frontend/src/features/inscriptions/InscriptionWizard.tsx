@@ -98,6 +98,10 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
             tuteurAdresse: required(form.tuteurAdresse, "L'adresse"),
             tuteurProfession: required(form.tuteurProfession, 'La profession'),
           })
+    } else if (stepNum === 3) {
+      errs = validateFields({
+        classeId: required(form.classeId, 'La classe'),
+      })
     }
     setErrors(errs)
     return !hasErrors(errs)
@@ -110,6 +114,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
   async function handleSubmit() {
     if (!validateStep(1)) return setStep(1)
     if (!validateStep(2)) return setStep(2)
+    if (!validateStep(3)) return setStep(3)
     setSubmitting(true)
     setError(null)
     setUploadProgress(null)

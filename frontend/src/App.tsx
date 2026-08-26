@@ -64,7 +64,13 @@ function SuspenseRoute({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<div className="flex justify-center py-24"><Spinner /></div>}>{children}</Suspense>
 }
 
-export default function App() {
+/** Vérifie si l'établissement a déjà été configuré, et affiche l'assistant de
+ *  configuration initiale sinon. Ce composant doit être monté SOUS ServerGate :
+ *  en mode bureau, tant que le poste-serveur n'est pas validé, resoudreBaseUrl()
+ *  renvoie une base vide et l'appel /api/setup/status échoue silencieusement
+ *  (tombant dans le .catch), ce qui masquait l'assistant de configuration lors
+ *  du tout premier lancement du client bureau. */
+function SetupGate({ children }: { children: React.ReactNode }) {
   const [setupState, setSetupState] = useState<'loading' | 'setup' | 'done'>('loading')
 
   useEffect(() => {
@@ -73,11 +79,22 @@ export default function App() {
       .catch(() => setSetupState('done'))
   }, [])
 
+  if (setupState === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
   if (setupState === 'setup') return <SetupWizard />
+  return <>{children}</>
+}
 
+export default function App() {
   return (
     <ErrorBoundary>
       <ServerGate>
+        <SetupGate>
         <BrowserRouter>
         <AuthProvider>
           <ToastContainer />
@@ -131,6 +148,7 @@ export default function App() {
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+        </SetupGate>
       </ServerGate>
     </ErrorBoundary>
   )

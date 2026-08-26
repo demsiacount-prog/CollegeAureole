@@ -18,9 +18,9 @@ async function creerApiContexte(): Promise<APIRequestContext> {
   })
 }
 
-async function creerAnnee(api: APIRequestContext): Promise<{ anneeId: number; trimestreId: number }> {
+async function creerAnnee(api: APIRequestContext, libelle?: string): Promise<{ anneeId: number; trimestreId: number }> {
   const anneeRes = await api.post('/api/anneesScolaires/', {
-    data: { libelle: `${PREFIX} — Année`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: false },
+    data: { libelle: libelle ?? `${PREFIX} — Année`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: false },
   })
   expect(anneeRes.ok(), `création année (${anneeRes.status()}): ${await anneeRes.text()}`).toBeTruthy()
   const annee = await anneeRes.json()
@@ -34,14 +34,52 @@ async function creerAnnee(api: APIRequestContext): Promise<{ anneeId: number; tr
   return { anneeId: annee.id, trimestreId: composition.id }
 }
 
-async function trouverClasseEtCours(api: APIRequestContext): Promise<{ classeId: number; coursId: number }> {
-  const classes = await (await api.get('/api/classes/')).json()
-  const classe = classes.find((c: { niveau: string; nom: string }) => c.niveau === '6ème Année' && c.nom === 'A')
-  if (!classe) throw new Error('Classe 6ème Année — A introuvable')
-  const detail = await (await api.get(`/api/classes/${classe.id}`)).json()
-  const c = detail.cours.find((x: { nom: string }) => x.nom === 'Mathématiques — 6ème Année')
-  if (!c) throw new Error('Cours Mathématiques introuvable pour la classe 6ème Année')
-  return { classeId: classe.id, coursId: c.id }
+async function creerFixtures(api: APIRequestContext) {
+  const ens = await api.post('/api/enseignants/', {
+    nom: 'NoteTest', prenom: 'Prof', email: `prof.notetest${Date.now()}@etablissement.com`,
+    telephone: '+223 76 10 20 30', adresse: 'Bamako', specialite: 'Mathématiques',
+  })
+  expect(ens.status()).toBe(201)
+  const matriculeEns = (await ens.json()).matricule
+
+  const salle = await api.post('/api/salles/', { nom: `Salle Notes ${Date.now()}` })
+  expect(salle.status()).toBe(201)
+  const salleId = (await salle.json()).id
+
+  const classe = await api.post('/api/classes/', { niveau: '6ème Année', nom: `N${Date.now()}` })
+  expect(classe.status()).toBe(201)
+  const classeId = (await classe.json()).id
+
+  const cours = await api.post('/api/cours/', {
+    nom: `Maths Notes ${Date.now()}`, description: '', volume_horaire: 2,
+    matricule_enseignant: matriculeEns,
+    affectations: [{ id_classe: classeId, coefficient: 1 }],
+  })
+  expect(cours.status()).toBe(201)
+  const coursId = (await cours.json()).id
+
+  const tuteur = await api.post('/api/tuteurs/', {
+    nom: 'NoteTuteur', prenom: 'T', email: `tuteur.note${Date.now()}@etablissement.com`,
+    telephone: '+223 76 11 11 11',
+  })
+  expect(tuteur.status()).toBe(201)
+
+  const eleve = await api.post('/api/eleves/', {
+    nom: 'NoteEleve', prenom: 'E2E', date_de_naissance: '2010-01-01',
+    lieu_de_naissance: 'Bamako', sexe: 'F', statut: 'actif',
+    tuteur_id: (await tuteur.json()).id,
+  })
+  expect(eleve.status()).toBe(201)
+  const matriculeEleve = (await eleve.json()).matricule
+
+  const annees = await (await api.get('/api/anneesScolaires/')).json()
+  const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
+  const insc = await api.post('/api/inscriptions/', {
+    matricule_eleve: matriculeEleve, id_classe: classeId, id_annee_scolaire: anneeActive.id,
+  })
+  expect(insc.status()).toBe(201)
+
+  return { classeId, coursId, classeNom: `6ème Année — ${(await classe.json()).nom}`, coursNom: `Maths Notes ${Date.now()}` }
 }
 
 async function nettoyer(api: APIRequestContext, anneeId: number, trimestreId: number) {
@@ -61,7 +99,7 @@ test.describe('Saisie des notes', () => {
       const created = await creerAnnee(api)
       anneeId = created.anneeId
       trimestreId = created.trimestreId
-      const { classeId, coursId } = await trouverClasseEtCours(api)
+      const { classeId, coursId, classeNom, coursNom } = await creerFixtures(api)
 
       await login(page, 'admin')
       await page.goto('/app/notes')
@@ -72,15 +110,15 @@ test.describe('Saisie des notes', () => {
       await expect(page.getByLabel('Période')).toBeDisabled()
       await expect(page.getByLabel('Matière')).toBeDisabled()
 
-      await page.getByLabel('Classe').selectOption({ label: '6ème Année — A' })
+      await page.getByLabel('Classe').selectOption({ label: classeNom })
 
       const periode = page.getByLabel('Période')
       await expect(periode.locator('option[value="' + trimestreId + '"]')).toHaveCount(1, { timeout: 10_000 })
       await periode.selectOption(String(trimestreId))
 
       const matiere = page.getByLabel('Matière')
-      await expect(matiere.locator('option').filter({ hasText: 'Mathématiques' })).toHaveCount(1, { timeout: 10_000 })
-      await matiere.selectOption({ label: 'Mathématiques — 6ème Année' })
+      await expect(matiere.locator('option').filter({ hasText: coursNom })).toHaveCount(1, { timeout: 10_000 })
+      await matiere.selectOption({ label: coursNom })
 
       const inputs = page.locator('input[aria-label^="Note de"]')
       await expect(inputs.first()).toBeVisible({ timeout: 10_000 })
@@ -121,6 +159,7 @@ test.describe('Saisie des notes', () => {
     const api = await creerApiContexte()
     let anneeId = 0
     try {
+      const { classeNom } = await creerFixtures(api)
       const anneeRes = await api.post('/api/anneesScolaires/', {
         data: { libelle: `${PREFIX} — Sans période`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: false },
       })
@@ -135,7 +174,7 @@ test.describe('Saisie des notes', () => {
       await login(page, 'admin')
       await page.goto('/app/notes')
       await page.getByLabel('Année scolaire').selectOption({ label: `${PREFIX} — Sans période` })
-      await page.getByLabel('Classe').selectOption({ label: '6ème Année — A' })
+      await page.getByLabel('Classe').selectOption({ label: classeNom })
 
       await expect(page.getByText('Aucune période pour cette année')).toBeVisible({ timeout: 10_000 })
     } finally {

@@ -61,8 +61,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="College Aureole Management API", version="2.2", lifespan=lifespan)
 
 # Origines autorisées configurables via la variable d'environnement CORS_ORIGINS
-# (liste séparée par des virgules). Fallback sur les ports de dev Vite.
-_default_origins = "http://localhost:5173,http://localhost:5174"
+# (liste séparée par des virgules). Fallback sur les ports de dev Vite + les
+# origines du client bureau Tauri (tauri://localhost sous Linux et macOS,
+# http(s)://tauri.localhost sous Windows).
+_default_origins = (
+    "http://localhost:5173,http://localhost:5174,"
+    "tauri://localhost,http://tauri.localhost,https://tauri.localhost"
+)
 allow_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", _default_origins).split(",") if o.strip()]
 
 # Méthodes et en-têtes restreints au strict nécessaire de l'API :
@@ -150,7 +155,22 @@ _UPLOADS_DIR = os.environ.get("AUREOLE_UPLOADS_DIR") or os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 )
 os.makedirs(_UPLOADS_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
+
+
+class _CachedStaticFiles(StaticFiles):
+    """Fichiers uploadés nommés avec un identifiant unique par import
+    (uuid) : leur contenu à une URL donnée ne change jamais, donc un cache
+    long est sûr et évite au client bureau de re-télécharger le logo à
+    chaque écran."""
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+app.mount("/uploads", _CachedStaticFiles(directory=_UPLOADS_DIR), name="uploads")
 
 
 @app.get("/api/health")

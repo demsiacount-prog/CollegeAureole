@@ -20,7 +20,7 @@ def _verifier_existence(db, matricule_eleve, id_annee_scolaire, id_classe):
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
         raise HTTPException(status_code=409, detail="Année scolaire clôturée")
-    if id_classe and not db.query(models.Classes).filter(models.Classes.id == id_classe).first():
+    if not db.query(models.Classes).filter(models.Classes.id == id_classe).first():
         raise HTTPException(status_code=404, detail="Classe introuvable")
 
 
@@ -151,7 +151,7 @@ def creer_dossier_complet(payload: schemas.DossierCompletCreate, db: Session = D
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
         raise HTTPException(status_code=409, detail="Année scolaire clôturée")
-    if payload.classe_id and not db.query(models.Classes).filter(models.Classes.id == payload.classe_id).first():
+    if not db.query(models.Classes).filter(models.Classes.id == payload.classe_id).first():
         raise HTTPException(status_code=404, detail="Classe introuvable")
 
     # 1) Tuteur — créé dans la même transaction ou réutilisé

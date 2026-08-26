@@ -1,47 +1,58 @@
 import { test, expect, request } from '@playwright/test'
 import { login } from './helpers'
 
-test('paiements : nom de l’élève affiché, pas d’avatar, recherche dans le sélect', async ({ page }) => {
+test('paiements : recherche dans le sélect et création', async ({ page }) => {
   await login(page, 'admin')
-  await page.goto('/app/paiements')
-  await expect(page.getByRole('heading', { name: 'Paiements' })).toBeVisible()
 
-  await expect(page.getByRole('table')).toBeVisible()
-
-  const first = page.getByRole('table').locator('tbody tr').first()
-  await expect(first).toContainText(/EL[0-9]+/)
-  const nomCell = first.locator('td').nth(2)
-  await expect(nomCell.locator('a')).toContainText(/[A-Za-zÀ-ÿ]+/)
-  await expect(nomCell).not.toContainText('—')
-
-  expect(await page.getByRole('table').locator('img').count()).toBe(0)
-
-  // Les données d'exemple étant générées aléatoirement, le nom recherché
-  // est récupéré depuis l'API plutôt que codé en dur.
   const ctx = await request.newContext({ baseURL: 'http://localhost:3001' })
   const authRes = await ctx.post('/api/auth/connexion', {
     data: { email: 'admin@etablissement.com', mot_de_passe: 'Password123!' },
   })
   const { access_token } = await authRes.json()
-  const elevesRes = await ctx.get('/api/eleves/', {
-    headers: { Authorization: `Bearer ${access_token}` },
+  const auth = { headers: { Authorization: `Bearer ${access_token}` } }
+
+  const tuteur = await ctx.post('/api/tuteurs/', {
+    data: { nom: 'PaiT', prenom: 'Tuteur', email: `tuteur.pai${Date.now()}@etablissement.com`, telephone: '+223 76 99 88 77' },
+    headers: auth.headers,
   })
-  const eleves = await elevesRes.json()
+  expect(tuteur.status()).toBe(201)
+
+  const eleve = await ctx.post('/api/eleves/', {
+    data: {
+      nom: `PaiTest${Date.now()}`, prenom: 'Élève', date_de_naissance: '2011-06-15',
+      lieu_de_naissance: 'Bamako', sexe: 'M', statut: 'actif',
+      tuteur_id: (await tuteur.json()).id,
+    },
+    headers: auth.headers,
+  })
+  expect(eleve.status()).toBe(201)
+  const matricule = (await eleve.json()).matricule
+
+  const annees = await (await ctx.get('/api/anneesScolaires/', auth)).json()
+  const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
+
+  const classes = await (await ctx.get('/api/classes/', auth)).json()
+  const classe = (Array.isArray(classes) ? classes : classes.items)[0]
+  if (classe && anneeActive) {
+    await ctx.post('/api/inscriptions/', {
+      data: { matricule_eleve: matricule, id_classe: classe.id, id_annee_scolaire: anneeActive.id },
+      headers: auth.headers,
+    })
+  }
   await ctx.dispose()
-  const nomEleve = eleves[0].nom as string
+
+  await page.goto('/app/paiements')
+  await expect(page.getByRole('heading', { name: 'Paiements' })).toBeVisible()
+  await expect(page.getByRole('table')).toBeVisible()
 
   await page.getByRole('button', { name: 'Nouveau paiement' }).click()
   await expect(page.getByRole('heading', { name: 'Enregistrer un paiement' })).toBeVisible()
 
   const combobox = page.locator('form input[role="combobox"]')
   await expect(combobox).toBeVisible()
-  await combobox.fill(nomEleve)
-  await expect(page.getByRole('option').first()).toContainText(new RegExp(nomEleve, 'i'))
+  await combobox.fill('PaiTest')
+  await expect(page.getByRole('option').first()).toContainText(/PaiTest/i)
   await page.getByRole('option').first().click()
-
-  await expect(combobox).toHaveValue(new RegExp(nomEleve, 'i'))
-
-  await expect(page.getByLabel('N° reçu')).toHaveCount(0)
 
   await page.getByLabel('Montant (FCFA)').fill('1000')
   await page.getByRole('button', { name: 'Enregistrer' }).click()

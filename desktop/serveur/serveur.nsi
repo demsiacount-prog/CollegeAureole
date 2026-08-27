@@ -128,7 +128,10 @@ Function GenererEnv
   ; Secret JWT : deux GUID concaténés (64 caractères hexadécimaux).
   ; Générés via PowerShell : [guid]::NewGuid() repose sur le générateur
   ; aléatoire cryptographique de .NET, plus sûr que l'alternative VBScript.
-  nsExec::ExecToStack 'powershell -NoProfile -Command "[guid]::NewGuid().ToString(''N'')+[guid]::NewGuid().ToString(''N'')"'
+  ; On utilise le chemin absolu (au lieu du nom "powershell") car l'installeur
+  ; ne voit pas forcément le PATH de la session utilisateur : sans chemin fixe,
+  ; la commande échoue et bloque l'installation sur certains postes.
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "[guid]::NewGuid().ToString(''N'')+[guid]::NewGuid().ToString(''N'')"'
   Pop $0
   Pop $1
   ${If} $0 != 0

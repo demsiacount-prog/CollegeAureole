@@ -134,8 +134,9 @@ Function GenererEnv
   nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "[guid]::NewGuid().ToString(''N'')+[guid]::NewGuid().ToString(''N'')"'
   Pop $0
   Pop $1
+  DetailPrint "Code retour PowerShell : $0 | Sortie : $1"
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "PowerShell est requis pour générer la clé de sécurité.$\nInstallation interrompue."
+    MessageBox MB_ICONSTOP "PowerShell est requis pour générer la clé de sécurité.$\nInstallation interrompue.$\n$\nCode retour : $0$\nSortie : $1"
     Abort
   ${EndIf}
 

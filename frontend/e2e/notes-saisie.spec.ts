@@ -48,10 +48,13 @@ async function creerFixtures(api: APIRequestContext) {
 
   const classe = await api.post('/api/classes/', { niveau: '6ème Année', nom: `N${Date.now()}` })
   expect(classe.status()).toBe(201)
-  const classeId = (await classe.json()).id
+  const classeData = await classe.json()
+  const classeId = classeData.id
+  const classeNom = `6ème Année — ${classeData.nom}`
 
+  const coursNom = `Maths Notes ${Date.now()}`
   const cours = await api.post('/api/cours/', {
-    nom: `Maths Notes ${Date.now()}`, description: '', volume_horaire: 2,
+    nom: coursNom, description: '', volume_horaire: 2,
     matricule_enseignant: matriculeEns,
     affectations: [{ id_classe: classeId, coefficient: 1 }],
   })
@@ -79,7 +82,7 @@ async function creerFixtures(api: APIRequestContext) {
   })
   expect(insc.status()).toBe(201)
 
-  return { classeId, coursId, classeNom: `6ème Année — ${(await classe.json()).nom}`, coursNom: `Maths Notes ${Date.now()}` }
+  return { classeId, coursId, classeNom, coursNom }
 }
 
 async function nettoyer(api: APIRequestContext, anneeId: number, trimestreId: number) {

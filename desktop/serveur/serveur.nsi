@@ -128,10 +128,26 @@ Function GenererEnv
   ; Secret JWT : deux GUID concaténés (64 caractères hexadécimaux).
   ; Générés via PowerShell : [guid]::NewGuid() repose sur le générateur
   ; aléatoire cryptographique de .NET, plus sûr que l'alternative VBScript.
-  ; On utilise le chemin absolu (au lieu du nom "powershell") car l'installeur
-  ; ne voit pas forcément le PATH de la session utilisateur : sans chemin fixe,
-  ; la commande échoue et bloque l'installation sur certains postes.
-  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "[guid]::NewGuid().ToString(''N'')+[guid]::NewGuid().ToString(''N'')"'
+  ;
+  ; IMPORTANT : on écrit le code PowerShell dans un fichier .ps1 temporaire
+  ; plutôt que de le passer en ligne avec -Command et des guillemets imbriqués.
+  ; Les apostrophes doublées ('') dans une ligne de commande sont fragiles :
+  ; selon l'éditeur utilisé pour ce script .nsi, elles peuvent être remplacées
+  ; par des apostrophes typographiques (' ' au lieu de '), ce qui casse
+  ; l'analyse syntaxique de PowerShell (erreur "parenthèse fermante manquante").
+  ; Passer par un fichier -File évite ce problème de guillemets imbriqués.
+  ClearErrors
+  FileOpen $3 "$PLUGINSDIR\genkey.ps1" w
+  IfErrors 0 +3
+    MessageBox MB_ICONSTOP "Impossible de créer le script temporaire de génération de clé.$\nInstallation interrompue."
+    Abort
+  ; [Console]::Out.Write (au lieu d'un simple affichage) : évite le retour à
+  ; la ligne final que PowerShell ajouterait sinon à la sortie standard, pour
+  ; ne pas polluer le .env avec une valeur coupée sur deux lignes.
+  FileWrite $3 "[Console]::Out.Write([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N'))$\r$\n"
+  FileClose $3
+
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\genkey.ps1"'
   Pop $0
   Pop $1
   DetailPrint "Code retour PowerShell : $0 | Sortie : $1"

@@ -125,7 +125,9 @@ SectionEnd
 Function GenererEnv
   DetailPrint "Génération du fichier .env…"
 
-  ; Secret JWT : deux GUID concaténés (64 caractères hexadécimaux)
+  ; Secret JWT : deux GUID concaténés (64 caractères hexadécimaux).
+  ; Générés via PowerShell : [guid]::NewGuid() repose sur le générateur
+  ; aléatoire cryptographique de .NET, plus sûr que l'alternative VBScript.
   nsExec::ExecToStack 'powershell -NoProfile -Command "[guid]::NewGuid().ToString(''N'')+[guid]::NewGuid().ToString(''N'')"'
   Pop $0
   Pop $1

@@ -219,8 +219,10 @@ Section "Client" SectionClient
   SetOutPath "$INSTDIR\client"
 
   ; Exécutable portable du client Tauri (obligatoire pour l'installeur
-  ; tout-en-un). Copié tel quel sous son nom d'application.
-  File /oname="College Aureole.exe" "paquetage\college-aureole-client.exe"
+  ; tout-en-un). Copié tel quel puis renommé sous son nom d'application :
+  ; /oname= avec un nom contenant des espaces n'est pas fiable en NSIS.
+  File "paquetage\college-aureole-client.exe"
+  Rename "$INSTDIR\client\college-aureole-client.exe" "$INSTDIR\client\College Aureole.exe"
   ${IfNot} ${FileExists} "$INSTDIR\client\College Aureole.exe"
     MessageBox MB_ICONSTOP "Échec de l'installation du client.$\nInstallation interrompue."
     Abort

@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchDashboardStats } from '@/features/dashboard/api'
+import { OnboardingChecklist } from '@/features/onboarding/OnboardingChecklist'
 
 const PIE_COLORS = [
   'var(--color-action)',
@@ -101,6 +102,15 @@ export default function DashboardDirection() {
 
   return (
     <div className="flex flex-col gap-6">
+      {stats && (
+        <OnboardingChecklist
+          compteurs={{
+            nb_eleves: stats.nb_eleves,
+            nb_enseignants: stats.nb_enseignants,
+            nb_classes: stats.nb_classes,
+          }}
+        />
+      )}
       <div>
         <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-tight text-[var(--color-ink)]">
           Bonjour, {user?.prenom}

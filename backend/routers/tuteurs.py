@@ -7,6 +7,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from services.protections import verifier_tuteur
 
 router = APIRouter(prefix="/api/tuteurs", tags=["Tuteurs"], dependencies=[Depends(get_current_user)])
 
@@ -74,6 +75,7 @@ def delete_tuteur(tuteur_id: int, db: Session = Depends(get_db)):
     db_tuteur = db.query(models.Tuteurs).filter(models.Tuteurs.id == tuteur_id).first()
     if not db_tuteur:
         raise HTTPException(status_code=404, detail="Tuteur introuvable")
+    verifier_tuteur(db, tuteur_id)
     try:
         db.delete(db_tuteur)
         db.commit()

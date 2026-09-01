@@ -5,6 +5,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from services.protections import verifier_salle
 
 router = APIRouter(prefix="/api/salles", tags=["Salles"], dependencies=[Depends(get_current_user)])
 
@@ -42,6 +43,7 @@ def delete_salle(salle_id: int, db: Session = Depends(get_db)):
     salle = db.query(models.Salles).filter(models.Salles.id == salle_id).first()
     if not salle:
         raise HTTPException(status_code=404, detail="Salle introuvable")
+    verifier_salle(db, salle_id)
     db.delete(salle)
     db.commit()
     return None

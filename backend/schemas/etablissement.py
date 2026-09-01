@@ -7,6 +7,8 @@ class EtablissementUpdate(BaseModel):
     sigle: str | None = Field(default=None, max_length=50)
     devise: str | None = Field(default=None, max_length=200)
     adresse: str | None = Field(default=None, max_length=300)
+    academie: str | None = Field(default=None, max_length=200)
+    cap: str | None = Field(default=None, max_length=20)
     telephone: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
     logo: str | None = Field(default=None, max_length=500)
@@ -14,6 +16,8 @@ class EtablissementUpdate(BaseModel):
 
 class EtablissementResponse(EtablissementUpdate):
     id: int
+    academie: str | None = None
+    cap: str | None = None
     date_initialisation: date | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

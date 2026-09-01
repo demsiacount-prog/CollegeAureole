@@ -6,6 +6,7 @@ from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from services.protections import verifier_enseignant
 
 router = APIRouter(prefix="/api/enseignants", tags=["Enseignants"], dependencies=[Depends(get_current_user)])
 
@@ -83,6 +84,7 @@ def delete_enseignant(matricule: str, db: Session = Depends(get_db)):
     db_ens = db.query(models.Enseignants).filter(models.Enseignants.matricule == matricule).first()
     if not db_ens:
         raise HTTPException(status_code=404, detail="Enseignant introuvable")
+    verifier_enseignant(db, matricule)
     db.delete(db_ens)
     db.commit()
     return None

@@ -79,9 +79,9 @@ export default function DashboardFinances() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+        <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-tight text-[var(--color-ink)]">
           Bonjour, {user?.prenom}
-        </h2>
+        </h1>
         <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
           Voici un aperçu des flux financiers de l'établissement.
         </p>
@@ -97,7 +97,7 @@ export default function DashboardFinances() {
               </div>
               <stat.icon className={`size-5 shrink-0 ${stat.tone}`} strokeWidth={1.75} />
             </div>
-            <p className="mt-3 font-[var(--font-display)] text-3xl font-semibold text-[var(--color-ink)]">
+            <p className="mt-3 font-[var(--font-display)] text-[34px] font-semibold text-[var(--color-ink)]">
               {stat.value}
             </p>
           </Card>
@@ -107,7 +107,7 @@ export default function DashboardFinances() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card className="col-span-1 xl:col-span-2 p-5">
           <div className="mb-4 flex items-center gap-2">
-            <Wallet className="size-4 text-[var(--color-brand)]" strokeWidth={1.75} />
+            <Wallet className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
             <h3 className="text-[15px] font-medium text-[var(--color-ink)]">
               Paiements et dépenses (6 derniers mois)
             </h3>

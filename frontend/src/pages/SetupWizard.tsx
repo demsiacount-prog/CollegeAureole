@@ -75,7 +75,7 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={clsx(
                   'mx-2 h-px flex-1 transition-colors duration-500',
-                  done ? 'bg-[var(--color-brand)]' : 'bg-[var(--color-border)]',
+                  done ? 'bg-[var(--color-action)]' : 'bg-[var(--color-border)]',
                 )}
               />
             )}
@@ -83,8 +83,8 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={clsx(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium transition-all duration-300',
-                  done && 'bg-[var(--color-brand)] text-white',
-                  active && 'bg-[var(--color-brand-wash)] text-[var(--color-brand)] ring-2 ring-[var(--color-brand)]',
+                  done && 'bg-[var(--color-action)] text-white',
+                  active && 'bg-[var(--color-action-wash)] text-[var(--color-action)] ring-2 ring-[var(--color-action)]',
                   !done && !active && 'bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]',
                 )}
               >
@@ -118,6 +118,8 @@ export default function SetupWizard() {
   const [etAdresse, setEtAdresse] = useState('')
   const [etTelephone, setEtTelephone] = useState('')
   const [etEmail, setEtEmail] = useState('')
+  const [etAcademie, setEtAcademie] = useState('')
+  const [etCap, setEtCap] = useState('')
   const [etLogo, setEtLogo] = useState('')
   const logoFileRef = useRef<HTMLInputElement>(null)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -235,6 +237,8 @@ export default function SetupWizard() {
             telephone: etTelephone.trim() || null,
             email: etEmail.trim() || null,
             logo: etLogo || null,
+            academie: etAcademie.trim() || null,
+            cap: etCap.trim() || null,
           },
           admin: { nom: nom.trim(), prenom: prenom.trim(), email, mot_de_passe: password },
           annee_scolaire: { date_debut: dateDebut, date_fin: dateFin },
@@ -258,17 +262,31 @@ export default function SetupWizard() {
 
   const etablissementValide =
     etNom.trim().length >= 2 &&
-    (etEmail.trim() === '' || emailVal(etEmail) === undefined) &&
-    (etTelephone.trim() === '' || phone(etTelephone) === undefined)
+    etSigle.trim().length >= 1 &&
+    etDevise.trim().length >= 1 &&
+    etAdresse.trim().length >= 1 &&
+    etTelephone.trim().length >= 1 &&
+    etEmail.trim().length >= 1 &&
+    emailVal(etEmail) === undefined &&
+    phone(etTelephone) === undefined &&
+    etAcademie.trim().length >= 1 &&
+    etCap.trim().length >= 1 &&
+    etLogo.trim().length >= 1
   const adminValide =
     nom.trim().length >= 2 && prenom.trim().length >= 2 &&
     emailVal(email) === undefined && password.length >= 8
 
   function validerEtape1(): boolean {
     const errs = validateFields({
-      nom: required(etNom, "Le nom de l'établissement") ?? minLength(etNom, 2, "Le nom de l'établissement"),
-      email: etEmail.trim() !== '' ? emailVal(etEmail) : undefined,
-      telephone: etTelephone.trim() !== '' ? phone(etTelephone) : undefined,
+      et_nom: required(etNom, "Le nom de l'établissement") ?? minLength(etNom, 2, "Le nom de l'établissement"),
+      et_sigle: required(etSigle, 'Le sigle'),
+      et_devise: required(etDevise, 'La devise'),
+      et_adresse: required(etAdresse, 'L’adresse'),
+      et_telephone: required(etTelephone, 'Le téléphone') ?? phone(etTelephone),
+      et_email: required(etEmail, 'L’e-mail de contact') ?? emailVal(etEmail),
+      et_academie: required(etAcademie, 'L’académie'),
+      et_cap: required(etCap, 'Le CAP'),
+      et_logo: required(etLogo, 'Le logo'),
     })
     setFieldErrors(errs)
     return !hasErrors(errs)
@@ -315,8 +333,8 @@ export default function SetupWizard() {
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* ── Brand panel ─────────────────────────────────────────── */}
         <section className="relative hidden flex-col justify-between overflow-hidden border-r border-[var(--color-border)] bg-gradient-to-br from-[var(--color-surface)] via-[var(--color-base)] to-[var(--color-base)] p-12 lg:flex">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[var(--color-brand-blue)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--color-brand-blue)]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[var(--color-mod-ress)]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--color-mod-ress)]/10 blur-3xl" />
 
           <div className="relative flex items-center gap-3">
             {etLogo ? (
@@ -326,16 +344,16 @@ export default function SetupWizard() {
                 className="h-12 w-12 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
               />
             ) : (
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--color-brand-wash)] text-[var(--color-brand)] ring-1 ring-[var(--color-border)]">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
                 <GraduationCap className="h-6 w-6" />
               </span>
             )}
             <div>
               <p className="text-xl font-semibold text-[var(--color-halo)]">
-                {etNom.trim() || 'Gestion Scolaire'}
+                {etNom.trim()}
               </p>
               <p className="text-xs text-[var(--color-ink-dim)]">
-                {etDevise.trim() || 'Système de Gestion Intégrée'}
+                {etDevise.trim()}
               </p>
             </div>
           </div>
@@ -352,7 +370,7 @@ export default function SetupWizard() {
           </div>
 
           <p className="relative text-xs text-[var(--color-ink-faint)]">
-            © {new Date().getFullYear()} Gestion Scolaire — Tous droits réservés.
+            © {new Date().getFullYear()} — Tous droits réservés.
           </p>
         </section>
 
@@ -368,23 +386,23 @@ export default function SetupWizard() {
                   className="h-10 w-10 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
                 />
               ) : (
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-brand-wash)] text-[var(--color-brand)] ring-1 ring-[var(--color-border)]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
                   <GraduationCap className="h-5 w-5" />
                 </span>
               )}
               <div>
                 <p className="text-base font-semibold text-[var(--color-halo)]">
-                  {etNom.trim() || 'Gestion Scolaire'}
+                  {etNom.trim()}
                 </p>
                 <p className="text-xs text-[var(--color-ink-dim)]">
-                  {etDevise.trim() || 'Système de Gestion Intégrée'}
+                  {etDevise.trim()}
                 </p>
               </div>
             </div>
 
             {step === 'checking' && (
               <div className="flex items-center justify-center py-24">
-                <Loader2 className="size-6 animate-spin text-[var(--color-brand)]" />
+                <Loader2 className="size-6 animate-spin text-[var(--color-action)]" />
               </div>
             )}
 
@@ -470,9 +488,9 @@ export default function SetupWizard() {
                 ) : (
                   <div>
                     <div className="relative mx-auto mb-6 h-20 w-20">
-                      <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-brand)]/20" />
-                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--color-brand-wash)]">
-                        <Loader2 className="size-8 animate-spin text-[var(--color-brand)]" />
+                      <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-action)]/20" />
+                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--color-action-wash)]">
+                        <Loader2 className="size-8 animate-spin text-[var(--color-action)]" />
                       </span>
                     </div>
                     <h2 className="text-xl font-semibold text-[var(--color-ink)]">
@@ -483,7 +501,7 @@ export default function SetupWizard() {
                     </p>
                     <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-3)]">
                       <div
-                        className="h-full rounded-full bg-[var(--color-brand)] transition-all duration-500"
+                        className="h-full rounded-full bg-[var(--color-action)] transition-all duration-500"
                         style={{ width: `${progress?.pourcent ?? 0}%` }}
                       />
                     </div>
@@ -500,7 +518,7 @@ export default function SetupWizard() {
                 <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)]">
                   <div className="mb-5 flex items-start justify-between">
                     <div>
-                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-brand-wash)] text-[var(--color-brand)]">
+                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)]">
                         <GraduationCap className="h-4 w-4" />
                       </div>
                       <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
@@ -548,25 +566,35 @@ export default function SetupWizard() {
                             value={etNom}
                             onChange={(e) => {
                               setEtNom(e.target.value)
-                              if (fieldErrors.nom) setFieldErrors((p) => ({ ...p, nom: undefined }))
+                              if (fieldErrors.et_nom) setFieldErrors((p) => ({ ...p, et_nom: undefined }))
                             }}
                             placeholder="Ex. Complexe Scolaire"
                             required
-                            error={fieldErrors.nom}
+                            error={fieldErrors.et_nom}
                           />
                           <Input
                             label="Sigle"
                             type="text"
                             value={etSigle}
-                            onChange={(e) => setEtSigle(e.target.value)}
+                            onChange={(e) => {
+                              setEtSigle(e.target.value)
+                              if (fieldErrors.et_sigle) setFieldErrors((p) => ({ ...p, et_sigle: undefined }))
+                            }}
                             placeholder="Ex. CSX"
+                            required
+                            error={fieldErrors.et_sigle}
                           />
                           <Input
                             label="Devise"
                             type="text"
                             value={etDevise}
-                            onChange={(e) => setEtDevise(e.target.value)}
+                            onChange={(e) => {
+                              setEtDevise(e.target.value)
+                              if (fieldErrors.et_devise) setFieldErrors((p) => ({ ...p, et_devise: undefined }))
+                            }}
                             placeholder="Ex. Savoir, rigueur, réussite"
+                            required
+                            error={fieldErrors.et_devise}
                           />
                         </div>
                         <Input
@@ -574,9 +602,40 @@ export default function SetupWizard() {
                           type="text"
                           autoComplete="street-address"
                           value={etAdresse}
-                          onChange={(e) => setEtAdresse(e.target.value)}
+                          onChange={(e) => {
+                            setEtAdresse(e.target.value)
+                            if (fieldErrors.et_adresse) setFieldErrors((p) => ({ ...p, et_adresse: undefined }))
+                          }}
                           placeholder="Ex. Quartier, ville"
+                          required
+                          error={fieldErrors.et_adresse}
                         />
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            label="Académie"
+                            type="text"
+                            value={etAcademie}
+                            onChange={(e) => {
+                              setEtAcademie(e.target.value)
+                              if (fieldErrors.et_academie) setFieldErrors((p) => ({ ...p, et_academie: undefined }))
+                            }}
+                            placeholder="Ex. Académie de Kinshasa"
+                            required
+                            error={fieldErrors.et_academie}
+                          />
+                          <Input
+                            label="CAP"
+                            type="text"
+                            value={etCap}
+                            onChange={(e) => {
+                              setEtCap(e.target.value)
+                              if (fieldErrors.et_cap) setFieldErrors((p) => ({ ...p, et_cap: undefined }))
+                            }}
+                            placeholder="Ex. CA-0123"
+                            required
+                            error={fieldErrors.et_cap}
+                          />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <Input
                             label="Téléphone"
@@ -585,10 +644,11 @@ export default function SetupWizard() {
                             value={etTelephone}
                             onChange={(e) => {
                               setEtTelephone(e.target.value.replace(/[^+\d\s]/g, ''))
-                              if (fieldErrors.telephone) setFieldErrors((p) => ({ ...p, telephone: undefined }))
+                              if (fieldErrors.et_telephone) setFieldErrors((p) => ({ ...p, et_telephone: undefined }))
                             }}
                             placeholder="+000 00 00 00 00"
-                            error={fieldErrors.telephone}
+                            required
+                            error={fieldErrors.et_telephone}
                           />
                           <Input
                             label="E-mail de contact"
@@ -596,10 +656,11 @@ export default function SetupWizard() {
                             value={etEmail}
                             onChange={(e) => {
                               setEtEmail(e.target.value)
-                              if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }))
+                              if (fieldErrors.et_email) setFieldErrors((p) => ({ ...p, et_email: undefined }))
                             }}
                             placeholder="contact@etablissement.com"
-                            error={fieldErrors.email}
+                            required
+                            error={fieldErrors.et_email}
                           />
                         </div>
 
@@ -651,12 +712,18 @@ export default function SetupWizard() {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEtLogo('')}
+                                onClick={() => {
+                                  setEtLogo('')
+                                  if (fieldErrors.et_logo) setFieldErrors((p) => ({ ...p, et_logo: undefined }))
+                                }}
                               >
                                 <Trash2 size={14} strokeWidth={1.75} className="mr-1.5" />
                                 Retirer le logo
                               </Button>
                             </div>
+                          )}
+                          {fieldErrors.et_logo && (
+                            <p className="mt-1 text-xs text-[var(--color-danger)]">{fieldErrors.et_logo}</p>
                           )}
                         </div>
                       </>

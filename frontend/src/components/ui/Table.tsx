@@ -1,5 +1,6 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 import { clsx } from 'clsx'
+import { useCurrentModule } from '@/routes/useModule'
 
 /**
  * Composants de tableau partagés — source de vérité du rendu des tableaux
@@ -11,13 +12,16 @@ import { clsx } from 'clsx'
  * se passent en `className` et fusionnent avec les valeurs par défaut.
  */
 
-export function TableContainer({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
+export function TableContainer({ className, moduleColor, ...rest }: HTMLAttributes<HTMLDivElement> & { moduleColor?: string }) {
+  const module = useCurrentModule()
+  const color = moduleColor ?? module?.moduleColor ?? null
   return (
     <div
       className={clsx(
         'overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]',
         className,
       )}
+      style={{ borderTop: color ? `2px solid ${color}` : undefined }}
       {...rest}
     />
   )

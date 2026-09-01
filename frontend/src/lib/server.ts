@@ -1,18 +1,22 @@
-// Gestion du poste-serveur pour le client bureau (Tauri).
+// Gestion du serveur pour le client bureau (Tauri).
 //
 // En mode web, l'API est jointe sur la même origine (proxy vite en dev,
 // même domaine en production) — comportement historique inchangé.
-// En mode bureau, l'interface tourne depuis tauri://localhost : il faut une
-// adresse explicite vers le poste-serveur, mémorisée au premier lancement.
+// En mode bureau (mono-poste), l'interface tourne depuis tauri://localhost et
+// se connecte par défaut au serveur local ; une adresse explicite reste
+// possible pour l'administration (mémorisée au premier lancement).
 
 export const SERVEUR_STORAGE_KEY = 'aureole_serveur'
+
+/** Hôte local par défaut en mode mono-poste (serveur installé sur le même poste). */
+export const HOTE_LOCAL = 'http://localhost:8000'
 
 /** Vrai si l'interface s'exécute dans la fenêtre Tauri. */
 export function estDesktop(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 }
 
-/** Adresse du poste-serveur mémorisée (null tant que non configurée). */
+/** Adresse du serveur mémorisée (null tant que non configurée). */
 export function getServeur(): string | null {
   if (!estDesktop()) return null
   const brut = localStorage.getItem(SERVEUR_STORAGE_KEY)
@@ -32,13 +36,13 @@ export function oublierServeur(): void {
 
 /** Base à utiliser pour les appels axios (chaîne vide = chemins relatifs). */
 export function resoudreBaseUrl(): string {
-  if (estDesktop()) return getServeur() ?? ''
+  if (estDesktop()) return getServeur() ?? HOTE_LOCAL
   return import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 }
 
 /**
  * Rend absolus les chemins servis par le backend (/uploads/…) afin qu'ils
- * pointent vers le poste-serveur en mode bureau ; sans effet en mode web.
+ * pointent vers le serveur local en mode bureau ; sans effet en mode web.
  */
 export function urlAbsolue<T extends string | null | undefined>(chemin: T): T {
   if (!chemin) return chemin
@@ -54,7 +58,7 @@ export interface ResultatVerification {
   message: string
 }
 
-/** Teste la joignabilité d'un poste-serveur (GET /api/health). */
+/** Teste la joignabilité d'un serveur local (GET /api/health). */
 export async function verifierServeur(adresse: string): Promise<ResultatVerification> {
   const cible = adresse.trim().replace(/\/+$/, '')
   if (!cible) return { ok: false, message: 'Veuillez saisir l’adresse du serveur.' }
@@ -80,7 +84,7 @@ export async function verifierServeur(adresse: string): Promise<ResultatVerifica
   } catch {
     return {
       ok: false,
-      message: `Impossible de joindre ${cible}. Vérifiez que l’application serveur est démarrée sur le poste-serveur et que cette adresse est correcte.`,
+      message: `Impossible de joindre ${cible}. Vérifiez que l’application serveur est démarrée sur cet ordinateur et que cette adresse est correcte.`,
     }
   } finally {
     clearTimeout(minuteur)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Pencil, Trash2, MapPin } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -117,11 +117,9 @@ export default function SeanceListPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Emploi du temps
-            </h2>
+        <PageHeader
+          title="Emploi du temps"
+          subtitle={
             <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
               {filtered.length} séance{filtered.length > 1 ? 's' : ''}
               {filterClasse && classes.find((c) => c.id === Number(filterClasse)) && (
@@ -131,17 +129,18 @@ export default function SeanceListPage() {
                 <> — {enseignants.find((e) => e.matricule === filterEnseignant)?.prenom} {enseignants.find((e) => e.matricule === filterEnseignant)?.nom}</>
               )}
             </p>
-          </div>
-          {canWrite && (
-            <Button variant="primary" onClick={handleOpenNew}>
-              <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-              Nouvelle séance
-            </Button>
-          )}
-        </div>
+          }
+          actionLabel={canWrite ? 'Nouvelle séance' : undefined}
+          onAction={canWrite ? handleOpenNew : undefined}
+        />
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} className="w-48">
+          <Select
+            value={filterAnnee}
+            onChange={(e) => setFilterAnnee(e.target.value)}
+            disabled={!annees.length}
+            className="w-48"
+          >
             {!annees.length && <option value="">—</option>}
             {annees.map((a) => (
               <option key={a.id} value={a.id}>{a.libelle}</option>
@@ -150,6 +149,7 @@ export default function SeanceListPage() {
           <Select
             value={filterClasse}
             onChange={(e) => { setFilterClasse(e.target.value); setFilterEnseignant('') }}
+            disabled={!classes.length}
             className="w-48"
           >
             <option value="">Toutes les classes</option>
@@ -160,6 +160,7 @@ export default function SeanceListPage() {
           <Select
             value={filterEnseignant}
             onChange={(e) => { setFilterEnseignant(e.target.value); setFilterClasse('') }}
+            disabled={!enseignants.length}
             className="w-52"
           >
             <option value="">Tous les enseignants</option>

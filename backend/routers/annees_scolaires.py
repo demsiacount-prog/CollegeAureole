@@ -6,6 +6,7 @@ import models
 import schemas
 from security import get_current_user, require_role
 from periodes import generer_periodes_par_defaut
+from services.protections import verifier_annee_scolaire
 
 router = APIRouter(prefix="/api/anneesScolaires", tags=["Années Scolaires"], dependencies=[Depends(get_current_user)])
 
@@ -103,6 +104,7 @@ def delete_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
+    verifier_annee_scolaire(db, annee_id)
     db.delete(annee)
     db.commit()
     return None

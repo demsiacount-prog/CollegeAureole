@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Pencil, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -55,22 +55,13 @@ export default function SalleListPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Salles
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              {salles.length} salles enregistrées
-            </p>
-          </div>
-          {canWrite && (
-            <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-              <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-              Nouvelle salle
-            </Button>
-          )}
-        </div>
+        <PageHeader
+          title="Salles"
+          count={salles.length}
+          countLabel="salles enregistrées"
+          actionLabel={canWrite ? 'Nouvelle salle' : undefined}
+          onAction={canWrite ? () => setDrawerOpen(true) : undefined}
+        />
 
         <SearchInput
           className="w-full"

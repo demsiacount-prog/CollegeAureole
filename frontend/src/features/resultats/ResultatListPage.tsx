@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
@@ -77,14 +78,14 @@ export default function ResultatListPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Résultats de passage
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-            Décision de passage par élève pour l'année scolaire active.
-          </p>
-        </div>
+        <PageHeader
+          title="Résultats de passage"
+          subtitle={
+            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+              Décision de passage par élève pour l'année scolaire active.
+            </p>
+          }
+        />
         <Select
           value={activeClasseId ?? ''}
           onChange={(e) => setClasseId(Number(e.target.value))}
@@ -113,7 +114,7 @@ export default function ResultatListPage() {
                 <Card key={statut} className="p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-[var(--color-ink-dim)]">{info.label}</p>
-                    <info.icon className="size-4 text-[var(--color-brand)]" strokeWidth={1.75} />
+                    <info.icon className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
                   </div>
                   <p className="mt-2 text-2xl font-medium text-[var(--color-ink)]">{count}</p>
                 </Card>
@@ -122,7 +123,7 @@ export default function ResultatListPage() {
           </div>
 
           {resultats.niveau_ordre === 9 && (
-            <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-brand-border)] bg-[var(--color-brand-wash)] px-4 py-3 text-sm text-[var(--color-brand)]">
+            <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-action-wash)] bg-[var(--color-action-wash)] px-4 py-3 text-sm text-[var(--color-action)]">
               <Info className="mt-0.5 size-4 shrink-0" />
               <p>Classe de fin de cycle (9ᵉ) : un élève admis ici est marqué diplômé et sort du système lors de la clôture d'année.</p>
             </div>
@@ -141,7 +142,7 @@ export default function ResultatListPage() {
           )}
 
           {rapport && (
-            <Card className="border-[var(--color-brand-border)] p-4">
+            <Card className="border-[var(--color-action-wash)] p-4">
               <p className="text-sm font-medium text-[var(--color-ink)]">
                 Rapport du calcul automatique — seuil {rapport.seuil_applique}/{baremeNiveau(rapport.classe.niveau)}
               </p>
@@ -178,7 +179,7 @@ export default function ResultatListPage() {
                           <TableCell>
                             <Link to={`/app/eleves/${e.matricule}`} className="flex items-center gap-2.5 group">
                               <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
-                              <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">{e.prenom} {e.nom}</span>
+                              <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">{e.prenom} {e.nom}</span>
                             </Link>
                           </TableCell>
                           <TableCell className="text-[var(--color-ink-dim)]">{formatMoyenne(e.moyenne_annuelle, baremeNiveau(resultats.classe.niveau))}</TableCell>

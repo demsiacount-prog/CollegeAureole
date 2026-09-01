@@ -11,6 +11,8 @@ import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
+import { toast } from '@/components/ui/toast'
+import { extractErrorMessage } from '@/lib/api'
 import { activerEleve, createEleve, desactiverEleve, fetchEleves, fetchElevesTotal, updateEleve } from './api'
 import { createInscription } from '@/features/inscriptions/api'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
@@ -62,14 +64,27 @@ export default function EleveListPage() {
     queryClient.invalidateQueries({ queryKey: ['eleves'] })
   }
 
-  const createMutation = useMutation({ mutationFn: createEleve, onSuccess: invalidate })
+  const createMutation = useMutation({
+    mutationFn: createEleve,
+    onSuccess: () => { toast('Élève créé'); invalidate() },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
+  })
   const updateMutation = useMutation({
     mutationFn: ({ matricule, payload }: { matricule: string; payload: Parameters<typeof updateEleve>[1] }) =>
       updateEleve(matricule, payload),
-    onSuccess: invalidate,
+    onSuccess: () => { toast('Élève mis à jour'); invalidate() },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
-  const activerMutation = useMutation({ mutationFn: activerEleve, onSuccess: invalidate })
-  const desactiverMutation = useMutation({ mutationFn: desactiverEleve, onSuccess: invalidate })
+  const activerMutation = useMutation({
+    mutationFn: activerEleve,
+    onSuccess: () => { toast('Élève activé'); invalidate() },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
+  })
+  const desactiverMutation = useMutation({
+    mutationFn: desactiverEleve,
+    onSuccess: () => { toast('Élève désactivé'); invalidate() },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
+  })
 
   function openCreate() {
     setEditing(null)
@@ -127,7 +142,7 @@ export default function EleveListPage() {
                   <TableCell>
                     <Link to={`/app/eleves/${eleve.matricule}`} className="flex items-center gap-3 group">
                       <Avatar nom={eleve.nom} prenom={eleve.prenom} photo={eleve.photo} size="sm" />
-                      <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">
+                      <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
                         {eleve.prenom} {eleve.nom}
                       </span>
                     </Link>
@@ -152,7 +167,7 @@ export default function EleveListPage() {
                             <button
                               title="Inscrire"
                               onClick={() => { setInscriptionMatricule(eleve.matricule); setInscriptionOpen(true) }}
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-brand-wash)] hover:text-[var(--color-brand-bright)]"
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-action-wash)] hover:text-[var(--color-action-bright)]"
                             >
                               <GraduationCap strokeWidth={1.75} className="size-4" />
                             </button>
@@ -211,6 +226,7 @@ export default function EleveListPage() {
         initialMatricule={inscriptionMatricule}
         onSubmit={async (data) => {
           await createInscription(data)
+          toast('Élève inscrit')
           setInscriptionOpen(false)
           invalidate()
         }}

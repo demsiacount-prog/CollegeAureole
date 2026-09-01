@@ -7,7 +7,7 @@ export const TOKEN_STORAGE_KEY = 'aureole_token'
 // l'interface et relaie /api vers le backend (proxy vite en dev) ; VITE_API_URL
 // reste un sur-ensemble pour pointer explicitement vers une autre adresse.
 // En mode bureau (Tauri), la base est résolue à chaque requête depuis
-// l'adresse du poste-serveur mémorisée (lib/server.ts).
+// l'adresse du serveur local mémorisée (lib/server.ts).
 export const api = axios.create({
   baseURL: resoudreBaseUrl() || undefined,
   timeout: 30_000,

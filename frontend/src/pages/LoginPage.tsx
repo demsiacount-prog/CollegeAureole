@@ -107,7 +107,7 @@ export function LoginPage() {
             {/* Card header with theme toggle */}
             <div className="mb-6 flex items-start justify-between">
               <div>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-brand)] text-white">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-action)] text-white">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
                 <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">

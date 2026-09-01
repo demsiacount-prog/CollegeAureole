@@ -25,12 +25,23 @@ export interface NavItem {
   path: string
   icon: LucideIcon
   roles: Role[]
+  count?: number
 }
 
 export interface NavSection {
   title: string
+  /** Token CSS de couleur module (var(--color-mod-*)). null/absent → aucune identité de module. */
+  moduleColor?: string | null
   items: NavItem[]
 }
+
+/** Module identity colors (v4.1) */
+export const MOD_COLORS = {
+  vie: 'var(--color-mod-vie)',
+  peda: 'var(--color-mod-peda)',
+  ress: 'var(--color-mod-ress)',
+  fin: 'var(--color-mod-fin)',
+} as const
 
 const ALL_ROLES: Role[] = ['admin', 'directeur', 'comptable']
 const DIRECTION: Role[] = ['admin', 'directeur']
@@ -38,10 +49,12 @@ const DIRECTION: Role[] = ['admin', 'directeur']
 export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Vue d’ensemble',
+    moduleColor: null,
     items: [{ label: 'Tableau de bord', path: '/app', icon: LayoutDashboard, roles: ALL_ROLES }],
   },
   {
     title: 'Pilotage',
+    moduleColor: MOD_COLORS.vie,
     items: [
       { label: 'Élèves', path: '/app/eleves', icon: GraduationCap, roles: ALL_ROLES },
       { label: 'Enseignants', path: '/app/enseignants', icon: UserRound, roles: ALL_ROLES },
@@ -52,6 +65,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'Pédagogie',
+    moduleColor: MOD_COLORS.peda,
     items: [
       { label: 'Inscriptions', path: '/app/inscriptions', icon: UserPlus, roles: DIRECTION },
       { label: 'Absences', path: '/app/absences', icon: CalendarCheck, roles: DIRECTION },
@@ -64,6 +78,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'Finances',
+    moduleColor: MOD_COLORS.fin,
     items: [
       { label: 'Paiements', path: '/app/paiements', icon: Wallet, roles: ['admin', 'comptable'] },
       { label: 'Dépenses', path: '/app/depenses', icon: Receipt, roles: ['admin', 'comptable'] },
@@ -71,9 +86,28 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'Administration',
+    moduleColor: null,
     items: [
       { label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight, roles: DIRECTION },
       { label: 'Paramètres', path: '/app/parametres', icon: Settings, roles: ['admin', 'directeur'] },
     ],
   },
 ]
+
+export interface ModuleInfo {
+  title: string
+  moduleColor: string | null
+}
+
+/** Retrouve le module (titre + couleur) d'un chemin donné, en remontant les
+ *  segments pour matcher les pages de détail (ex: /app/eleves/MAT). */
+export function moduleForPath(path: string): ModuleInfo | null {
+  for (const section of NAV_SECTIONS) {
+    for (const item of section.items) {
+      if (path === item.path || path.startsWith(`${item.path}/`)) {
+        return { title: section.title, moduleColor: section.moduleColor ?? null }
+      }
+    }
+  }
+  return null
+}

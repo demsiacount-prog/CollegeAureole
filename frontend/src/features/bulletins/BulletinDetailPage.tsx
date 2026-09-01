@@ -1,14 +1,19 @@
 import { useParams } from 'react-router-dom'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Download } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { formatDate, formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
-import { fetchBulletinDetail } from './api'
+import { toast } from '@/components/ui/toast'
+import { extractErrorMessage } from '@/lib/api'
+import { fetchBulletinDetail, downloadBulletinPdf } from './api'
 
 function getMoyenneAppreciation(m: number, bareme: number): string {
   const pct = m / bareme
@@ -35,6 +40,21 @@ export default function BulletinDetailPage() {
     queryFn: () => fetchBulletinDetail(Number(id)),
     enabled: !!id,
   })
+
+  const [downloading, setDownloading] = useState(false)
+
+  const telecharger = async () => {
+    if (!bulletin) return
+    setDownloading(true)
+    try {
+      await downloadBulletinPdf(bulletin.id)
+      toast('Bulletin téléchargé.')
+    } catch (e) {
+      toast(extractErrorMessage(e, 'Impossible de télécharger le bulletin.'), 'error')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -64,7 +84,7 @@ export default function BulletinDetailPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+              <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                 Bulletin — {bulletin.eleve.prenom} {bulletin.eleve.nom}
               </h2>
               <Badge tone={bulletin.statut === 'PUBLIE' ? 'success' : 'neutral'}>
@@ -85,6 +105,12 @@ export default function BulletinDetailPage() {
             {bulletin.rang != null && (
               <p className="mt-1 text-sm text-[var(--color-ink-dim)]">Rang {bulletin.rang}{bulletin.rang === 1 ? 'er' : 'e'}</p>
             )}
+            <div className="mt-3 flex justify-end">
+              <Button variant="primary" isLoading={downloading} onClick={telecharger} className="shrink-0">
+                <Download size={14} strokeWidth={1.75} className="mr-1.5" />
+                Télécharger le PDF
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

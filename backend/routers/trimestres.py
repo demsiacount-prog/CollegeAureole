@@ -6,6 +6,7 @@ import models
 import schemas
 from security import get_current_user, require_role
 from periodes import generer_periodes_par_defaut
+from services.protections import verifier_trimestre
 
 router = APIRouter(prefix="/api/trimestres", tags=["Trimestres"], dependencies=[Depends(get_current_user)])
 
@@ -82,6 +83,7 @@ def delete_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
     if not trimestre:
         raise HTTPException(status_code=404, detail="Trimestre introuvable")
+    verifier_trimestre(db, trimestre_id)
     db.delete(trimestre)
     db.commit()
     return None

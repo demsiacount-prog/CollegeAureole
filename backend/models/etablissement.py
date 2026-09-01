@@ -22,5 +22,7 @@ class Etablissement(Base):
     email = Column(String, nullable=True)
     logo = Column(String, nullable=True)  # chemin (relatif) du logo
     date_initialisation = Column(Date, nullable=False, default=date.today)
+    academie =Column(String, nullable=False)
+    cap = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)

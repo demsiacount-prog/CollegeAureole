@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
@@ -8,6 +9,7 @@ import models
 import schemas
 from security import get_current_user, require_role
 from bareme import appreciation_for_moyenne, bareme_niveau
+from services import pdf as pdf_service
 
 router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[Depends(get_current_user)])
 
@@ -292,6 +294,88 @@ def get_all_bulletins(
     if id_trimestre:
         query = query.filter(models.Bulletins.id_trimestre == id_trimestre)
     return query.order_by(models.Bulletins.rang.asc().nullslast()).offset(skip).limit(limit).all()
+
+
+def _bulletin_avec_relations(db: Session, bulletin_id: int) -> models.Bulletins:
+    """Charge un bulletin avec ses relations (détails+cours, élève, trimestre,
+    classe) pour la génération du PDF — évite les requêtes N+1."""
+    bulletin = (
+        db.query(models.Bulletins)
+        .options(
+            joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours),
+            joinedload(models.Bulletins.eleve),
+            joinedload(models.Bulletins.trimestre).joinedload(models.Trimestres.annee_scolaire),
+            joinedload(models.Bulletins.classe),
+        )
+        .filter(models.Bulletins.id == bulletin_id)
+        .first()
+    )
+    if not bulletin:
+        raise HTTPException(status_code=404, detail="Bulletin introuvable")
+    return bulletin
+
+
+def _contexte_etablissement(db: Session):
+    etab = db.query(models.Etablissement).first()
+    return etab
+
+
+@router.get("/pdf/{bulletin_id}")
+def bulletins_pdf_un(bulletin_id: int, db: Session = Depends(get_db)):
+    """PDF d'un seul bulletin (remplace l'impression navigateur)."""
+    bulletin = _bulletin_avec_relations(db, bulletin_id)
+    etab = _contexte_etablissement(db)
+    annee_label = bulletin.trimestre.annee_scolaire.libelle if bulletin.trimestre.annee_scolaire else None
+
+    effectif = (
+        db.query(func.count(models.Bulletins.id))
+        .filter(
+            models.Bulletins.id_classe == bulletin.id_classe,
+            models.Bulletins.id_trimestre == bulletin.id_trimestre,
+        )
+        .scalar()
+    )
+
+    fichier = pdf_service.nom_fichier_bulletin(bulletin)
+    contenu = pdf_service.bulletin_pdf(bulletin, etab, effectif, annee_label)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fichier}"'},
+    )
+
+
+@router.get("/classe/{id_classe}/trimestre/{id_trimestre}/pdf")
+def bulletins_pdf_classe(id_classe: int, id_trimestre: int, db: Session = Depends(get_db)):
+    """PDF regroupant tous les bulletins de la classe/période (un par page)."""
+    bulletins = (
+        db.query(models.Bulletins)
+        .options(
+            joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours),
+            joinedload(models.Bulletins.eleve),
+            joinedload(models.Bulletins.trimestre).joinedload(models.Trimestres.annee_scolaire),
+            joinedload(models.Bulletins.classe),
+        )
+        .filter(
+            models.Bulletins.id_classe == id_classe,
+            models.Bulletins.id_trimestre == id_trimestre,
+        )
+        .order_by(models.Bulletins.rang.asc().nullslast(), models.Bulletins.id.asc())
+        .all()
+    )
+    if not bulletins:
+        raise HTTPException(status_code=404, detail="Aucun bulletin trouvé pour cette classe / période")
+
+    etab = _contexte_etablissement(db)
+    annee_label = bulletins[0].trimestre.annee_scolaire.libelle if bulletins[0].trimestre.annee_scolaire else None
+
+    fichier = pdf_service.nom_fichier_classe(bulletins)
+    contenu = pdf_service.bulletins_classe_pdf(bulletins, etab, annee_label)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fichier}"'},
+    )
 
 
 @router.get("/{bulletin_id}", response_model=schemas.BulletinDetailFullResponse)

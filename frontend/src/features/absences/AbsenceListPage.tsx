@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { Pagination } from '@/components/ui/Pagination'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -99,20 +99,12 @@ export default function AbsenceListPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Absences
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              Suivi des absences et justifications
-            </p>
-          </div>
-          {canWrite && <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-            <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-            Nouvelle absence
-          </Button>}
-        </div>
+        <PageHeader
+          title="Absences"
+          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Suivi des absences et justifications</p>}
+          actionLabel={canWrite ? 'Nouvelle absence' : undefined}
+          onAction={canWrite ? () => setDrawerOpen(true) : undefined}
+        />
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
           <Card>
@@ -147,7 +139,7 @@ export default function AbsenceListPage() {
                 onClick={() => setFilterJustifiee(f)}
                 className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                   filterJustifiee === f
-                    ? f === 'tous' ? 'bg-[var(--color-brand)] text-[var(--color-surface)]'
+                    ? f === 'tous' ? 'bg-[var(--color-action)] text-[var(--color-surface)]'
                     : f === 'justifiees' ? 'bg-[var(--color-success)] text-[var(--color-surface)]'
                     : 'bg-[var(--color-warning)] text-[var(--color-surface)]'
                     : 'bg-[var(--color-surface-2)] text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]'
@@ -188,7 +180,7 @@ export default function AbsenceListPage() {
                   <TableRow key={a.id}>
                     <TableCell className="text-[var(--color-ink)]">
                       {a.eleve ? (
-                        <Link to={`/app/eleves/${a.matricule_eleve}`} className="hover:text-[var(--color-brand-bright)]">
+                        <Link to={`/app/eleves/${a.matricule_eleve}`} className="hover:text-[var(--color-action-bright)]">
                           {a.eleve.prenom} {a.eleve.nom}
                         </Link>
                       ) : (

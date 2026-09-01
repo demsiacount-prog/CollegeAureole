@@ -7,6 +7,7 @@ import type { Note, NoteCreatePayload } from './api'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -200,14 +201,14 @@ export default function NoteListPage() {
     <div className="w-full">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Saisie des notes
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              Sélectionnez une classe, une période et une matière pour saisir les notes
-            </p>
-          </div>
+          <PageHeader
+            title="Saisie des notes"
+            subtitle={
+              <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+                Sélectionnez une classe, une période et une matière pour saisir les notes
+              </p>
+            }
+          />
           {canWrite && ready && rows.length > 0 && (
             <Button
               variant="primary"
@@ -227,6 +228,7 @@ export default function NoteListPage() {
               label="Année scolaire"
               value={filterAnnee}
               onChange={(e) => setFilterAnnee(e.target.value)}
+              disabled={!annees.length}
             >
               <option value="">Toutes les années</option>
               {annees.map((a) => (
@@ -244,6 +246,7 @@ export default function NoteListPage() {
                 setClasseId(v)
                 resetSelections()
               }}
+              disabled={!classes.length}
             >
               <option value="">Toutes les classes</option>
               {classes.map((c) => (
@@ -259,7 +262,7 @@ export default function NoteListPage() {
               label="Période"
               value={trimestreId ?? ''}
               onChange={(e) => setTrimestreId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!classeDetail}
+              disabled={!classeDetail || !filteredTrimestres.length}
             >
               <option value="">
                 {classeDetail ? "Toutes les périodes" : "D'abord une classe"}
@@ -277,7 +280,7 @@ export default function NoteListPage() {
               label="Matière"
               value={coursId ?? ''}
               onChange={(e) => setCoursId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!classeDetail}
+              disabled={!classeDetail || !classeDetail.cours.length}
             >
               <option value="">
                 {classeDetail ? "Toutes les matières" : "D'abord une classe"}
@@ -349,7 +352,7 @@ export default function NoteListPage() {
                         <TableCell>
                           <Link to={`/app/eleves/${row.matricule}`} className="flex items-center gap-3 group">
                             <Avatar nom={row.nom} prenom={row.prenom} size="sm" />
-                            <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">
+                            <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
                               {row.prenom} {row.nom}
                             </span>
                           </Link>

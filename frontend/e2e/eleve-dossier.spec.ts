@@ -1,8 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import { login, apiContext } from './helpers'
 
-const API_BASE = 'http://localhost:3001'
-
 async function setupFixtures(api: APIRequestContext) {
   const annees = await (await api.get('/api/anneesScolaires/')).json()
   const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)

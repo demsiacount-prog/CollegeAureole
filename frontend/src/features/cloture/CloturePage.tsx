@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -60,14 +61,10 @@ export default function CloturePage() {
   if (isError || !preview) {
     return (
       <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Clôture d'année scolaire
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-            Clôturer l'année active et créer l'année suivante.
-          </p>
-        </div>
+        <PageHeader
+          title="Clôture d'année scolaire"
+          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+        />
         <div className="py-16">
           <EmptyState
             title="Impossible d'ouvrir la clôture"
@@ -102,14 +99,10 @@ export default function CloturePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-          Clôture d'année scolaire
-        </h2>
-        <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-          {preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}
-        </p>
-      </div>
+      <PageHeader
+        title="Clôture d'année scolaire"
+        subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">{preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}</p>}
+      />
 
       {preview.total_eleves === 0 ? (
         <div className="py-16">
@@ -122,7 +115,7 @@ export default function CloturePage() {
               <Card key={key} className={key === 'EN_ATTENTE' && preview.blocants > 0 ? 'border-[var(--color-danger)]/40 p-4' : 'p-4'}>
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-[var(--color-ink-dim)]">{label}</p>
-                  <Icon className="size-4 text-[var(--color-brand)]" strokeWidth={1.75} />
+                  <Icon className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
                 </div>
                 <p className="mt-2 text-2xl font-medium text-[var(--color-ink)]">
                   {preview.compteurs[key]}
@@ -156,7 +149,7 @@ export default function CloturePage() {
                   {preview.eleves.map((e) => (
                     <TableRow key={e.inscription_id}>
                       <TableCell className="font-medium text-[var(--color-ink)]">
-                        <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--color-brand-bright)]">
+                        <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--color-action-bright)]">
                           {e.prenom} {e.nom}
                         </Link>
                       </TableCell>
@@ -178,7 +171,7 @@ export default function CloturePage() {
 
           <Card className="p-5">
             <CardTitle className="mb-4 flex items-center gap-2">
-              <CalendarClock className="size-4 text-[var(--color-brand)]" />
+              <CalendarClock className="size-4 text-[var(--color-action)]" />
               Nouvelle année scolaire
             </CardTitle>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

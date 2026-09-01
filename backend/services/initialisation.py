@@ -147,6 +147,8 @@ def executer_initialisation(payload) -> None:
                 telephone=etablissement.telephone,
                 email=etablissement.email,
                 logo=etablissement.logo,
+                academie=etablissement.academie or "",
+                cap=etablissement.cap or "",
                 date_initialisation=date.today(),
             ))
             db.commit()

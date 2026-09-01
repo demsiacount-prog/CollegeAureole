@@ -174,7 +174,7 @@ export default function DepenseListPage() {
                         {CATEGORIE_LABELS[d.categorie]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                    <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-ink)]">
                       {formatMontant(d.montant)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--color-ink-faint)]">
@@ -208,6 +208,19 @@ export default function DepenseListPage() {
                   </TableRow>
                 ))}
               </TableBody>
+              {total > 0 && (
+                <tfoot>
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-right font-semibold text-[var(--color-warning)]">
+                      Total filtré
+                    </TableCell>
+                    <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-warning)]">
+                      {formatMontant(compte.total_montant)}
+                    </TableCell>
+                    <TableCell colSpan={2} />
+                  </TableRow>
+                </tfoot>
+              )}
             </Table>
           </TableContainer>
         )}

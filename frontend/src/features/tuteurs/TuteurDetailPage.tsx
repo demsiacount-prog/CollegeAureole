@@ -63,7 +63,7 @@ export default function TuteurDetailPage() {
           <div className="flex items-start gap-4">
             <Avatar nom={tuteur.nom} prenom={tuteur.prenom} size="lg" highlighted />
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+              <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                 {tuteur.prenom} {tuteur.nom}
               </h2>
               
@@ -167,7 +167,7 @@ function ElevesTab({ eleves }: { eleves: import('@/features/shared/types').Eleve
               <TableCell>
                 <Link
                   to={`/app/eleves/${e.matricule}`}
-                  className="flex items-center gap-3 text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]"
+                  className="flex items-center gap-3 text-[var(--color-ink)] hover:text-[var(--color-action-bright)]"
                 >
                   <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
                   <div>

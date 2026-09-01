@@ -23,7 +23,7 @@ export async function login(page: Page, role: Role = 'admin') {
   await page.locator('nav').first().waitFor({ timeout: 15_000 })
 }
 
-/** Connexion via l'API (base isolée e2e) — utilitaire quand le formulaire n'est pas l'objet du test. */
+/** Connexion via l'API — utilitaire quand le formulaire n'est pas l'objet du test. */
 export async function loginViaApi(page: Page, role: Role = 'admin') {
   const creds = CREDENTIALS[role]
   const ctx = await request.newContext({ baseURL: API_BASE })
@@ -41,7 +41,7 @@ export async function loginViaApi(page: Page, role: Role = 'admin') {
   await page.locator('nav').first().waitFor({ timeout: 15_000 })
 }
 
-/** Contexte API authentifié sur la base isolée e2e (3001) : vérifications et nettoyage. */
+/** Contexte API authentifié (3001) : vérifications et nettoyage. */
 export async function apiContext(role: Role = 'admin'): Promise<APIRequestContext> {
   const creds = CREDENTIALS[role]
   const auth = await request.newContext({ baseURL: API_BASE })

@@ -160,7 +160,7 @@ export default function PaiementListPage() {
                       </TableCell>
                       <TableCell>
                         <Link to={`/app/eleves/${p.matricule_eleve ?? ''}`} className="group inline-block">
-                          <p className="text-sm font-medium text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">
+                          <p className="text-sm font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
                             {nomEleve || '—'}
                           </p>
                           <p className="text-xs text-[var(--color-ink-faint)]">
@@ -168,7 +168,7 @@ export default function PaiementListPage() {
                           </p>
                         </Link>
                       </TableCell>
-                      <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                      <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-ink)]">
                         {formatMontant(p.montant)}
                       </TableCell>
                       <TableCell>

@@ -36,7 +36,7 @@ export function Avatar({
         onError={() => setFailed(true)}
         className={clsx(
           'shrink-0 rounded-full border border-[var(--color-border)] object-cover',
-          highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-brand)]',
+          highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-action)]',
           sizeClasses,
         )}
       />
@@ -48,7 +48,7 @@ export function Avatar({
       className={clsx(
         'flex shrink-0 items-center justify-center rounded-full font-medium',
         'bg-[var(--color-surface-3)] text-[var(--color-ink)] border border-[var(--color-border)]',
-        highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-brand)]',
+        highlighted && 'shadow-[0_0_0_2px_var(--color-base),0_0_0_4px_var(--color-action)]',
         sizeClasses,
       )}
     >

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Pagination } from '@/components/ui/Pagination'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Select } from '@/components/ui/Select'
@@ -121,20 +122,13 @@ export default function InscriptionListPage() {
     <div className="w-full">
       <div className="flex flex-col gap-5">
         <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Inscriptions
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              {total} inscription{total > 1 ? 's' : ''}
-            </p>
-          </div>
-          {tab === 'liste' && canWrite && (
-            <Button variant="primary" onClick={() => setTab('nouvelle')}>
-              <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-              Nouvelle inscription
-            </Button>
-          )}
+          <PageHeader
+            title="Inscriptions"
+            count={total}
+            countLabel="inscription(s)"
+            actionLabel={tab === 'liste' && canWrite ? 'Nouvelle inscription' : undefined}
+            onAction={tab === 'liste' && canWrite ? () => setTab('nouvelle') : undefined}
+          />
           {tab === 'nouvelle' && (
             <Button variant="secondary" onClick={() => setTab('liste')}>
               <ChevronLeft size={14} strokeWidth={1.75} className="mr-1.5" />
@@ -186,7 +180,7 @@ export default function InscriptionListPage() {
                 value={search}
                 onChange={setSearch}
               />
-              <Select label="" value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)}>
+              <Select label="" value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} disabled={!annees.length}>
                 <option value="">Toutes les années</option>
                 {annees.map((a) => (
                   <option key={a.id} value={a.id}>{a.libelle}</option>
@@ -231,7 +225,7 @@ export default function InscriptionListPage() {
                             <Link to={`/app/eleves/${i.matricule_eleve}`} className="flex items-center gap-3 group">
                               <Avatar nom={i.eleve_nom ?? ''} prenom={i.eleve_prenom ?? ''} size="sm" />
                               <div>
-                                <p className="text-sm text-[var(--color-ink)] group-hover:text-[var(--color-brand-bright)]">{i.eleve_nom ?? '—'} {i.eleve_prenom ?? '—'}</p>
+                                <p className="text-sm text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">{i.eleve_nom ?? '—'} {i.eleve_prenom ?? '—'}</p>
                               </div>
                             </Link>
                           </div>
@@ -306,9 +300,14 @@ export default function InscriptionListPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onSubmit={async (data) => {
-          await createInscription(data)
-          setDrawerOpen(false)
-          qc.invalidateQueries({ queryKey: ['inscriptions'] })
+          try {
+            await createInscription(data)
+            toast('Élève inscrit')
+            setDrawerOpen(false)
+            qc.invalidateQueries({ queryKey: ['inscriptions'] })
+          } catch (err) {
+            toast(extractErrorMessage(err), 'error')
+          }
         }}
       />
     </div>

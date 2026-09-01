@@ -1,5 +1,5 @@
 // Client léger College Aureole : la fenêtre embarque l'interface React et
-// dialogue avec le backend FastAPI déployé sur le poste-serveur (LAN).
+// dialogue avec le backend FastAPI installé sur le même poste (mono-poste).
 // Aucun traitement métier ici — tout vit côté serveur.
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

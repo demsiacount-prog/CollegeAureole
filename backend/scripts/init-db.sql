@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────────────────────
--- Initialisation PostgreSQL pour College Aureole (poste-serveur LAN).
+-- Initialisation PostgreSQL pour College Aureole (mono-poste).
 --
 -- À exécuter UNE SEULE FOIS, lors de l'installation initiale du serveur.
 -- NE PAS relancer après coup : le rôle et la base ne se créent qu'une fois.

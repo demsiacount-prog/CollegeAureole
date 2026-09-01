@@ -9,6 +9,7 @@ import {
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Input } from '@/components/ui/Input'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -55,14 +56,14 @@ export default function ParametresPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Paramètres
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-            Configuration du système de gestion scolaire
-          </p>
-        </div>
+        <PageHeader
+          title="Paramètres"
+          subtitle={
+            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+              Configuration du système de gestion scolaire
+            </p>
+          }
+        />
 
         <div className="flex gap-6">
           <div className="w-44 shrink-0 space-y-1">
@@ -76,7 +77,7 @@ export default function ParametresPage() {
                   className={clsx(
                     'flex w-full items-center gap-3 rounded-[var(--radius-sm)] border border-transparent px-3 py-2.5 text-left text-sm transition-colors',
                     active
-                      ? 'border-[var(--color-brand-wash)] bg-[var(--color-brand-wash)] text-[var(--color-brand)]'
+                      ? 'border-[var(--color-action-wash)] bg-[var(--color-action-wash)] text-[var(--color-action)]'
                       : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]',
                   )}
                 >

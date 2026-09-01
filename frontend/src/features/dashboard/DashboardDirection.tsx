@@ -9,8 +9,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchDashboardStats } from '@/features/dashboard/api'
 
 const PIE_COLORS = [
-  'var(--color-brand)',
-  'var(--color-brand-blue)',
+  'var(--color-action)',
+  'var(--color-mod-ress)',
   'var(--color-success)',
   'var(--color-danger)',
   'var(--color-info)',
@@ -42,15 +42,15 @@ const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string; s
 }
 
 const ACTIVITY_COLORS: Record<string, string> = {
-  eleve: 'text-[var(--color-brand)]',
-  enseignant: 'text-[var(--color-brand-blue)]',
+  eleve: 'text-[var(--color-action)]',
+  enseignant: 'text-[var(--color-mod-ress)]',
   tuteur: 'text-[var(--color-info)]',
   inscription: 'text-[var(--color-success)]',
   paiement: 'text-[var(--color-success)]',
   depense: 'text-[var(--color-warning)]',
-  note: 'text-[var(--color-brand)]',
+  note: 'text-[var(--color-action)]',
   absence: 'text-[var(--color-danger)]',
-  document: 'text-[var(--color-brand-blue)]',
+  document: 'text-[var(--color-mod-ress)]',
 }
 
 export default function DashboardDirection() {
@@ -102,9 +102,9 @@ export default function DashboardDirection() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+        <h1 className="font-[var(--font-display)] text-[28px] font-semibold leading-tight tracking-tight text-[var(--color-ink)]">
           Bonjour, {user?.prenom}
-        </h2>
+        </h1>
         <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
           Voici un aperçu de l'établissement.
         </p>
@@ -118,9 +118,9 @@ export default function DashboardDirection() {
                 <p className="text-sm font-medium text-[var(--color-ink-dim)]">{stat.label}</p>
                 <p className="text-xs text-[var(--color-ink-faint)]">{stat.period}</p>
               </div>
-              <stat.icon className="size-5 shrink-0 text-[var(--color-brand)]" strokeWidth={1.75} />
+              <stat.icon className="size-5 shrink-0 text-[var(--color-action)]" strokeWidth={1.75} />
             </div>
-            <p className="mt-3 font-[var(--font-display)] text-3xl font-semibold text-[var(--color-ink)]">
+            <p className="mt-3 font-[var(--font-display)] text-[34px] font-semibold text-[var(--color-ink)]">
               {stat.value}
             </p>
           </Card>
@@ -132,7 +132,7 @@ export default function DashboardDirection() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <Card className="col-span-1 xl:col-span-2 p-5">
             <div className="mb-4 flex items-center gap-2">
-              <BookOpen className="size-4 text-[var(--color-brand)]" strokeWidth={1.75} />
+              <BookOpen className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
               <h3 className="text-[15px] font-medium text-[var(--color-ink)]">
                 Moyennes par classe
               </h3>
@@ -160,7 +160,7 @@ export default function DashboardDirection() {
                           fontSize: 12,
                         }}
                       />
-                      <Bar dataKey="pct" fill="var(--color-brand)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pct" fill="var(--color-action)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -207,7 +207,7 @@ export default function DashboardDirection() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <UserRound className="size-4 text-[var(--color-brand-blue)]" strokeWidth={1.75} />
+              <UserRound className="size-4 text-[var(--color-mod-ress)]" strokeWidth={1.75} />
               <h3 className="text-[15px] font-medium text-[var(--color-ink)]">
                 Répartition des élèves par classe
               </h3>

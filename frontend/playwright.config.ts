@@ -1,8 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
-// Base PostgreSQL dédiée aux tests e2e, recréée vide à chaque exécution.
-// Connexion par socket Unix (auth peer) : aucun mot de passe dans ce fichier.
-const E2E_DB = 'collegeaureole_e2e'
+// Base unique collegeaureole (dev + tests). Le démarrage du backend d'e2e
+// vide le schéma public via psql puis Alembic le recrée au démarrage.
 
 export default defineConfig({
   testDir: './e2e',
@@ -15,9 +14,9 @@ export default defineConfig({
   webServer: [
     {
       command: [
-        `dropdb --if-exists --force ${E2E_DB}`,
-        `createdb ${E2E_DB}`,
-        `DATABASE_URL='postgresql:///${E2E_DB}' venv/bin/uvicorn main:app --host 127.0.0.1 --port 3001`,
+        `set -a && . ./.env && set +a`,
+        `psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`,
+        `venv/bin/uvicorn main:app --host 127.0.0.1 --port 3001`,
       ].join(' && '),
       cwd: '../backend',
       url: 'http://localhost:3001/api/setup/status',

@@ -6,6 +6,7 @@ import models
 import schemas
 from security import get_current_user, require_role
 from bareme import bareme_niveau
+from services.protections import verifier_cours
 
 router = APIRouter(prefix="/api/cours", tags=["Cours"], dependencies=[Depends(get_current_user)])
 
@@ -94,6 +95,7 @@ def delete_cours(cours_id: int, db: Session = Depends(get_db)):
     db_cours = db.query(models.Cours).filter(models.Cours.id == cours_id).first()
     if not db_cours:
         raise HTTPException(status_code=404, detail="Cours introuvable")
+    verifier_cours(db, cours_id)
     db.delete(db_cours)
     db.commit()
     return None

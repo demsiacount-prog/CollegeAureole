@@ -66,7 +66,7 @@ export default function EnseignantDetailPage() {
             <Avatar nom={e.nom} prenom={e.prenom} size="lg" highlighted />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                   {e.prenom} {e.nom}
                 </h2>
               </div>

@@ -8,6 +8,8 @@ export interface Etablissement {
   email: string | null
   logo: string | null
   date_initialisation: string | null
+  academie: string | null
+  cap: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -20,4 +22,6 @@ export interface EtablissementUpdate {
   telephone?: string | null
   email?: string | null
   logo?: string | null
+  academie?: string | null
+  cap?: string | null
 }

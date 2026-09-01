@@ -34,6 +34,8 @@ class EtablissementInput(BaseModel):
     telephone: str | None = None
     email: EmailStr | None = None
     logo: str | None = None
+    academie: str | None = None
+    cap: str | None = None
 
 
 class AdminInput(BaseModel):

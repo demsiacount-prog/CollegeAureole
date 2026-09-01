@@ -181,7 +181,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
               </div>
               <div className="h-1.5 rounded-full bg-[var(--color-border-soft)]">
                 <div
-                  className="h-1.5 rounded-full bg-[var(--color-brand)] transition-all duration-500"
+                  className="h-1.5 rounded-full bg-[var(--color-action)] transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -204,7 +204,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                     <div
                       className="flex size-6 shrink-0 items-center justify-center rounded-full"
                       style={{
-                        background: done ? 'var(--color-brand)' : active ? 'var(--color-surface)' : 'var(--color-border-soft)',
+                        background: done ? 'var(--color-action)' : active ? 'var(--color-surface)' : 'var(--color-border-soft)',
                       }}
                     >
                       {done ? (
@@ -251,7 +251,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
               </div>
               <p className="text-lg font-semibold text-[var(--color-ink)]">Inscription enregistrée.</p>
               {codeInscription && (
-                <p className="font-[var(--font-mono)] text-sm text-[var(--color-brand-blue)]">{codeInscription}</p>
+                <p className="font-[var(--font-mono)] text-sm text-[var(--color-mod-ress)]">{codeInscription}</p>
               )}
               <p className="text-center text-sm text-[var(--color-ink-dim)]">
                 Le dossier de {form.prenom} {form.nom} a été créé. Redirection...
@@ -322,7 +322,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                       onClick={() => { setTuteurMode('select'); setTuteurId('') }}
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
-                        background: tuteurMode === 'select' ? 'var(--color-brand)' : 'var(--color-surface)',
+                        background: tuteurMode === 'select' ? 'var(--color-action)' : 'var(--color-surface)',
                         color: tuteurMode === 'select' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
                       }}
                     >
@@ -333,7 +333,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                       onClick={() => setTuteurMode('create')}
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
-                        background: tuteurMode === 'create' ? 'var(--color-brand)' : 'var(--color-surface)',
+                        background: tuteurMode === 'create' ? 'var(--color-action)' : 'var(--color-surface)',
                         color: tuteurMode === 'create' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
                       }}
                     >

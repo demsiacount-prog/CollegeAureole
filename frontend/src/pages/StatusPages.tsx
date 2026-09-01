@@ -21,7 +21,7 @@ export function AccessDeniedPage() {
 export function NotFoundPage() {
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-[var(--color-base)] text-center">
-      <Compass className="size-10 text-[var(--color-brand)]" strokeWidth={1.75} />
+      <Compass className="size-10 text-[var(--color-action)]" strokeWidth={1.75} />
       <div>
         <h2 className="text-xl font-semibold text-[var(--color-ink)]">Page introuvable</h2>
         <p className="mt-1.5 text-sm text-[var(--color-ink-dim)]">Cette page n’existe pas ou plus.</p>

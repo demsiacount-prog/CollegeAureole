@@ -6,10 +6,12 @@ import { Avatar } from '@/components/ui/Avatar'
 import { RoleBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useClickOutside } from '@/lib/useClickOutside'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 
 export function Topbar() {
   const { user, logout } = useAuth()
   const { theme, toggle: toggleTheme } = useTheme()
+  const { data: annee } = useAnneeActive()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useClickOutside(menuRef, () => setMenuOpen(false))
@@ -17,10 +19,22 @@ export function Topbar() {
   if (!user) return null
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-end border-b border-[var(--color-border-soft)] bg-[var(--color-base)] px-6">
-      <div className="flex items-center gap-4">
-        
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-border-soft)] bg-[var(--color-base)] px-6">
+      <div className="min-w-0">
+        {annee ? (
+          <p className="flex items-center gap-2 font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+            <span className="size-2 shrink-0 rounded-full bg-[var(--color-success)]" />
+            <span className="truncate">Année {annee.libelle} · Active</span>
+          </p>
+        ) : (
+          <p className="flex items-center gap-2 font-[var(--font-mono)] text-xs text-[var(--color-warning)]">
+            <span className="size-2 shrink-0 rounded-full bg-[var(--color-warning)]" />
+            Aucune année active
+          </p>
+        )}
+      </div>
 
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={toggleTheme}

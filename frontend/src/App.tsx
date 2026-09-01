@@ -66,7 +66,7 @@ function SuspenseRoute({ children }: { children: React.ReactNode }) {
 
 /** Vérifie si l'établissement a déjà été configuré, et affiche l'assistant de
  *  configuration initiale sinon. Ce composant doit être monté SOUS ServerGate :
- *  en mode bureau, tant que le poste-serveur n'est pas validé, resoudreBaseUrl()
+ *  en mode bureau, tant que le serveur local n'est pas validé, resoudreBaseUrl()
  *  renvoie une base vide et l'appel /api/setup/status échoue silencieusement
  *  (tombant dans le .catch), ce qui masquait l'assistant de configuration lors
  *  du tout premier lancement du client bureau. */

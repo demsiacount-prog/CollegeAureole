@@ -27,7 +27,8 @@ export function LogoEtablissement({ src, nom, className, label = false }: LogoEt
   return (
     <span
       className={clsx(
-        'flex items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-ink-faint)]',
+        'flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-ink-faint)]',
+        label && 'flex-col gap-1',
         className,
       )}
       role="img"
@@ -36,7 +37,7 @@ export function LogoEtablissement({ src, nom, className, label = false }: LogoEt
     >
       <ImageOff className={clsx('shrink-0', label ? 'size-4' : 'size-1/2')} />
       {label && (
-        <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide">
+        <span className="max-w-full px-1 text-center text-[10px] font-semibold uppercase leading-tight tracking-wide">
           Logo manquant
         </span>
       )}

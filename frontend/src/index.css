@@ -26,19 +26,25 @@
   --color-halo-ink: #161208;
   --color-halo-wash: #d9a75c1a;
 
-  /* Brand blue — primary action. The halo gold is reserved for keyboard
-     focus and the active sidebar item only. */
-  --color-brand: #2d6ee8;
-  --color-brand-dark: #1e58c4;
-  --color-brand-bright: #6bb0d1;
-  --color-brand-wash: #2d6ee822;
-  --color-brand-dim: #7aa3c4;
-  --color-brand-border: #4d7fc0;
+  /* Action — primary CTA. The halo gold is reserved for keyboard focus and
+     the active sidebar item only. */
+  --color-action: #2d6ee8;
+  --color-action-dark: #1e58c4;
+  --color-action-bright: #6bb0d1;
+  --color-action-wash: #2d6ee822;
 
-  --color-brand-blue: #3f80a8;
-  --color-brand-blue-bright: #6bb0d1;
-  --color-brand-blue-dim: #244a63;
-  --color-brand-blue-wash: #3f80a81a;
+  /* Module identity — one accent per domain (v4.1).
+     vie = Vie Scolaire (olive), peda = Pédagogie (action),
+     ress = Ressources & Temps (bleu-ciel), fin = Finances (ambre). */
+  --color-mod-vie: #7c9a3f;
+  --color-mod-peda: #2d6ee8;
+  --color-mod-ress: #5b9dc4;
+  --color-mod-fin: #c98a4a;
+
+  --color-mod-vie-wash: #7c9a3f1a;
+  --color-mod-peda-wash: #2d6ee822;
+  --color-mod-ress-wash: #5b9dc41a;
+  --color-mod-fin-wash: #c98a4a1a;
 
   /* Semantic — tuned toward the logo's globe (olive, blue, brown) rather than generic hues */
   --color-success: #a3c05f;
@@ -63,7 +69,7 @@
   /* Shadows: reserved for floating/elevated elements only */
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px -12px rgba(0,0,0,0.45);
   --shadow-halo: 0 0 0 1px var(--color-halo-wash), 0 0 24px -4px var(--color-halo-wash);
-  --shadow-blue: 0 0 0 1px var(--color-brand-blue-wash), 0 0 24px -4px var(--color-brand-blue-wash);
+  --shadow-blue: 0 0 0 1px var(--color-mod-ress-wash), 0 0 24px -4px var(--color-mod-ress-wash);
 }
 
 @layer base {
@@ -93,17 +99,20 @@
     --color-halo-ink: #161208;
     --color-halo-wash: #d9a75c1a;
 
-    --color-brand: #2d6ee8;
-    --color-brand-dark: #1e58c4;
-    --color-brand-bright: #1e58c4;
-    --color-brand-wash: #ebf2ff;
-    --color-brand-dim: #4a6f9e;
-    --color-brand-border: #bfdbfe;
+    --color-action: #2d6ee8;
+    --color-action-dark: #1e58c4;
+    --color-action-bright: #1e58c4;
+    --color-action-wash: #ebf2ff;
 
-    --color-brand-blue: #3f80a8;
-    --color-brand-blue-bright: #357099;
-    --color-brand-blue-dim: #244a63;
-    --color-brand-blue-wash: #3f80a81a;
+    --color-mod-vie: #7c9a3f;
+    --color-mod-peda: #2d6ee8;
+    --color-mod-ress: #5b9dc4;
+    --color-mod-fin: #b87d3a;
+
+    --color-mod-vie-wash: #7c9a3f1a;
+    --color-mod-peda-wash: #2d6ee822;
+    --color-mod-ress-wash: #5b9dc41a;
+    --color-mod-fin-wash: #b87d3a1a;
 
     --color-success: #7a9e3a;
     --color-success-wash: #7a9e3a1a;
@@ -116,7 +125,7 @@
 
     --shadow-soft: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px -12px rgba(0,0,0,0.12);
     --shadow-halo: 0 0 0 1px var(--color-halo-wash), 0 0 24px -4px var(--color-halo-wash);
-    --shadow-blue: 0 0 0 1px var(--color-brand-blue-wash), 0 0 24px -4px var(--color-brand-blue-wash);
+    --shadow-blue: 0 0 0 1px var(--color-mod-ress-wash), 0 0 24px -4px var(--color-mod-ress-wash);
   }
 
   body {
@@ -127,8 +136,8 @@
   }
 
   ::selection {
-    background-color: var(--color-brand-wash);
-    color: var(--color-brand-bright);
+    background-color: var(--color-action-wash);
+    color: var(--color-action-bright);
   }
 
   * {
@@ -188,6 +197,36 @@
 
   .animate-page-in {
     animation: page-in 0.18s ease-out;
+  }
+
+  /* Toast entrée : glissement depuis la droite (design system §14) */
+  .animate-toast-in {
+    animation: toast-in 0.2s ease-out;
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Barre de progression d'auto-dismiss d'un toast (se vide de gauche à droite) */
+  .toast-progress {
+    animation-name: toast-progress;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+  @keyframes toast-progress {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
   }
 
   /* Skeleton shimmer for table placeholder rows */

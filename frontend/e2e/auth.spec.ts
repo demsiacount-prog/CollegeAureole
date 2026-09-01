@@ -7,7 +7,7 @@ test.describe('Authentification', () => {
     await page.getByPlaceholder('••••••••').fill('Password123!')
     await page.getByRole('button', { name: 'Se connecter' }).click()
     await page.waitForURL('**/app')
-    await expect(page.locator('main h2').first()).toBeVisible()
+    await expect(page.locator('main h1').first()).toBeVisible()
   })
 
   test('mauvais mot de passe affiche une erreur sans rediriger', async ({ page }) => {
@@ -23,5 +23,4 @@ test.describe('Authentification', () => {
     await page.goto('/app')
     await expect(page).toHaveURL(/\/connexion/)
   })
-
-)
+})

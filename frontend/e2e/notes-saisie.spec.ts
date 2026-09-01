@@ -36,17 +36,18 @@ async function creerAnnee(api: APIRequestContext, libelle?: string): Promise<{ a
 
 async function creerFixtures(api: APIRequestContext) {
   const ens = await api.post('/api/enseignants/', {
-    nom: 'NoteTest', prenom: 'Prof', email: `prof.notetest${Date.now()}@etablissement.com`,
-    telephone: '+223 76 10 20 30', adresse: 'Bamako', specialite: 'Mathématiques',
+    data: {
+      nom: 'NoteTest', prenom: 'Prof', email: `prof.notetest${Date.now()}@etablissement.com`,
+      telephone: '+223 76 10 20 30', adresse: 'Bamako', specialite: 'Mathématiques',
+    },
   })
   expect(ens.status()).toBe(201)
   const matriculeEns = (await ens.json()).matricule
 
-  const salle = await api.post('/api/salles/', { nom: `Salle Notes ${Date.now()}` })
+  const salle = await api.post('/api/salles/', { data: { nom: `Salle Notes ${Date.now()}` } })
   expect(salle.status()).toBe(201)
-  const salleId = (await salle.json()).id
 
-  const classe = await api.post('/api/classes/', { niveau: '6ème Année', nom: `N${Date.now()}` })
+  const classe = await api.post('/api/classes/', { data: { niveau: '6ème Année', nom: `N${Date.now()}` } })
   expect(classe.status()).toBe(201)
   const classeData = await classe.json()
   const classeId = classeData.id
@@ -54,23 +55,29 @@ async function creerFixtures(api: APIRequestContext) {
 
   const coursNom = `Maths Notes ${Date.now()}`
   const cours = await api.post('/api/cours/', {
-    nom: coursNom, description: '', volume_horaire: 2,
-    matricule_enseignant: matriculeEns,
-    affectations: [{ id_classe: classeId, coefficient: 1 }],
+    data: {
+      nom: coursNom, description: '', volume_horaire: 2,
+      matricule_enseignant: matriculeEns,
+      affectations: [{ id_classe: classeId, coefficient: 1 }],
+    },
   })
   expect(cours.status()).toBe(201)
   const coursId = (await cours.json()).id
 
   const tuteur = await api.post('/api/tuteurs/', {
-    nom: 'NoteTuteur', prenom: 'T', email: `tuteur.note${Date.now()}@etablissement.com`,
-    telephone: '+223 76 11 11 11',
+    data: {
+      nom: 'NoteTuteur', prenom: 'T', email: `tuteur.note${Date.now()}@etablissement.com`,
+      telephone: '+223 76 11 11 11',
+    },
   })
   expect(tuteur.status()).toBe(201)
 
   const eleve = await api.post('/api/eleves/', {
-    nom: 'NoteEleve', prenom: 'E2E', date_de_naissance: '2010-01-01',
-    lieu_de_naissance: 'Bamako', sexe: 'F', statut: 'actif',
-    tuteur_id: (await tuteur.json()).id,
+    data: {
+      nom: 'NoteEleve', prenom: `Notes${Date.now()}`, date_de_naissance: '2010-01-01',
+      lieu_de_naissance: 'Bamako', sexe: 'F', statut: 'actif',
+      tuteur_id: (await tuteur.json()).id,
+    },
   })
   expect(eleve.status()).toBe(201)
   const matriculeEleve = (await eleve.json()).matricule
@@ -78,7 +85,9 @@ async function creerFixtures(api: APIRequestContext) {
   const annees = await (await api.get('/api/anneesScolaires/')).json()
   const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
   const insc = await api.post('/api/inscriptions/', {
-    matricule_eleve: matriculeEleve, id_classe: classeId, id_annee_scolaire: anneeActive.id,
+    data: {
+      matricule_eleve: matriculeEleve, id_classe: classeId, id_annee_scolaire: anneeActive.id,
+    },
   })
   expect(insc.status()).toBe(201)
 

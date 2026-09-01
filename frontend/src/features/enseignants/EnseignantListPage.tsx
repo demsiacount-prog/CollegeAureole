@@ -113,7 +113,7 @@ export default function EnseignantListPage() {
                       <div className="flex items-center gap-3">
                         <Avatar nom={e.nom} prenom={e.prenom} size="sm" />
                         <div>
-                          <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]">
+                          <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-action-bright)]">
                             {e.prenom} {e.nom}
                           </Link>
                         </div>

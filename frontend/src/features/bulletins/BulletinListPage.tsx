@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Printer, Search, FileText, Loader2 } from 'lucide-react'
+import { Download, Search, FileText, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Select } from '@/components/ui/Select'
 import { Spinner } from '@/components/ui/Spinner'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
@@ -26,9 +27,10 @@ import {
   genererBulletinClasse,
   publierBulletins,
   depublierBulletins,
+  downloadBulletinPdf,
+  downloadBulletinsClassePdf,
 } from './api'
 import { BulletinDocument } from './BulletinDocument'
-import type { BulletinDetailFull } from './types'
 
 function noteColor(n: number | null, bareme: number = 20): string {
   if (n == null) return 'var(--color-ink-dim)'
@@ -153,67 +155,55 @@ export default function BulletinListPage() {
   const anneeLabel = annees.find((a) => String(a.id) === anneeId)?.libelle
   const { data: etab } = useEtablissement()
 
-  const handlePrint = () => window.print()
+  const [downloading, setDownloading] = useState<'classe' | number | null>(null)
 
-  /* ── Impression de toute la classe ──────────────────────────────────── */
-  const [batchOpen, setBatchOpen] = useState(false)
-  const [batchDetails, setBatchDetails] = useState<BulletinDetailFull[] | null>(null)
-
-  const ouvrirImpressionClasse = async () => {
-    setBatchOpen(true)
-    setBatchDetails(null)
+  const telechargerClasse = async () => {
+    if (!classeId || !trimestreId) return
+    setDownloading('classe')
     try {
-      const details = await Promise.all(bulletins.map((b) => fetchBulletinDetail(b.id)))
-      details.sort((a, b) => (a.rang ?? Number.MAX_SAFE_INTEGER) - (b.rang ?? Number.MAX_SAFE_INTEGER))
-      setBatchDetails(details)
+      await downloadBulletinsClassePdf(Number(classeId), Number(trimestreId))
+      toast('Bulletins de la classe téléchargés.')
     } catch (e) {
-      toast(extractErrorMessage(e, 'Impossible de préparer les bulletins.'), 'error')
-      setBatchOpen(false)
+      toast(extractErrorMessage(e, 'Impossible de télécharger les bulletins.'), 'error')
+    } finally {
+      setDownloading(null)
     }
   }
 
-  useEffect(() => {
-    if (!batchOpen || !batchDetails) return
-    // Laisse le temps au navigateur de peindre les documents (et charger les logos).
-    const t = setTimeout(() => window.print(), 400)
-    return () => clearTimeout(t)
-  }, [batchOpen, batchDetails])
-
-  useEffect(() => {
-    if (!batchOpen) return
-    const fermer = () => setBatchOpen(false)
-    window.addEventListener('afterprint', fermer)
-    return () => window.removeEventListener('afterprint', fermer)
-  }, [batchOpen])
+  const telechargerUn = async (id: number) => {
+    setDownloading(id)
+    try {
+      await downloadBulletinPdf(id)
+      toast('Bulletin téléchargé.')
+    } catch (e) {
+      toast(extractErrorMessage(e, 'Impossible de télécharger le bulletin.'), 'error')
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Bulletins scolaires
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              Moyennes, rangs et appréciations calculés à partir des notes saisies
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Bulletins scolaires"
+          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Moyennes, rangs et appréciations calculés à partir des notes saisies</p>}
+        />
 
         <div className="flex flex-wrap items-end gap-3">
-          <Select label="Année" value={anneeId} onChange={(e) => setAnneeId(e.target.value)}>
+          <Select label="Année" value={anneeId} onChange={(e) => setAnneeId(e.target.value)} disabled={!annees.length}>
             <option value="">— Choisir une année —</option>
             {annees.map((a) => (
               <option key={a.id} value={a.id}>{a.libelle}</option>
             ))}
           </Select>
-          <Select label="Classe" value={classeId} onChange={(e) => setClasseId(e.target.value)}>
+          <Select label="Classe" value={classeId} onChange={(e) => setClasseId(e.target.value)} disabled={!classes.length}>
             <option value="">— Choisir une classe —</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>{c.niveau} — {c.nom}</option>
             ))}
           </Select>
-          <Select label="Période" value={trimestreId} onChange={(e) => setTrimestreId(e.target.value)}>
+          <Select label="Période" value={trimestreId} onChange={(e) => setTrimestreId(e.target.value)} disabled={!filteredTrimestres.length}>
             <option value="">— Choisir une période —</option>
             {filteredTrimestres.map((t) => (
               <option key={t.id} value={t.id}>{t.nom}</option>
@@ -283,11 +273,11 @@ export default function BulletinListPage() {
                 variant="secondary"
                 className="ml-auto"
                 disabled={!hasBulletins}
-                isLoading={batchOpen && !batchDetails}
-                onClick={ouvrirImpressionClasse}
+                isLoading={downloading === 'classe'}
+                onClick={telechargerClasse}
               >
-                <Printer size={14} strokeWidth={1.75} className="mr-1.5" />
-                Imprimer toute la classe
+                <Download size={14} strokeWidth={1.75} className="mr-1.5" />
+                Télécharger toute la classe (PDF)
               </Button>
             </div>
 
@@ -338,7 +328,7 @@ export default function BulletinListPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="text-sm font-medium" style={{ color: b.rang != null && b.rang <= 3 ? 'var(--color-brand-bright)' : 'var(--color-ink)' }}>
+                            <span className="text-sm font-medium" style={{ color: b.rang != null && b.rang <= 3 ? 'var(--color-action-bright)' : 'var(--color-ink)' }}>
                               {b.rang != null ? `${b.rang}${b.rang === 1 ? 'er' : 'e'}` : '—'}
                             </span>
                           </TableCell>
@@ -356,12 +346,27 @@ export default function BulletinListPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <button
-                              onClick={() => setPreviewId(b.id)}
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                            >
-                              <FileText size={14} strokeWidth={1.75} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                title="Télécharger ce bulletin en PDF"
+                                disabled={downloading === b.id}
+                                onClick={() => telechargerUn(b.id)}
+                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                              >
+                                {downloading === b.id ? (
+                                  <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                                ) : (
+                                  <Download size={14} strokeWidth={1.75} />
+                                )}
+                              </button>
+                              <button
+                                title="Aperçu"
+                                onClick={() => setPreviewId(b.id)}
+                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                              >
+                                <FileText size={14} strokeWidth={1.75} />
+                              </button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -374,48 +379,37 @@ export default function BulletinListPage() {
         )}
       </div>
 
-      {(previewId || batchOpen) && (
+      {previewId && (
         <div className="print-root fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-6">
           <div className="mx-auto mb-5 flex w-fit gap-2 no-print">
-            <Button variant="secondary" onClick={() => { setPreviewId(null); setBatchOpen(false) }}>
+            <Button variant="secondary" onClick={() => setPreviewId(null)}>
               Fermer
             </Button>
-            <Button variant="primary" onClick={handlePrint} disabled={batchOpen && !batchDetails}>
-              <Printer size={14} strokeWidth={1.75} className="mr-1.5" />
-              Imprimer / PDF
-            </Button>
+            {bulletinDetail && (
+              <Button
+                variant="primary"
+                isLoading={downloading === bulletinDetail.id}
+                onClick={() => telechargerUn(bulletinDetail.id)}
+              >
+                <Download size={14} strokeWidth={1.75} className="mr-1.5" />
+                Télécharger le PDF
+              </Button>
+            )}
           </div>
 
-          {previewId && !batchOpen ? (
-            loadingDetail ? (
-              <div className="flex justify-center py-20 no-print">
-                <Spinner label="Chargement du bulletin…" />
-              </div>
-            ) : bulletinDetail ? (
-              <BulletinDocument
-                detail={bulletinDetail}
-                bareme={baremeNiveau(bulletinDetail.classe.niveau)}
-                effectif={bulletins.length}
-                anneeLabel={anneeLabel}
-                etab={etab}
-              />
-            ) : null
-          ) : batchDetails ? (
-            batchDetails.map((d) => (
-              <BulletinDocument
-                key={d.id}
-                detail={d}
-                bareme={baremeNiveau(d.classe.niveau)}
-                effectif={batchDetails.length}
-                anneeLabel={anneeLabel}
-                etab={etab}
-              />
-            ))
-          ) : (
-            <div className="flex justify-center py-20">
-              <Spinner label="Préparation des bulletins…" />
+          {loadingDetail ? (
+            <div className="flex justify-center py-20 no-print">
+              <Spinner label="Chargement du bulletin…" />
             </div>
-          )}
+          ) : bulletinDetail ? (
+            <BulletinDocument
+              detail={bulletinDetail}
+              bareme={baremeNiveau(bulletinDetail.classe.niveau)}
+              effectif={bulletins.length}
+              anneeLabel={anneeLabel}
+              etab={etab}
+            />
+          ) : null}
         </div>
       )}
     </div>

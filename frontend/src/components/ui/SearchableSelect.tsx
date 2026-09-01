@@ -163,7 +163,7 @@ export function SearchableSelect({
                       {o.label}
                       {o.sublabel && <span className="ml-2 font-mono text-xs text-[var(--color-ink-faint)]">{o.sublabel}</span>}
                     </span>
-                    {o.value === value && <Check className="size-4 shrink-0 text-[var(--color-brand-bright)]" />}
+                    {o.value === value && <Check className="size-4 shrink-0 text-[var(--color-action-bright)]" />}
                   </button>
                 </li>
               ))

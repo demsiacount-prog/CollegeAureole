@@ -159,7 +159,7 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
                         type="checkbox"
                         checked={!!selected}
                         onChange={() => toggleClasse(cl.id)}
-                        className="accent-[var(--color-brand)]"
+                        className="accent-[var(--color-action)]"
                       />
                       <span className="text-sm text-[var(--color-ink)] flex-1">
                         {cl.niveau} — {cl.nom}

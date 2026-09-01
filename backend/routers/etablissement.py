@@ -47,7 +47,11 @@ def get_etablissement(db: Session = Depends(get_db)):
 def update_etablissement(payload: schemas.EtablissementUpdate, db: Session = Depends(get_db)):
     fiche = _fiche_ou_404(db)
     for key, value in payload.model_dump().items():
-        setattr(fiche, key, value)
+        # academie/cap sont NOT NULL en base : une valeur vide devient ''.
+        if key in ("academie", "cap") and value is None:
+            value = ""
+        if value is not None:
+            setattr(fiche, key, value)
     db.commit()
     db.refresh(fiche)
     return fiche

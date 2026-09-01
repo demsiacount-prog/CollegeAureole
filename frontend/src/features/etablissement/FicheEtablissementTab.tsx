@@ -33,6 +33,8 @@ export default function FicheEtablissementTab() {
         devise: data.devise ?? '',
         adresse: data.adresse ?? '',
         telephone: data.telephone ?? '',
+        academie: data.academie ?? '',
+        cap: data.cap ?? '',
         email: data.email ?? '',
         logo: data.logo ?? '',
       })
@@ -104,6 +106,8 @@ export default function FicheEtablissementTab() {
       telephone: form.telephone?.trim() || null,
       email: form.email?.trim() || null,
       logo: form.logo?.trim() || null,
+      academie: form.academie?.trim() || null,
+      cap: form.cap?.trim() || null,
     })
   }
 
@@ -126,6 +130,14 @@ export default function FicheEtablissementTab() {
           <div>
             <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Devise</div>
             <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.devise ?? '—'}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Académie</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.academie ?? '—'}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">CAP</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.cap ?? '—'}</div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Initialisé le</div>
@@ -175,6 +187,16 @@ export default function FicheEtablissementTab() {
               onChange={(e) => setForm((f) => f && { ...f, adresse: e.target.value })}
             />
           </div>
+          <Input
+            label="Académie"
+            value={form.academie ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, academie: e.target.value })}
+          />
+          <Input
+            label="CAP"
+            value={form.cap ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, cap: e.target.value })}
+          />
           <Input
             label="Téléphone"
             type="tel"

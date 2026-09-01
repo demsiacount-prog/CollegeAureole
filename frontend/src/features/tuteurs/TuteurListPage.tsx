@@ -113,7 +113,7 @@ export default function TuteurListPage() {
                       <div className="flex items-center gap-3">
                         <Avatar nom={t.nom} prenom={t.prenom} size="sm" />
                         <div>
-                          <Link to={`/app/tuteurs/${t.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-brand-bright)]">
+                          <Link to={`/app/tuteurs/${t.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-action-bright)]">
                             {t.prenom} {t.nom}
                           </Link>
                         </div>

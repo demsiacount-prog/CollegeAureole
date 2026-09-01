@@ -1,15 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from database import get_db
 import models
 import schemas
 from security import get_current_user, require_role
+from services.protections import verifier_classe
 
 router = APIRouter(prefix="/api/classes", tags=["Classes"], dependencies=[Depends(get_current_user)])
 
+def _verifier_salle_disponible(db: Session, id_salle: Optional[int], classe_exclue_id: Optional[int] = None):
+    if id_salle is None:
+        return
+    salle = db.query(models.Salles).filter(models.Salles.id == id_salle).first()
+    if not salle:
+        raise HTTPException(status_code=404, detail="Salle introuvable")
+    deja_affectee = (
+        db.query(models.Classes)
+        .filter(models.Classes.id_salle == id_salle)
+    )
+    if classe_exclue_id is not None:
+        deja_affectee = deja_affectee.filter(models.Classes.id != classe_exclue_id)
+    if deja_affectee.first():
+        raise HTTPException(
+            status_code=400,
+            detail=f"La salle « {salle.nom} » est déjà affectée à une autre classe",
+        )
+
+
 @router.post("/", response_model=schemas.ClasseResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
 def create_classe(classe: schemas.ClasseCreate, db: Session = Depends(get_db)):
+    _verifier_salle_disponible(db, classe.id_salle)
     nouveau_classe = models.Classes(**classe.model_dump())
     db.add(nouveau_classe)
     db.commit()
@@ -32,6 +53,7 @@ def update_classe(classe_id: int, classe_update: schemas.ClasseCreate, db: Sessi
     db_classe = db.query(models.Classes).filter(models.Classes.id == classe_id).first()
     if not db_classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
+    _verifier_salle_disponible(db, classe_update.id_salle, classe_exclue_id=classe_id)
     for key, value in classe_update.model_dump().items():
         setattr(db_classe, key, value)
     db.commit()
@@ -43,6 +65,7 @@ def delete_classe(classe_id: int, db: Session = Depends(get_db)):
     db_classe = db.query(models.Classes).filter(models.Classes.id == classe_id).first()
     if not db_classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
+    verifier_classe(db, classe_id)
     db.delete(db_classe)
     db.commit()
     return None

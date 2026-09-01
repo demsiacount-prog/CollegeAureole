@@ -31,11 +31,19 @@ test('paiements : recherche dans le sélect et création', async ({ page }) => {
   const annees = await (await ctx.get('/api/anneesScolaires/', auth)).json()
   const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
 
-  const classes = await (await ctx.get('/api/classes/', auth)).json()
-  const classe = (Array.isArray(classes) ? classes : classes.items)[0]
-  if (classe && anneeActive) {
+  if (anneeActive) {
+    const classe = await ctx.post('/api/classes/', {
+      data: {
+        niveau: '6ème',
+        nom: `PaiClasse${Date.now()}`,
+        frais_inscription: 5000,
+        mensualite: 2000,
+      },
+      headers: auth.headers,
+    })
+    expect(classe.status()).toBe(201)
     await ctx.post('/api/inscriptions/', {
-      data: { matricule_eleve: matricule, id_classe: classe.id, id_annee_scolaire: anneeActive.id },
+      data: { matricule_eleve: matricule, id_classe: (await classe.json()).id, id_annee_scolaire: anneeActive.id },
       headers: auth.headers,
     })
   }
@@ -43,7 +51,7 @@ test('paiements : recherche dans le sélect et création', async ({ page }) => {
 
   await page.goto('/app/paiements')
   await expect(page.getByRole('heading', { name: 'Paiements' })).toBeVisible()
-  await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Nouveau paiement' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Nouveau paiement' }).click()
   await expect(page.getByRole('heading', { name: 'Enregistrer un paiement' })).toBeVisible()
@@ -57,4 +65,7 @@ test('paiements : recherche dans le sélect et création', async ({ page }) => {
   await page.getByLabel('Montant (FCFA)').fill('1000')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Paiement enregistré/)).toBeVisible()
+
+  await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.getByRole('table')).toContainText(matricule)
 })

@@ -46,3 +46,36 @@ export async function depublierBulletins(body: BulletinPublierInput): Promise<Bu
 export async function deleteBulletin(id: number): Promise<void> {
   await api.delete(`/api/bulletins/${id}`)
 }
+
+function declencherTelechargement(data: Blob, disposition?: string, fallback = 'bulletin.pdf') {
+  const match = disposition?.match(/filename="?([^"]+)"?/)
+  const nom = match?.[1] ?? fallback
+  const url = window.URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nom
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export async function downloadBulletinPdf(id: number): Promise<void> {
+  const res = await api.get(`/api/bulletins/pdf/${id}`, { responseType: 'blob' })
+  declencherTelechargement(
+    res.data as Blob,
+    res.headers['content-disposition'],
+    `Bulletin_${id}.pdf`,
+  )
+}
+
+export async function downloadBulletinsClassePdf(idClasse: number, idTrimestre: number): Promise<void> {
+  const res = await api.get(`/api/bulletins/classe/${idClasse}/trimestre/${idTrimestre}/pdf`, {
+    responseType: 'blob',
+  })
+  declencherTelechargement(
+    res.data as Blob,
+    res.headers['content-disposition'],
+    `Bulletins_classe_${idClasse}.pdf`,
+  )
+}

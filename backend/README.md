@@ -159,6 +159,33 @@ converger les données entre postes.
 **Sécurité avant mise en service** : changer la `JWT_SECRET_KEY` du `.env` et
 le mot de passe du compte admin à la première connexion.
 
+## Mise en production (checklist)
+
+1. **Activer la protection anti-bruteforce** : poser `ENVIRONMENT="production"`
+   dans le `.env` de production. C'est ce qui **active le rate-limiting réseau**
+   du login (5 tentatives / min / IP). Sans cette valeur, le limiteur est
+   désactivé (`ratelimit.py`) — ne mettez jamais `ENVIRONMENT="development"`
+   en production.
+2. **Gérer les migrations manuellement** : poser `AUTO_CREATE_TABLES="false"`
+   et appliquer les migrations de façon contrôlée (`alembic upgrade head`)
+   dans le déploiement, plutôt que par bootstrap au démarrage.
+3. **Clé JWT forte** : `JWT_SECRET_KEY` aléatoire > 32 octets, différente du
+   défaut codé en dur. Avec `ENVIRONMENT="production"`, `security.py` refuse de
+   démarrer si la clé par défaut (ou trop courte) est utilisée.
+4. **CORS restreint** : `CORS_ORIGINS` = les vraies origines du front
+   (jamais `*`). Vérifié par tests d'intégration.
+5. **HTTPS** : exécuter derrière un reverse proxy TLS (Caddy/Nginx/Traefik).
+   `serveur.py` expose HTTP (0.0.0.0) et ne doit pas être directement exposé
+   publiquement sans TLS.
+6. **Ne pas multiplier les workers sans précaution** : le rate-limiting réseau
+   est tenu en RAM par processus. Plusieurs workers compteraient les tentatives
+   indépendamment et dilueraient la protection anti-bruteforce (5/min/IP par
+   worker). En multi-workers, externalisez le compteur (Redis) ou acceptez
+   cette dilution.
+7. **Exécuter les tests** : `cd backend && ./venv/bin/python -m pytest`
+   (suite isolée, SQLite en mémoire, aucun impact sur les données de dev).
+
+
 ## Prochaines étapes suggérées
 - Ajouter une suite de tests (pytest + base de test dédiée, ex. SQLite en mémoire ou
   conteneur Postgres jetable) — aucun test automatisé n'existe pour l'instant.

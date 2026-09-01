@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Pencil, Trash2, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Drawer } from '@/components/ui/Drawer'
-import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -61,22 +61,13 @@ export default function CoursListPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Cours
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              {cours.length} cours au programme
-            </p>
-          </div>
-          {canWrite && (
-            <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-              <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-              Nouveau cours
-            </Button>
-          )}
-        </div>
+        <PageHeader
+          title="Cours"
+          count={cours.length}
+          countLabel="cours au programme"
+          actionLabel={canWrite ? 'Nouveau cours' : undefined}
+          onAction={canWrite ? () => setDrawerOpen(true) : undefined}
+        />
 
         <SearchInput
           className="w-full"
@@ -120,7 +111,7 @@ export default function CoursListPage() {
                     <TableCell>
                       <button
                         onClick={() => setClassesCours(c)}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-sm text-[var(--color-brand-bright)] transition-colors hover:bg-[var(--color-brand-wash)]"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-sm text-[var(--color-action-bright)] transition-colors hover:bg-[var(--color-action-wash)]"
                       >
                         <Users size={14} strokeWidth={1.75} />
                         {c.classes.length} classe{c.classes.length > 1 ? 's' : ''}

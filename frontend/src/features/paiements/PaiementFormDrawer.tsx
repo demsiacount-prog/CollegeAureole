@@ -177,7 +177,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                 type="button"
                 className={`flex-1 rounded-[var(--radius-xs)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'individuel'
-                    ? 'bg-[var(--color-brand)] text-white'
+                    ? 'bg-[var(--color-action)] text-white'
                     : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('individuel')}
@@ -188,7 +188,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                 type="button"
                 className={`flex-1 rounded-[var(--radius-xs)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'groupe'
-                    ? 'bg-[var(--color-brand)] text-white'
+                    ? 'bg-[var(--color-action)] text-white'
                     : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('groupe')}
@@ -279,7 +279,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                               type="checkbox"
                               checked={checked}
                               onChange={() => toggleEcheance(ech.id)}
-                              className="accent-[var(--color-brand)]"
+                              className="accent-[var(--color-action)]"
                             />
                             <span className="flex-1 text-sm text-[var(--color-ink)]">
                               {ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois}

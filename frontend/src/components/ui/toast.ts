@@ -30,10 +30,11 @@ function _remove(id: number) {
 
 export function toast(message: string, tone: ToastTone = 'success', opts?: { action?: ToastAction; duration?: number }) {
   const id = _nextId++
-  const duration = opts?.duration ?? 4000
+  // Design system §14 : les erreurs (danger) sont persistantes, les autres s'auto-ferment.
+  const duration = opts?.duration ?? (tone === 'error' ? 0 : 4000)
   _toasts = [..._toasts, { id, message, tone, action: opts?.action, duration }]
   _emit()
-  setTimeout(() => _remove(id), duration)
+  if (duration > 0) setTimeout(() => _remove(id), duration)
 }
 
 export function toastWithAction(message: string, action: ToastAction, tone: ToastTone = 'success', duration = 5000) {

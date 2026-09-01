@@ -42,7 +42,7 @@ async function loginInit(page: Page) {
     localStorage.setItem('aureole_token', token)
   }, body.access_token)
   await page.goto('/app')
-  await page.locator('main h2').first().waitFor({ timeout: 15_000 })
+  await page.locator('main h1').first().waitFor({ timeout: 15_000 })
 }
 
 test.describe('Assistant d’initialisation', () => {
@@ -57,8 +57,18 @@ test.describe('Assistant d’initialisation', () => {
     await page.getByLabel('Sigle').fill('CA')
     await page.getByLabel('Devise').fill(DEVISE)
     await page.getByLabel('Adresse').fill('Bamako, Mali')
+    await page.getByLabel('Académie').fill('Académie de Bamako')
+    await page.getByLabel('CAP').fill('CA-2025')
     await page.getByLabel('Téléphone').fill('+223 12 34 56 78')
     await page.getByLabel('E-mail de contact').fill('contact@etablissement.com')
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'logo.png',
+      mimeType: 'image/png',
+      buffer: LOGO_PNG,
+    })
+    await expect(
+      page.locator('img[src^="/uploads/logos/"]').first(),
+    ).toBeVisible({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Continuer' }).click()
 
     // Écran 2 : compte administrateur
@@ -78,7 +88,7 @@ test.describe('Assistant d’initialisation', () => {
     // L'initialisation réussit : l'administrateur créé est connecté automatiquement
     // puis redirigé vers l'application.
     await expect(page).toHaveURL(/\/app/, { timeout: 60_000 })
-    await expect(page.locator('main h2').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('main h1').first()).toBeVisible({ timeout: 15_000 })
   })
 
   test('une fois configuré, l’application ne montre plus l’assistant', async ({ page }) => {
@@ -102,11 +112,17 @@ test.describe('Assistant d’initialisation', () => {
       localStorage.setItem('aureole_token', token)
     }, body.access_token)
     await page.goto('/app/parametres')
-    await page.locator('main h2').first().waitFor({ timeout: 15_000 })
+    await page.locator('main h1').first().waitFor({ timeout: 15_000 })
 
     await page.getByRole('button', { name: 'Fiche établissement' }).click()
     await expect(page.getByText('Collège Auréole e2e').first()).toBeVisible()
     await expect(page.getByLabel('Téléphone')).toHaveValue('+223 12 34 56 78')
+
+    // Académie et CAP : saisis dans l'assistant, ils apparaissent dans la fiche.
+    await expect(page.getByLabel('Académie')).toHaveValue('Académie de Bamako')
+    await expect(page.getByLabel('CAP')).toHaveValue('CA-2025')
+    await expect(page.getByText('Académie de Bamako').first()).toBeVisible()
+    await expect(page.getByText('CA-2025').first()).toBeVisible()
 
     // Import du logo : un aperçu apparaît, puis l'enregistrement le persiste.
     await page.locator('input[type="file"]').setInputFiles({
@@ -136,7 +152,7 @@ test.describe('Assistant d’initialisation', () => {
 
     for (const route of ROUTES_APP) {
       await page.goto(route.path)
-      await expect(page.locator('main h2').first()).toBeVisible({ timeout: 20_000 })
+      await expect(page.locator('main h1').first()).toBeVisible({ timeout: 20_000 })
       const boundary = await page
         .getByText('Une erreur est survenue', { exact: false })
         .isVisible()

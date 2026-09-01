@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { formatDate, formatMontant, formatMoyenne } from '@/lib/format'
+import { extractErrorMessage } from '@/lib/api'
 import { baremeNiveau } from '@/lib/bareme'
+import { toast } from '@/components/ui/toast'
 import { fetchDossierEleve, updateEleve } from './api'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
@@ -120,7 +122,7 @@ export default function EleveDetailPage() {
             <Avatar nom={dossier.nom} prenom={dossier.prenom} photo={dossier.photo} size="lg" highlighted />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                   {dossier.prenom} {dossier.nom}
                 </h2>
                 <Badge tone={dossier.statut === 'actif' ? 'success' : 'neutral'}>
@@ -202,8 +204,13 @@ export default function EleveDetailPage() {
         eleve={dossier}
         onCreate={async () => {}}
         onUpdate={async (m, payload) => {
-          await updateEleve(m, payload)
-          await refetch()
+          try {
+            await updateEleve(m, payload)
+            toast('Élève mis à jour')
+            await refetch()
+          } catch (err) {
+            toast(extractErrorMessage(err), 'error')
+          }
         }}
         canImport={canImportDocs}
       />
@@ -214,9 +221,14 @@ export default function EleveDetailPage() {
         initialMatricule={dossier.matricule}
         initialAnneeScolaireId={anneeActiveId}
         onSubmit={async (data) => {
-          await createInscription(data)
-          setInscriptionOpen(false)
-          await refetch()
+          try {
+            await createInscription(data)
+            toast('Élève inscrit')
+            setInscriptionOpen(false)
+            await refetch()
+          } catch (err) {
+            toast(extractErrorMessage(err), 'error')
+          }
         }}
       />
       </div>

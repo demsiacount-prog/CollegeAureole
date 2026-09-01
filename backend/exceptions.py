@@ -58,7 +58,7 @@ class ValidationError(AureoleException):
         super().__init__(
             error_code="VALIDATION_ERROR",
             message="Champ invalide",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             details={"field": field, "reason": reason},
         )
 

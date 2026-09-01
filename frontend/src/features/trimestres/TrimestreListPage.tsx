@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Trash2, Lock, Unlock } from 'lucide-react'
+import { Search, Trash2, Lock, Unlock } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
@@ -76,23 +76,19 @@ export default function TrimestreListPage() {
   return (
     <>
     <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Périodes scolaires
-            </h2>
+        <PageHeader
+          title="Périodes scolaires"
+          subtitle={
             <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
               {nbTrimestres > 0 && `${nbTrimestres} trimestre${nbTrimestres > 1 ? 's' : ''}`}
               {nbTrimestres > 0 && nbCompositions > 0 && ' · '}
               {nbCompositions > 0 && `${nbCompositions} composition${nbCompositions > 1 ? 's' : ''}`}
               {!nbTrimestres && !nbCompositions && 'Aucune période enregistrée'}
             </p>
-          </div>
-          {canCreate && <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-            <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-            Nouvelle période
-          </Button>}
-        </div>
+          }
+          actionLabel={canCreate ? 'Nouvelle période' : undefined}
+          onAction={canCreate ? () => setDrawerOpen(true) : undefined}
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative max-w-sm flex-1">
@@ -109,7 +105,7 @@ export default function TrimestreListPage() {
             <option value="TRIMESTRE">Trimestres</option>
             <option value="COMPOSITION">Compositions</option>
           </Select>
-          <Select label="" value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)}>
+          <Select label="" value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} disabled={!annees.length}>
             <option value="">Toutes les années</option>
             {annees.map((a) => (
               <option key={a.id} value={a.id}>{a.libelle}</option>

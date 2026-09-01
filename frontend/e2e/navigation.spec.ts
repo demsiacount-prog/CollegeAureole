@@ -12,7 +12,7 @@ test.describe('Navigation — chaque page se charge sans crash', () => {
       page.on('pageerror', (err) => pageErrors.push(String(err)))
 
       await page.goto(route.path)
-      await expect(page.locator('main h2').first()).toBeVisible({ timeout: 20_000 })
+      await expect(page.locator('main h1').first()).toBeVisible({ timeout: 20_000 })
 
       const boundaryVisible = await page
         .getByText('Une erreur est survenue', { exact: false })

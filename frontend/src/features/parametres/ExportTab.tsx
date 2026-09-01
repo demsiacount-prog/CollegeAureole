@@ -45,7 +45,7 @@ export default function ExportTab() {
       <Card className="p-5 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Download size={18} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[var(--color-brand)]" />
+            <Download size={18} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[var(--color-action)]" />
             <div>
               <p className="text-sm font-medium text-[var(--color-ink)]">Exporter la base de données</p>
               <p className="mt-0.5 text-xs text-[var(--color-ink-dim)]">

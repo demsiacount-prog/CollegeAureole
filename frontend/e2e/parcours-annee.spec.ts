@@ -27,7 +27,7 @@ async function pickCombobox(page: Page, value: string) {
   await page.getByRole('option', { name: new RegExp(escapeRegExp(value)) }).first().click()
 }
 
-test.describe('Parcours complet de l\'année scolaire (base isolée e2e, 3001)', () => {
+  test.describe('Parcours complet de l\'année scolaire (base unique collegeaureole, 3001)', () => {
   test('création des entités pédagogiques via l\'UI (salle, enseignant, classe, cours)', async ({ page }) => {
     await login(page, 'admin')
 

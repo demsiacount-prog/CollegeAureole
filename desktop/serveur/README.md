@@ -1,46 +1,61 @@
-# Déploiement LAN — College Aureole
+# College Aureole — Application mono-poste
 
-Architecture client léger + poste-serveur :
+College Aureole est désormais une **application autonome installée sur un seul
+poste** : l'interface (client), le serveur (backend FastAPI) et la base de
+données (PostgreSQL) vivent sur la même machine.
 
 ```
-┌─ Poste SERVEUR (1×) ────────────┐      ┌─ Postes CLIENTS (N×) ──────┐
-│  PostgreSQL (prérequis)         │ LAN  │  Client Tauri (~15 Mo)     │
-│  college-aureole-serveur.exe    │◄─────│  UI embarquée, zéro Python │
-│   service Windows (WinSW)       │ HTTP │  adresse serveur mémorisée │
-│   écoute 0.0.0.0:<port API>     │      │  installeur NSIS           │
-└─────────────────────────────────┘      └────────────────────────────┘
+┌─ Poste unique (installé par l'admin) ─────────────┐
+│  Client Tauri (exe portable, raccourci Bureau)    │
+│  college-aureole-serveur.exe (backend + API)      │
+│   ↳ service Windows (WinSW), démarrage auto       │
+│  PostgreSQL (démarrage auto, avant le backend)    │
+└───────────────────────────────────────────────────┘
 ```
+
+L'utilisateur final lance simplement l'application : elle se connecte
+**automatiquement** au serveur local (`http://localhost:8000`), sans aucun
+écran technique.
 
 ## Installeurs produits par la CI
 
-| Fichier | Poste | Rôle |
-|---|---|---|
-| `college-aureole_x64-setup.exe` | chaque poste utilisateur | client léger (interface seule) |
-| `college-aureole-serveur_x64-setup.exe` | le poste-serveur uniquement | backend FastAPI en service Windows |
+| Fichier | Rôle |
+|---|---|
+| `college-aureole-setup.exe` | **Tout-en-un** : installe le serveur (service) **et** le client, avec raccourci Bureau. C'est l'installeur à utiliser. |
+| `college-aureole_x64-setup.exe` | Installateur du client seul (pour déploiements particuliers ou mises à jour client). |
 
-## Installation du poste-serveur
+## Installation (rôle admin)
 
-1. **PostgreSQL** : installer PostgreSQL ≥ 14 et créer une base dédiée
-   (`collegeaureole`) avec un rôle propriétaire et son mot de passe.
-2. **Installeur serveur** : lancer `college-aureole-serveur_x64-setup.exe`,
-   saisir le port HTTP et les paramètres PostgreSQL. L'installeur :
-   - copie l'application dans `C:\Program Files\CollegeAureole\serveur`,
+1. **PostgreSQL** : sur le poste, installer PostgreSQL ≥ 14 et créer une base
+   dédiée (`collegeaureole`) avec un rôle propriétaire et son mot de passe.
+   *L'installeur ne gère pas PostgreSQL* : il ne fait que détecter (au boot,
+   le backend démarre après le service PostgreSQL).
+2. **Installeur tout-en-un** : lancer `college-aureole-setup.exe`, puis saisir :
+   - le **port HTTP** (défaut `8000`),
+   - l'**utilisateur** et le **mot de passe** de la base PostgreSQL.
+   L'installeur :
+   - copie l'application dans `C:\Program Files\CollegeAureole\`,
    - génère le fichier `.env` (connexion base + clé JWT aléatoire),
    - crée la règle de pare-feu pour le port choisi,
-   - installe et démarre le **service Windows** « College Aureole - Serveur ».
-3. **Vérification** : depuis n'importe quel poste du LAN, ouvrir
-   `http://<adresse-serveur>:<port>/api/health` → doit répondre
+   - installe et démarre le **service Windows** « College Aureole - Serveur »
+     (avec dépendance sur le service PostgreSQL, redémarrage auto si la base
+     n'est pas encore prête),
+   - installe le **client** + un raccourci « College Aureole » sur le Bureau,
+   - vérifie le démarrage (`/api/health`) et affiche l'adresse finale.
+3. **Vérification** : ouvrir
+   `http://localhost:<port>/api/health` → doit répondre
    `{"status":"running","database":"connected"}`.
 
-## Installation des clients
+## Utilisation (rôle utilisateur final)
 
-Lancer `college-aureole_x64-setup.exe`. Au premier démarrage, l'écran
-« Connexion au serveur » demande l'adresse du poste-serveur
-(`http://<ip>:<port>`), la teste puis la mémorise.
+Double-cliquer sur le raccourci « College Aureole » sur le Bureau : le serveur
+local est détecté automatiquement. Aucune configuration requise.
 
-Mise à jour d'un client : réinstaller par-dessus. Mise à jour du serveur :
-relancer l'installeur serveur (le `.env` et le dossier `uploads` sont
-conservés).
+## Mises à jour
+
+- **Tout-en-un** : réinstaller `college-aureole-setup.exe` par-dessus (le
+  `.env` et le dossier `uploads` sont conservés).
+- **Client seul** : réinstaller `college-aureole_x64-setup.exe`.
 
 ## Exploitation
 
@@ -49,16 +64,15 @@ conservés).
 - Sauvegardes : `pg_dump collegeaureole` (les logos sont dans
   `<install>\uploads`)
 - Désinstallation : `desinstallation.exe` dans le dossier d'installation
-  (arrête le service ; supprime aussi `.env` et `uploads`)
+  (arrête le service ; supprime aussi `.env`, `uploads` et le client).
 
 ## Notes de sécurité
 
-- HTTP simple sur le LAN (pas de TLS) : à réserver au réseau local de
-  l'établissement.
+- HTTP simple en local (pas de TLS) : à réserver à l'usage mono-poste.
 - La clé JWT est générée à l'installation et stockée dans `.env`
   (lecture restreinte aux utilisateurs locaux).
 - Le service tourne sous LocalSystem ; pour un durcissement supplémentaire,
-  créer un compte de service dédié dans `college-aureole-serveur.xml`.
+  créer un compte de service dédié dans `tout-en-un.nsi`.
 
 ## Build local (hors CI)
 
@@ -73,9 +87,13 @@ mkdir ..\desktop\serveur\paquetage
 Copy-Item dist\college-aureole-serveur ..\desktop\serveur\paquetage\ -Recurse
 Invoke-WebRequest https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe `
   -OutFile ..\desktop\serveur\paquetage\college-aureole-service.exe
-makensis ..\desktop\serveur\serveur.nsi
+Copy-Item ..\desktop\serveur\college-aureole-serveur.xml ..\desktop\serveur\paquetage\
 
-# Client Tauri
+# Client Tauri (exe portable requis pour le tout-en-un)
 cd ../frontend
 npm run tauri build -- --bundles nsis
+Copy-Item src-tauri\target\release\"College Aureole.exe" ..\desktop\serveur\paquetage\college-aureole-client.exe
+
+# Installeur tout-en-un
+makensis ..\desktop\serveur\tout-en-un.nsi
 ```

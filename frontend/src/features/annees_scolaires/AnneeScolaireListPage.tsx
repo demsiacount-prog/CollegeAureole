@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Trash2, Power, Lock } from 'lucide-react'
+import { Search, Trash2, Power, Lock } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -52,20 +52,13 @@ export default function AnneeScolaireListPage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Années scolaires
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              {annees.length} années enregistrées
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-            <Plus size={16} strokeWidth={1.75} className="mr-1.5" />
-            Nouvelle année
-          </Button>
-        </div>
+        <PageHeader
+          title="Années scolaires"
+          count={annees.length}
+          countLabel="années enregistrées"
+          actionLabel="Nouvelle année"
+          onAction={() => setDrawerOpen(true)}
+        />
 
         <div className="relative max-w-sm">
           <Search strokeWidth={1.75} className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />

@@ -63,7 +63,7 @@ export function DocumentsTab({ documents, labels, invalidateKey, upload, canEdit
                       <button
                         onClick={() => setPreview(doc)}
                         title="Afficher dans l'application"
-                        className="flex min-w-0 items-center gap-2 text-xs text-[var(--color-brand-blue)] hover:underline"
+                        className="flex min-w-0 items-center gap-2 text-xs text-[var(--color-mod-ress)] hover:underline"
                       >
                         <FileText size={14} strokeWidth={1.75} className="shrink-0" />
                         <span className="truncate">{doc.filename}</span>

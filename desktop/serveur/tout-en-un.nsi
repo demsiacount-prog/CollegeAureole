@@ -1,4 +1,4 @@
-; ─────────────────────────────────────────────────────────────────────────────
+﻿; ─────────────────────────────────────────────────────────────────────────────
 ; Installeur NSIS TOUT-EN-UN College Aureole (mono-poste) : serveur + client.
 ;
 ; Attend un répertoire `paquetage/` à côté de ce script contenant :

@@ -249,5 +249,32 @@
       background-position: -200% 0;
     }
   }
+
+  /* Phase indéterminée de la barre de progression splash (design system §12,
+     variante B) : balayage de gauche à droite. */
+  @keyframes shimmer-sweep {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Pulse doux du halo du splash screen (design system §01). */
+  @keyframes halo-pulse {
+    0% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.6;
+    }
+  }
+  .animate-halo-pulse {
+    animation: halo-pulse 2s ease-in-out infinite;
+  }
 }
 

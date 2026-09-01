@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import { AuthProvider } from '@/auth/AuthContext'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { ServerGate } from '@/components/ServerGate'
 import { ProtectedRoute, RoleRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { Spinner } from '@/components/ui/Spinner'
+import { SplashScreen } from '@/components/ui/SplashScreen'
 import { LoginPage } from '@/pages/LoginPage'
 import SetupWizard from '@/pages/SetupWizard'
 import { AccessDeniedPage, NotFoundPage } from '@/pages/StatusPages'
@@ -61,7 +62,17 @@ const DIRECTION: import('@/types').Role[] = ['admin', 'directeur']
 const FINANCE: import('@/types').Role[] = ['admin', 'comptable']
 
 function SuspenseRoute({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="flex justify-center py-24"><Spinner /></div>}>{children}</Suspense>
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-24 text-[var(--color-ink-dim)]">
+          <Loader2 className="size-6 animate-spin text-[var(--color-action)]" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  )
 }
 
 /** Vérifie si l'établissement a déjà été configuré, et affiche l'assistant de
@@ -80,11 +91,7 @@ function SetupGate({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (setupState === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner />
-      </div>
-    )
+    return <SplashScreen progress={35} message="Vérification de l'instance…" />
   }
   if (setupState === 'setup') return <SetupWizard />
   return <>{children}</>

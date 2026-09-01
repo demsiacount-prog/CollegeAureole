@@ -131,9 +131,7 @@ FunctionEnd
 
 Function PageResultLeave
   ${If} $HealthOK == "1"
-    MessageBox MB_ICONINFORMATION "✔ Serveur démarré avec succès." _+
-      "$\n$\nAdresse : http://$ServeurIP:$PortApi" _+
-      "$\nContrôle : http://$ServeurIP:$PortApi/api/health"
+    MessageBox MB_ICONINFORMATION "✔ Serveur démarré avec succès.$\n$\nAdresse : http://$ServeurIP:$PortApi$\nContrôle : http://$ServeurIP:$PortApi/api/health"
   ${EndIf}
 FunctionEnd
 

@@ -73,11 +73,14 @@ jobs:
       - name: Récupérer l'exécutable portable
         shell: pwsh
         run: |
-          $portable = Get-ChildItem "frontend/src-tauri/target/release/College Aureole.exe" -ErrorAction SilentlyContinue
+          # Le binaire release garde le nom du crate (college-aureole.exe), pas
+          # le productName (College Aureole) : on le cherche donc via Cargo.toml.
+          $crateName = (Select-String -Path "frontend/src-tauri/Cargo.toml" -Pattern '^name\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          $portable = Get-ChildItem "frontend/src-tauri/target/release/$crateName.exe" -ErrorAction SilentlyContinue
           if ($portable) {
             Copy-Item $portable.FullName "college-aureole-client.exe"
           } else {
-            throw "Exécutable portable du client Tauri introuvable"
+            throw "Exécutable portable du client Tauri introuvable : $crateName.exe"
           }
 
       - uses: actions/upload-artifact@v4

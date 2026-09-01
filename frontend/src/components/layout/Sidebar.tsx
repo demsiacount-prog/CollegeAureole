@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
+import { GraduationCap } from 'lucide-react'
 import { NAV_SECTIONS } from '@/routes/nav'
 import { useNavBadges } from '@/routes/useNavBadges'
 import { useAuth } from '@/auth/useAuth'
@@ -12,27 +13,30 @@ export function Sidebar() {
   const badges = useNavBadges()
   if (!user) return null
 
-  const nom = etab?.nom ?? ''
+  const nom = etab?.nom ?? 'Auréole'
   const device = etab?.devise?.trim() ?? ''
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border-soft)] bg-[var(--color-surface)]">
-      {etab && (
-        <div className="flex items-center gap-3 px-5 py-6">
-          {etab.logo ? (
-            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-halo-dim)] bg-[var(--color-surface-2)]">
-              <span className="absolute inset-0 rounded-xl halo-ring" />
-              <LogoEtablissement src={etab.logo} nom={nom} className="size-8" />
-            </span>
-          ) : null}
-          <div className="leading-tight">
-            <p className="font-[var(--font-display)] text-[16px] leading-tight tracking-tight text-[var(--color-ink)]">{nom}</p>
-            {device && (
-              <p className="mt-0.5 font-[var(--font-display)] italic text-[11px] text-[var(--color-halo-dim)]">{device}</p>
-            )}
-          </div>
+      <div className="flex items-center gap-3 px-5 py-6">
+        {etab?.logo ? (
+          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-halo-dim)] bg-[var(--color-surface-2)]">
+            <span className="absolute inset-0 rounded-xl halo-ring" />
+            <LogoEtablissement src={etab.logo} nom={nom} className="size-8" />
+          </span>
+        ) : (
+          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-halo-dim)] bg-[var(--color-surface-2)] text-[var(--color-halo)]">
+            <span className="absolute inset-0 rounded-xl halo-ring" />
+            <GraduationCap className="size-5" strokeWidth={1.75} />
+          </span>
+        )}
+        <div className="min-w-0 leading-tight">
+          <p className="truncate font-[var(--font-display)] text-[16px] leading-tight tracking-tight text-[var(--color-ink)]">{nom}</p>
+          {device && (
+            <p className="mt-0.5 truncate font-[var(--font-display)] italic text-[11px] text-[var(--color-halo-dim)]">{device}</p>
+          )}
         </div>
-      )}
+      </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-6">
         {NAV_SECTIONS.map((section) => {

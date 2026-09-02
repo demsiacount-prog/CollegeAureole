@@ -14,6 +14,15 @@ datas = [
 ] + collect_data_files("alembic")
 
 hiddenimports = [
+    # passlib charge ses handlers dynamiquement par nom (get_crypt_handler) :
+    # "argon2" est donc invisible de l'analyse statique. On l'ajoute
+    # explicitement → PyInstaller analyse argon2, suit son import de
+    # _argon2_cffi_bindings (collecte le .pyd/.dll natif) et active le hook
+    # argon2 (ajoute _cffi_backend).
+    "passlib.handlers.argon2",
+    "argon2",
+    "argon2._password_hasher",
+    "_argon2_cffi_bindings",
     # uvicorn choisit ses composants dynamiquement → invisibles de l'analyse statique
     "uvicorn.logging",
     "uvicorn.loops",

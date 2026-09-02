@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { GraduationCap } from 'lucide-react'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 
@@ -13,7 +14,7 @@ interface SplashScreenProps {
   message: string
   /** Version affichée en coin inférieur droit. */
   version?: string
-  /** Nom affiché sous le logo (défaut : « Auréole »). */
+  /** Nom affiché sous le logo (défaut : « College Aureole »). */
   nom?: string
   /** Devise affichée sous le nom (Fraunces italic). */
   devise?: string
@@ -52,11 +53,13 @@ export function SplashScreen({
   progress,
   message,
   version,
-  nom = 'Auréole',
+  nom = 'College Aureole',
   devise,
   termine = false,
   erreur = null,
 }: SplashScreenProps) {
+  const reduce = useReducedMotion()
+
   if (erreur) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-base)] px-6 text-center">
@@ -79,16 +82,50 @@ export function SplashScreen({
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--color-base)] px-6">
+      {/* Glow radial subtil derrière le halo — l'élément mémorable */}
+      <motion.div
+        className="pointer-events-none absolute size-64 rounded-full"
+        style={{
+          background: 'radial-gradient(circle, var(--color-halo) 0%, transparent 70%)',
+        }}
+        initial={reduce ? { opacity: 0.12 } : { opacity: 0, scale: 0.8 }}
+        animate={reduce ? { opacity: 0.12 } : { opacity: 0.12, scale: 1 }}
+        transition={{ duration: 1.2, ease: 'easeOut' }}
+      />
+
       <div className="flex flex-col items-center">
-        <span className={`relative flex size-20 items-center justify-center ${termine ? '' : 'animate-halo-pulse'}`}>
+        {/* Logo : entrance orchestrée — scale doux + fondu */}
+        <motion.span
+          className={`relative flex size-20 items-center justify-center ${termine ? '' : 'animate-halo-pulse'}`}
+          initial={reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
           <span className="absolute inset-0 rounded-full halo-ring" />
           <span className="flex size-16 items-center justify-center rounded-full border border-[var(--color-halo-dim)] bg-[var(--color-surface)]">
             <GraduationCap className="size-8 text-[var(--color-halo)]" strokeWidth={1.5} />
           </span>
-        </span>
-        <h1 className="mt-6 font-[var(--font-display)] text-[32px] font-semibold text-[var(--color-ink)]">{nom}</h1>
+        </motion.span>
+
+        {/* Nom : fondu simple, pas de stagger */}
+        <motion.h1
+          className="mt-6 font-[var(--font-display)] text-[32px] font-semibold text-[var(--color-ink)]"
+          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          {nom}
+        </motion.h1>
+
         {devise && (
-          <p className="mt-1 font-[var(--font-display)] text-[13px] italic text-[var(--color-halo-dim)]">{devise}</p>
+          <motion.p
+            className="mt-1 font-[var(--font-display)] text-[13px] italic text-[var(--color-halo-dim)]"
+            initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.45 }}
+          >
+            {devise}
+          </motion.p>
         )}
       </div>
 

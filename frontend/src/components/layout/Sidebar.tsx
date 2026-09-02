@@ -13,8 +13,8 @@ export function Sidebar() {
   const badges = useNavBadges()
   if (!user) return null
 
-  const nom = etab?.nom ?? 'Auréole'
-  const device = etab?.devise?.trim() ?? ''
+  const nom = etab?.nom ?? 'Nom de l’établissement'
+  const device = etab?.devise?.trim() ?? 'Devise de l’établissement'
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border-soft)] bg-[var(--color-surface)]">

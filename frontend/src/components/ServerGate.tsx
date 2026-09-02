@@ -7,7 +7,7 @@ type Statut = 'verification' | 'configuration' | 'pret'
 
 /** Séquence de démarrage §01 : vérifications en arrière-plan du client bureau. */
 const SEQUENCE = [
-  { seuil: 0, message: 'Démarrage d’Auréole…' },
+  { seuil: 0, message: 'Démarrage de College Aureole…' },
   { seuil: 15, message: 'Vérification de la base de données…' },
   { seuil: 35, message: 'Connexion au serveur local…' },
   { seuil: 55, message: 'Chargement des configurations…' },

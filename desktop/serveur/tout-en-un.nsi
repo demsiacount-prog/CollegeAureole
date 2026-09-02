@@ -35,6 +35,8 @@ InstallDirRegKey HKLM "Software\CollegeAureole" "InstallDir"
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\client\College Aureole.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "Lancer College Aureole"
 
 !insertmacro MUI_PAGE_WELCOME
 Page custom PageHttp PageHttpLeave

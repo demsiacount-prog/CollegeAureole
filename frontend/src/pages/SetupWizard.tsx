@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowLeft,
   ArrowRight,
@@ -108,6 +109,7 @@ function StepIndicator({ current }: { current: number }) {
 
 export default function SetupWizard() {
   const { theme, toggle: toggleTheme } = useTheme()
+  const reduce = useReducedMotion()
   const [step, setStep] = useState<WizardStep>('checking')
   const [formStep, setFormStep] = useState<FormStep>(1)
 
@@ -556,8 +558,15 @@ export default function SetupWizard() {
                     className="flex flex-col gap-3"
                     noValidate
                   >
-                    {formStep === 1 && (
-                      <>
+                    <AnimatePresence mode="wait">
+                      {formStep === 1 && (
+                        <motion.div
+                          key="step-1"
+                          initial={reduce ? undefined : { opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={reduce ? undefined : { opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
                         <div className="grid grid-cols-2 gap-3">
                           <Input
                             label="Nom de l’établissement"
@@ -726,11 +735,17 @@ export default function SetupWizard() {
                             <p className="mt-1 text-xs text-[var(--color-danger)]">{fieldErrors.et_logo}</p>
                           )}
                         </div>
-                      </>
-                    )}
+                        </motion.div>
+                      )}
 
-                    {formStep === 2 && (
-                      <>
+                      {formStep === 2 && (
+                        <motion.div
+                          key="step-2"
+                          initial={reduce ? undefined : { opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={reduce ? undefined : { opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
                         <div className="grid grid-cols-2 gap-3">
                           <Input
                             label="Nom"
@@ -810,11 +825,17 @@ export default function SetupWizard() {
                             </p>
                           )}
                         </div>
-                      </>
-                    )}
+                        </motion.div>
+                      )}
 
-                    {formStep === 3 && (
-                      <>
+                      {formStep === 3 && (
+                        <motion.div
+                          key="step-3"
+                          initial={reduce ? undefined : { opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={reduce ? undefined : { opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
                         <div className="grid grid-cols-2 gap-3">
                           <div className="flex flex-col gap-1.5">
                             <label htmlFor="date-debut" className="text-sm font-medium text-[var(--color-ink-dim)]">
@@ -859,8 +880,9 @@ export default function SetupWizard() {
                             )}
                           </div>
                         </div>
-                      </>
-                    )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {error && (
                       <p

@@ -1,6 +1,6 @@
 [package]
 name = "college-aureole"
-version = "1.0.0"
+version = "1.0.1"
 description = "College Aureole - Application de gestion scolaire"
 authors = ["College Aureole"]
 license = ""

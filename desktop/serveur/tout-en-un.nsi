@@ -251,32 +251,46 @@ Function InjecterDependancePG
   ${EndIf}
 
   ; Régénère entièrement le XML pour placer <depend> à l'intérieur de <service>.
+  ; ⚠️ On passe par PowerShell + [System.IO.File]::WriteAllText avec un encodage
+  ; UTF-8 explicite : NSIS FileWrite écrit en ANSI, ce qui corrompait les
+  ; caractères accentués de la ligne 1 et faisait échouer le chargement du XML
+  ; par WinSW (« ligne 1 position 49 »). Le here-string PowerShell conserve ici
+  ; l'encodage correct.
   ${If} ${FileExists} "$INSTDIR\college-aureole-service.xml"
-    FileOpen $4 "$INSTDIR\college-aureole-service.xml" w
-    FileWrite $4 "<!-- Configuration du service College Aureole (générée par l'installeur) -->$\r$\n"
-    FileWrite $4 "<service>$\r$\n"
-    FileWrite $4 "  <id>CollegeAureoleServeur</id>$\r$\n"
-    FileWrite $4 "  <name>College Aureole - Serveur</name>$\r$\n"
-    FileWrite $4 "  <description>Serveur applicatif FastAPI de l'application de gestion scolaire College Aureole.</description>$\r$\n"
-    FileWrite $4 "  <executable>%BASE%\college-aureole-serveur.exe</executable>$\r$\n"
-    FileWrite $4 "  <workingdirectory>%BASE%</workingdirectory>$\r$\n"
-    FileWrite $4 "  <startmode>Automatic</startmode>$\r$\n"
-    FileWrite $4 "  <delayedAutoStart>true</delayedAutoStart>$\r$\n"
+    ; Le script PowerShell est écrit dans un fichier .ps1 temporaire pour
+    ; éviter les soucis d'échappement des guillemets et accents dans ExecToStack.
+    FileOpen $4 "$PLUGINSDIR\genxml.ps1" w
+    FileWrite $4 "$\$Env:dep = '$ServicePGEtab'$\r$\n"
+    FileWrite $4 "$\$xml = '<?xml version=""1.0"" encoding=""UTF-8""?>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '<service>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <id>CollegeAureoleServeur</id>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <name>College Aureole - Serveur</name>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <description>Serveur applicatif FastAPI de l''application de gestion scolaire College Aureole.</description>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <executable>%BASE%\college-aureole-serveur.exe</executable>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <workingdirectory>%BASE%</workingdirectory>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <startmode>Automatic</startmode>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <delayedAutoStart>true</delayedAutoStart>' + [char]10$\r$\n"
     ${If} $ServicePGEtab != ""
-      ; PostgreSQL démarré avant le backend au boot
-      FileWrite $4 "  <depend>$ServicePGEtab</depend>$\r$\n"
+      FileWrite $4 "$\$xml += '  <depend>' + $\$Env:dep + '</depend>' + [char]10$\r$\n"
     ${EndIf}
-    FileWrite $4 "  <onfailure action='restart' delay='10 sec'/>$\r$\n"
-    FileWrite $4 "  <onfailure action='restart' delay='60 sec'/>$\r$\n"
-    FileWrite $4 "  <resetfailure>1 hour</resetfailure>$\r$\n"
-    FileWrite $4 "  <env name='AUREOLE_UPLOADS_DIR' value='%BASE%\uploads'/>$\r$\n"
-    FileWrite $4 "  <env name='ENVIRONMENT' value='production'/>$\r$\n"
-    FileWrite $4 "  <log mode='roll-by-size'>$\r$\n"
-    FileWrite $4 "    <sizeThreshold>10240</sizeThreshold>$\r$\n"
-    FileWrite $4 "    <keepFiles>3</keepFiles>$\r$\n"
-    FileWrite $4 "  </log>$\r$\n"
-    FileWrite $4 "</service>$\r$\n"
+    FileWrite $4 "$\$xml += '  <onfailure action=""restart"" delay=""10 sec""/>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <onfailure action=""restart"" delay=""60 sec""/>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <resetfailure>1 hour</resetfailure>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <env name=""AUREOLE_UPLOADS_DIR"" value=""%BASE%\uploads""/>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <env name=""ENVIRONMENT"" value=""production""/>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  <log mode=""roll-by-size"">' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '    <sizeThreshold>10240</sizeThreshold>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '    <keepFiles>3</keepFiles>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '  </log>' + [char]10$\r$\n"
+    FileWrite $4 "$\$xml += '</service>'" + [char]10 + [char]10
+    FileWrite $4 "[System.IO.File]::WriteAllText('$INSTDIR\college-aureole-service.xml', $\$xml, [System.Text.UTF8Encoding]::new($\$false))$\r$\n"
     FileClose $4
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\genxml.ps1"'
+    Pop $0
+    Pop $1
+    ${If} $0 != 0
+      DetailPrint "AVERTISSEMENT : réécriture du XML via PowerShell a échoué (code $0)."
+    ${EndIf}
 
     ${If} $ServicePGEtab != ""
       DetailPrint "Dépendance de service ajoutée : $ServicePGEtab"

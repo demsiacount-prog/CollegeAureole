@@ -38,7 +38,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-6">
+      <nav className="flex-1 overflow-y-auto px-3 pb-6" role="navigation" aria-label="Navigation principale">
         {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) => item.roles.includes(user.role))
           if (visibleItems.length === 0) return null

@@ -35,11 +35,13 @@ export function ToastContainer() {
   // Empilement vers le haut, maximum 3 visibles (le 4e remplace le 1er via l'auto-dismiss).
   const visible = toasts.slice(-3)
 
+  const hasDanger = visible.some((t) => t.tone === 'error')
+
   return (
     <div
       className="pointer-events-none fixed bottom-6 right-6 z-[70] flex w-[360px] max-w-[calc(100vw-3rem)] flex-col-reverse justify-start gap-3"
       role="status"
-      aria-live="polite"
+      aria-live={hasDanger ? 'assertive' : 'polite'}
     >
       {visible.map((t) => {
         const Icon = toneIcons[t.tone]

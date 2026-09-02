@@ -42,10 +42,15 @@ export function Drawer({
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
-      <div className="relative flex h-full w-full max-w-md flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drawer-title"
+        className="relative flex h-full w-full max-w-md flex-col border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)]"
+      >
         <div className="flex items-start justify-between border-b border-[var(--color-border-soft)] px-6 py-5">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--color-ink)]">{title}</h2>
+            <h2 id="drawer-title" className="text-lg font-semibold text-[var(--color-ink)]">{title}</h2>
             {description && <p className="mt-1 text-sm text-[var(--color-ink-dim)]">{description}</p>}
           </div>
           <button

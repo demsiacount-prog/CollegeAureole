@@ -183,10 +183,16 @@ jobs:
       - name: Installer NSIS et compiler l'installeur tout-en-un
         shell: pwsh
         run: |
-          choco install nsis -y --no-progress
+          # makensis portable (zip officiel) : évite la dépendance fragile au
+          # feed Chocolatey (503 Service Unavailable récurrent).
+          $nsisZip = "$env:RUNNER_TEMP\nsis.zip"
+          Invoke-WebRequest "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip" -OutFile $nsisZip
+          Expand-Archive -Path $nsisZip -DestinationPath "$env:RUNNER_TEMP\nsis"
+          $makensis = "$env:RUNNER_TEMP\nsis\nsis-3.10\makensis.exe"
+
           # NSIS ne crée pas les répertoires parents du fichier de sortie
           New-Item -ItemType Directory -Force dist | Out-Null
-          & "C:\Program Files (x86)\NSIS\makensis.exe" desktop/serveur/tout-en-un.nsi
+          & $makensis desktop/serveur/tout-en-un.nsi
           if ($LASTEXITCODE -ne 0) { throw "makensis tout-en-un a échoué (code $LASTEXITCODE)" }
           $exe = Get-ChildItem -Recurse -Filter college-aureole-setup.exe |
             Select-Object -First 1

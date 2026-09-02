@@ -183,12 +183,39 @@ jobs:
       - name: Installer NSIS et compiler l'installeur tout-en-un
         shell: pwsh
         run: |
-          # makensis portable (zip officiel) : évite la dépendance fragile au
-          # feed Chocolatey (503 Service Unavailable récurrent).
-          $nsisZip = "$env:RUNNER_TEMP\nsis.zip"
-          Invoke-WebRequest "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip" -OutFile $nsisZip
-          Expand-Archive -Path $nsisZip -DestinationPath "$env:RUNNER_TEMP\nsis"
-          $makensis = "$env:RUNNER_TEMP\nsis\nsis-3.10\makensis.exe"
+          $ErrorActionPreference = 'Continue'
+          $makensis = $null
+
+          # 1) winget (CDN Microsoft, fiable) — prioritaire
+          try {
+            winget install --id NSIS.NSIS -e --silent --accept-package-agreements --accept-source-agreements 2>$null | Out-Null
+            $c = @(Get-ChildItem "C:\Program Files*\NSIS\makensis.exe" -ErrorAction SilentlyContinue)
+            if ($c.Count -gt 0) { $makensis = $c[0].FullName }
+          } catch {}
+
+          # 2) scoop (préinstallé sur les runners windows) — si disponible
+          if (-not $makensis) {
+            try {
+              scoop install nsis 2>$null | Out-Null
+              $c = @(Get-ChildItem "$HOME\scoop\apps\nsis\current\makensis.exe" -ErrorAction SilentlyContinue)
+              if ($c.Count -gt 0) { $makensis = $c[0].FullName }
+            } catch {}
+          }
+
+          # 3) zip officiel via curl.exe (filet de sécurité, +robuste aux redirects)
+          if (-not $makensis) {
+            $nsisZip = "$env:RUNNER_TEMP\nsis.zip"
+            curl.exe -L --retry 3 --connect-timeout 60 -sS -o $nsisZip "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip"
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $nsisZip)) {
+              Expand-Archive -Path $nsisZip -DestinationPath "$env:RUNNER_TEMP\nsis" -Force
+              $makensis = "$env:RUNNER_TEMP\nsis\nsis-3.10\makensis.exe"
+            }
+          }
+
+          if (-not $makensis -or -not (Test-Path $makensis)) {
+            throw "Aucune source n'a fourni makensis.exe (winget / scoop / curl)"
+          }
+          Write-Host "makensis: $makensis"
 
           # NSIS ne crée pas les répertoires parents du fichier de sortie
           New-Item -ItemType Directory -Force dist | Out-Null

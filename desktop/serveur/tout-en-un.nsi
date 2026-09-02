@@ -250,53 +250,29 @@ Function InjecterDependancePG
     StrCpy $ServicePGEtab "$1"
   ${EndIf}
 
-  ; Régénère entièrement le XML pour placer <depend> à l'intérieur de <service>.
-  ; ⚠️ On passe par PowerShell + [System.IO.File]::WriteAllText avec un encodage
-  ; UTF-8 explicite : NSIS FileWrite écrit en ANSI, ce qui corrompait les
-  ; caractères accentués de la ligne 1 et faisait échouer le chargement du XML
-  ; par WinSW (« ligne 1 position 49 »). Le here-string PowerShell conserve ici
-  ; l'encodage correct.
+  ; Le XML d'origine (fourni avec le paquetage) est déjà complet et en UTF-8.
+  ; On ne fait qu'injecter le <depend> PostgreSQL quand un service PG existe,
+  ; via un vrai script PowerShell embarqué (injecter-dep.ps1) qui réécrit le
+  ; fichier en UTF-8 sans BOM. On évite ainsi WriteAllText généré par NSIS et
+  ; les soucis d'échappement / d'encodage ANSI qui corrompaient la ligne 1
+  ; (« ligne 1 position 49 » chez WinSW).
   ${If} ${FileExists} "$INSTDIR\college-aureole-service.xml"
-    ; Le script PowerShell est écrit dans un fichier .ps1 temporaire pour
-    ; éviter les soucis d'échappement des guillemets et accents dans ExecToStack.
-    FileOpen $4 "$PLUGINSDIR\genxml.ps1" w
-    FileWrite $4 "$\$Env:dep = '$ServicePGEtab'$\r$\n"
-    FileWrite $4 "$\$xml = '<?xml version=""1.0"" encoding=""UTF-8""?>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '<service>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <id>CollegeAureoleServeur</id>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <name>College Aureole - Serveur</name>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <description>Serveur applicatif FastAPI de l''application de gestion scolaire College Aureole.</description>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <executable>%BASE%\college-aureole-serveur.exe</executable>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <workingdirectory>%BASE%</workingdirectory>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <startmode>Automatic</startmode>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <delayedAutoStart>true</delayedAutoStart>' + [char]10$\r$\n"
-    ${If} $ServicePGEtab != ""
-      FileWrite $4 "$\$xml += '  <depend>' + $\$Env:dep + '</depend>' + [char]10$\r$\n"
-    ${EndIf}
-    FileWrite $4 "$\$xml += '  <onfailure action=""restart"" delay=""10 sec""/>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <onfailure action=""restart"" delay=""60 sec""/>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <resetfailure>1 hour</resetfailure>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <env name=""AUREOLE_UPLOADS_DIR"" value=""%BASE%\uploads""/>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <env name=""ENVIRONMENT"" value=""production""/>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  <log mode=""roll-by-size"">' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '    <sizeThreshold>10240</sizeThreshold>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '    <keepFiles>3</keepFiles>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '  </log>' + [char]10$\r$\n"
-    FileWrite $4 "$\$xml += '</service>'" + [char]10 + [char]10
-    FileWrite $4 "[System.IO.File]::WriteAllText('$INSTDIR\college-aureole-service.xml', $\$xml, [System.Text.UTF8Encoding]::new($\$false))$\r$\n"
-    FileClose $4
-    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\genxml.ps1"'
+    SetOutPath "$PLUGINSDIR"
+    File "/oname=injecter-dep.ps1" "injecter-dep.ps1"
+    SetOutPath "$INSTDIR"
+
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\injecter-dep.ps1" -XmlPath "$INSTDIR\college-aureole-service.xml" -Dep "$ServicePGEtab"'
     Pop $0
     Pop $1
     ${If} $0 != 0
-      DetailPrint "AVERTISSEMENT : réécriture du XML via PowerShell a échoué (code $0)."
+      DetailPrint "AVERTISSEMENT : injection de la dépendance PG dans le XML a échoué (code $0)."
     ${EndIf}
 
     ${If} $ServicePGEtab != ""
       DetailPrint "Dépendance de service ajoutée : $ServicePGEtab"
     ${Else}
-      DetailPrint "AVERTISSEMENT : service PostgreSQL non détecté. Le backend attendra"
-      DetailPrint "la base au démarrage (redémarrage automatique via WinSW)."
+      DetailPrint "Service PostgreSQL non détecté. Le backend attendra la base au"
+      DetailPrint "démarrage (redémarrage automatique via WinSW)."
     ${EndIf}
   ${Else}
     DetailPrint "AVERTISSEMENT : XML du service introuvable après l'installation."

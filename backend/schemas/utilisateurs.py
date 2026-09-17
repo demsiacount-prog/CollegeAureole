@@ -1,6 +1,5 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from enums import RoleUtilisateur
 
 
 class UtilisateurBase(BaseModel):
@@ -9,22 +8,9 @@ class UtilisateurBase(BaseModel):
     email: EmailStr
 
 
-class UtilisateurInscription(UtilisateurBase):
-    mot_de_passe: str = Field(..., min_length=8)
-    role: RoleUtilisateur = RoleUtilisateur.COMPTABLE
-
-
 class UtilisateurConnexion(BaseModel):
     email: EmailStr
     mot_de_passe: str
-
-
-class UtilisateurUpdate(BaseModel):
-    nom: str = Field(min_length=1, max_length=100)
-    prenom: str = Field(min_length=1, max_length=100)
-    email: EmailStr
-    role: RoleUtilisateur
-    actif: bool = True
 
 
 class UtilisateurChangerMotDePasse(BaseModel):
@@ -32,9 +18,22 @@ class UtilisateurChangerMotDePasse(BaseModel):
     nouveau_mot_de_passe: str = Field(..., min_length=8)
 
 
+class UtilisateurCreate(UtilisateurBase):
+    mot_de_passe: str = Field(..., min_length=8)
+    role: str = Field(default="ADMIN", min_length=1, max_length=30)
+
+
+class UtilisateurStatutUpdate(BaseModel):
+    actif: bool
+
+
+class UtilisateurReinitialiserMotDePasse(BaseModel):
+    nouveau_mot_de_passe: str = Field(..., min_length=8)
+
+
 class UtilisateurResponse(UtilisateurBase):
     id: int
-    role: RoleUtilisateur
+    role: str
     actif: bool
     created_at: datetime
     updated_at: datetime

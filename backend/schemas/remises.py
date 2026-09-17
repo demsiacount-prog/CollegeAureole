@@ -29,10 +29,3 @@ class PaiementGroupeCreate(BaseModel):
     date: date
     mode: Optional[ModePaiement] = None
     observation: Optional[str] = Field(default=None, max_length=500)
-
-
-class PaiementGroupeResponse(BaseModel):
-    nb_enfants: int
-    nb_paiements_crees: int
-    reste_total: float
-    model_config = {"from_attributes": True}

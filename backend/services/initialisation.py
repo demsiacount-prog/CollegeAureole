@@ -13,7 +13,6 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from enums import RoleUtilisateur
 from hashing import hash_password
 from periodes import generer_periodes_par_defaut
 import models
@@ -92,11 +91,7 @@ def etablissement_existe(db: Session) -> bool:
 
 
 def admin_existe(db: Session) -> bool:
-    return (
-        db.query(models.Utilisateurs)
-        .filter(models.Utilisateurs.role == RoleUtilisateur.ADMIN)
-        .first() is not None
-    )
+    return db.query(models.Utilisateurs).first() is not None
 
 
 def annee_scolaire_existe(db: Session) -> bool:
@@ -184,7 +179,6 @@ def executer_initialisation(payload) -> None:
                 prenom=admin.prenom,
                 email=admin.email,
                 mot_de_passe=hash_password(admin.mot_de_passe),
-                role=RoleUtilisateur.ADMIN,
             ))
             db.commit()
         finally:

@@ -26,6 +26,7 @@ class InscriptionBase(BaseModel):
     id_classe: int
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
+    nb_redoublements: int = Field(default=0, ge=0, le=20)
     montant_total: float = Field(default=0.0, ge=0)
     date_inscription: date = Field(default_factory=date.today)
     date_fin: Optional[date] = None
@@ -41,6 +42,7 @@ class InscriptionUpdate(BaseModel):
     statut: Optional[StatutInscription] = None
     statut_passage: Optional[StatutPassage] = None
     diplome: Optional[bool] = None
+    nb_redoublements: Optional[int] = Field(default=None, ge=0, le=20)
     montant_total: Optional[float] = Field(default=None, ge=0)
     date_fin: Optional[date] = None
     observation: Optional[str] = Field(default=None, max_length=500)
@@ -91,6 +93,10 @@ class DossierCompletEleve(BaseModel):
     statut: Literal["actif", "inactif"] = "actif"
     acte_naissance: bool = False
     carnet_sante: bool = False
+    numero_acte: Optional[str] = Field(default=None, max_length=100)
+    jugement_suppletif: Optional[str] = Field(default=None, max_length=100)
+    date_acte: Optional[date] = None
+    delivre_par: Optional[str] = Field(default=None, max_length=200)
 
 
 class DossierCompletCreate(BaseModel):

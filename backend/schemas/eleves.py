@@ -18,12 +18,22 @@ class EleveBase(BaseModel):
     statut: Literal["actif", "inactif"] = "actif"
     acte_naissance: bool = False
     carnet_sante: bool = False
+    numero_acte: Optional[str] = Field(default=None, max_length=100)
+    jugement_suppletif: Optional[str] = Field(default=None, max_length=100)
+    date_acte: Optional[date] = None
+    delivre_par: Optional[str] = Field(default=None, max_length=200)
+    nom_pere: Optional[str] = Field(default=None, max_length=100)
+    prenom_pere: Optional[str] = Field(default=None, max_length=100)
+    fonction_pere: Optional[str] = Field(default=None, max_length=100)
+    nom_mere: Optional[str] = Field(default=None, max_length=100)
+    prenom_mere: Optional[str] = Field(default=None, max_length=100)
+    fonction_mere: Optional[str] = Field(default=None, max_length=100)
 
 
 class EleveCreate(EleveBase):
     tuteur_id: int
-    classe_id: Optional[int] = None
-    # Année scolaire d'inscription : sert au matricule EL{année}. Non persistée
+    classe_id: int
+    # Année scolaire d'inscription : sert au matricule AU{année}. Non persistée
     # sur l'élève (l'inscription reste la source). Repli : année active.
     annee_scolaire_id: Optional[int] = None
 

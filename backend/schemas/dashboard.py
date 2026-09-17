@@ -24,30 +24,11 @@ class DashboardStatsResponse(BaseModel):
     nb_enseignants: int
     nb_classes: int
     taux_absence: float
-    absences_7_jours: int
-    paiements_mois: float
+    absences_annee: int
+    paiements_annee: float
     moyennes_par_classe: List[MoyenneClasse]
     repartition_niveaux: List[RepartitionNiveau]
     absences_par_mois: List[AbsenceMois]
-    dernieres_activites: List[ActiviteRecente]
-
-    model_config = {"from_attributes": True}
-
-
-class EvolutionMensuelle(BaseModel):
-    mois: str
-    paiements: float
-    depenses: float
-
-
-class DashboardFinanceResponse(BaseModel):
-    """Tableau de bord du comptable : flux financiers uniquement."""
-    paiements_mois: float
-    depenses_mois: float
-    solde_mois: float
-    echeances_en_retard: int
-    montant_en_retard: float
-    evolution_mensuelle: List[EvolutionMensuelle]
     dernieres_activites: List[ActiviteRecente]
 
     model_config = {"from_attributes": True}

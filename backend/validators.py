@@ -8,7 +8,6 @@ from exceptions import (
     NotFoundError,
     DuplicateError,
     ValidationError,
-    ForbiddenError,
 )
 import models
 
@@ -56,12 +55,6 @@ def assert_active_school_year(db: Session):
         models.AnneesScolaires.active == True
     ).first()
     return assert_found(annee, "Année scolaire active")
-
-
-def assert_user_can_write(user, required_roles: list[str]):
-    """Vérifie que l'utilisateur a les permissions d'écriture."""
-    if user.role not in required_roles:
-        raise ForbiddenError("Accès refusé")
 
 
 def assert_valid_status(status_value: str, valid_statuses: list[str]):

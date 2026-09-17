@@ -79,6 +79,11 @@ def calculer_moyennes_par_trimestre(db: Session, matricule_eleve: str, id_annee_
 def calculer_notes_par_matiere(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> List["schemas.NoteParMatiere"]:
     """Moyenne par matière d'un élève sur une année scolaire.
 
+    Chaque note de matière de la période vaut 60% note de composition + 40%
+    note de classe (facultative : si absente, la note de composition fait
+    foi, ligne par ligne via coalesce). Le total est ensuite moyenné sur
+    les périodes.
+
     Protégé contre les trimestres dupliqués : sous-requête pour ne
     prendre que les IDs uniques des trimestres de l'année.
     """
@@ -88,7 +93,12 @@ def calculer_notes_par_matiere(db: Session, matricule_eleve: str, id_annee_scola
         .subquery()
     )
     resultats = (
-        db.query(models.Cours.nom, func.count(models.Notes.id), func.avg(models.Notes.note))
+        db.query(
+            models.Cours.nom,
+            func.count(models.Notes.id),
+            func.avg(models.Notes.note),
+            func.avg(func.coalesce(models.Notes.note_classe, models.Notes.note)),
+        )
         .join(models.Notes, models.Notes.id_cours == models.Cours.id)
         .filter(
             models.Notes.matricule_eleve == matricule_eleve,
@@ -98,6 +108,48 @@ def calculer_notes_par_matiere(db: Session, matricule_eleve: str, id_annee_scola
         .all()
     )
     return [
-        schemas.NoteParMatiere(matiere=nom, nb_notes=nb, moyenne=round(float(moy), 2) if moy is not None else None)
-        for nom, nb, moy in resultats
+        schemas.NoteParMatiere(
+            matiere=nom,
+            nb_notes=nb,
+            moyenne=round(0.6 * float(comp) + 0.4 * float(classe_eff), 2)
+            if comp is not None
+            else None,
+        )
+        for nom, nb, comp, classe_eff in resultats
     ]
+
+
+def calculer_moyennes_matiere_par_periode(
+    db: Session,
+    matricule_eleve: str,
+    periodes: list[models.Trimestres],
+) -> dict[int, dict[str, Optional[float]]]:
+    """Moyenne de chaque matière (par nom de cours) pour chaque période.
+
+    Respecte le même barème que `calculer_notes_par_matiere` : note de
+    composition à 60 % + note de classe à 40 % (la composition faisant foi
+    en l'absence de note de classe). Renvoie ``{id_trimestre: {nom: moy}}``.
+    """
+    resultat: dict[int, dict[str, Optional[float]]] = {}
+    for periode in periodes:
+        lignes = (
+            db.query(
+                models.Cours.nom,
+                func.avg(models.Notes.note),
+                func.avg(func.coalesce(models.Notes.note_classe, models.Notes.note)),
+            )
+            .join(models.Notes, models.Notes.id_cours == models.Cours.id)
+            .filter(
+                models.Notes.matricule_eleve == matricule_eleve,
+                models.Notes.id_trimestre == periode.id,
+            )
+            .group_by(models.Cours.nom)
+            .all()
+        )
+        resultat[periode.id] = {
+            nom: round(0.6 * float(comp) + 0.4 * float(classe_eff), 2)
+            if comp is not None
+            else None
+            for nom, comp, classe_eff in lignes
+        }
+    return resultat

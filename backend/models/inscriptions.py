@@ -20,6 +20,7 @@ class Inscriptions(Base):
 
     statut = Column(String, nullable=False, default="Inscrit")
     statut_passage = Column(String, nullable=False, default="EN_ATTENTE")
+    nb_redoublements = Column(Integer, nullable=False, default=0, server_default="0")  # redoublements de cette classe
     diplome = Column(Boolean, nullable=False, default=False)  # fin de cycle (9ème) réussie
     montant_total = Column(Float, nullable=False, default=0.0)
     credit_disponible = Column(Float, nullable=False, default=0.0)  # trop-perçu non encore affecté

@@ -12,6 +12,12 @@ class EtablissementUpdate(BaseModel):
     telephone: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
     logo: str | None = Field(default=None, max_length=500)
+    village_quartier: str | None = Field(default=None, max_length=200)
+    commune: str | None = Field(default=None, max_length=200)
+    cercle: str | None = Field(default=None, max_length=200)
+    statut_administratif: str | None = Field(default=None, max_length=50)
+    type_ecole: str | None = Field(default=None, max_length=50)
+    mode: str | None = Field(default=None, max_length=50)
 
 
 class EtablissementResponse(EtablissementUpdate):

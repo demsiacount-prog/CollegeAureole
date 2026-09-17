@@ -1,8 +1,10 @@
 """Génération automatique du jeu de périodes par défaut d'une année scolaire.
 
-Les classes de la 1ère à la 6ème année utilisent des compositions, les
-classes supérieures des trimestres : une année doit donc posséder les deux
-types de périodes pour permettre la saisie des notes pour tous les niveaux.
+Les classes de la 1ère à la 5ème année utilisent des compositions, la 6ème
+(classe spéciale) combine trimestres + compositions intermédiaires, et les
+classes supérieures (7ème-9ème, lycée) des trimestres : une année doit donc
+posséder les deux types de périodes pour permettre la saisie des notes pour
+tous les niveaux.
 """
 from datetime import date, timedelta
 

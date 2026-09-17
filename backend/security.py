@@ -5,7 +5,7 @@ import os
 from datetime import timedelta
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -41,11 +41,10 @@ elif SECRET_KEY == _DEFAULT_SECRET:
 bearer_scheme = HTTPBearer()
 
 
-def create_access_token(utilisateur_id: int, role: str, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
+def create_access_token(utilisateur_id: int, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
     now = now_utc()
     payload = {
         "sub": str(utilisateur_id),
-        "role": role,
         "exp": now + timedelta(minutes=expires_minutes),
         "iat": now,
     }
@@ -70,15 +69,3 @@ def get_current_user(
     if not utilisateur or not utilisateur.actif:
         raise UnauthorizedError("Compte invalide")
     return utilisateur
-
-
-def require_role(*roles_autorises: str):
-    """Dépendance à ajouter sur une route pour la restreindre à certains rôles.
-    Exemple : @router.get(..., dependencies=[Depends(require_role("admin", "directeur"))])"""
-
-    def dependance(utilisateur: models.Utilisateurs = Depends(get_current_user)):
-        if utilisateur.role.value not in roles_autorises:
-            raise HTTPException(status_code=403, detail="Accès refusé")
-        return utilisateur
-
-    return dependance

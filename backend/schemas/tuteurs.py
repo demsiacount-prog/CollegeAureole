@@ -14,6 +14,7 @@ class TuteurBase(BaseModel):
     telephone: str = Field(min_length=8, max_length=30, pattern=r"^\+?[\d\s\-()]{7,}$")
     adresse: str = Field(default="", max_length=300)
     profession: str = Field(default="", max_length=100)
+    lien_parente: Optional[str] = Field(default=None, max_length=100)
 
 class TuteurCreate(TuteurBase):
     pass

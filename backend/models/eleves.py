@@ -17,6 +17,16 @@ class Eleves(Base):
     statut = Column(String, nullable=False, default="actif")
     acte_naissance = Column(Boolean, nullable=False, default=False)
     carnet_sante = Column(Boolean, nullable=False, default=False)
+    numero_acte = Column(String, nullable=True)
+    jugement_suppletif = Column(String, nullable=True)
+    date_acte = Column(Date, nullable=True)
+    delivre_par = Column(String, nullable=True)
+    nom_pere = Column(String, nullable=True)
+    nom_mere = Column(String, nullable=True)
+    prenom_pere = Column(String, nullable=True)
+    fonction_pere = Column(String, nullable=True)
+    prenom_mere = Column(String, nullable=True)
+    fonction_mere = Column(String, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
@@ -35,7 +45,7 @@ class Eleves(Base):
 
 @event.listens_for(Eleves, "before_insert")
 def receive_before_insert(mapper, connection, target):
-    """Matricule EL{année scolaire d'inscription}{n°} — numérotation annuelle.
+    """Matricule AU{année scolaire d'inscription}{n°} — numérotation annuelle.
 
     L'année provient de `target.annee_scolaire_id` (attribut transitoire posé
     à la création), sinon de l'année scolaire active. Le compteur repart à 1
@@ -52,6 +62,6 @@ def receive_before_insert(mapper, connection, target):
         if session is not None:
             session.info[cle_annee] = annee
     target.matricule = generer_code(
-        connection, Eleves.__table__.c.matricule, "EL", annee,
+        connection, Eleves.__table__.c.matricule, "AU", annee,
         session=session,
     )

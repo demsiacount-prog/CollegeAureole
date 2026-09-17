@@ -1,8 +1,7 @@
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from timeutils import now_utc
 from database import Base
-from enums import RoleUtilisateur
 
 
 class Utilisateurs(Base):
@@ -13,8 +12,8 @@ class Utilisateurs(Base):
     prenom = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
     mot_de_passe = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="ADMIN", server_default="ADMIN")
 
-    role = Column(Enum(RoleUtilisateur), nullable=False, default=RoleUtilisateur.COMPTABLE)
     actif = Column(Boolean, nullable=False, default=True)
 
     tentatives_echouees = Column(Integer, nullable=False, default=0)

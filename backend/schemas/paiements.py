@@ -10,10 +10,6 @@ class PaiementBase(BaseModel):
     observation: Optional[str] = None
 
 
-class PaiementCreate(PaiementBase):
-    id_inscription: int
-
-
 class PaiementResponse(PaiementBase):
     id: int
     code_paiement: Optional[str] = None
@@ -26,3 +22,11 @@ class PaiementResponse(PaiementBase):
     eleve_nom: Optional[str] = None
     eleve_prenom: Optional[str] = None
     model_config = {"from_attributes": True}
+
+
+class PaiementStatsResponse(BaseModel):
+    """Synthèse payé / impayé de la page Paiements (tout l'historique)."""
+    total_encaisse:        float
+    montant_impaye:        float
+    nb_echeances_soldees:  int
+    nb_echeances_impayees: int

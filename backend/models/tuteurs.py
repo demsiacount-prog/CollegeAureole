@@ -14,6 +14,7 @@ class Tuteurs(Base):
     telephone = Column(String, nullable=False)
     adresse = Column(String, nullable=False)
     profession = Column(String, nullable=False)
+    lien_parente = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     

@@ -72,11 +72,3 @@ class PaiementUpdate(BaseModel):
     montant:        Optional[float] = Field(default=None, gt=0)
     mode:           Optional[ModePaiement] = None
     observation:    Optional[str] = Field(default=None, max_length=500)
-
-
-class PaiementEcheanceResponse(BaseModel):
-    """Résultat d'un paiement : liste des écheances soldées/partiellement payées."""
-    paiements_crees:     list
-    echeances_mises_a_jour: list[EcheanceResponse]
-    reste_global:        float
-    model_config = {"from_attributes": True}

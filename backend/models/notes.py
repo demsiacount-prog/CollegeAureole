@@ -13,6 +13,7 @@ class Notes(Base):
     id = Column(Integer, primary_key=True)
     date = Column(Date, nullable=False, default=date.today)
     note = Column(Float, nullable=False)
+    note_classe = Column(Float, nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     

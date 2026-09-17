@@ -5,6 +5,8 @@ export interface EleveListParams {
   skip?: number
   limit?: number
   q?: string
+  classe_id?: number
+  statut?: string
 }
 
 export async function fetchEleves(params: EleveListParams = {}): Promise<Eleve[]> {
@@ -12,16 +14,11 @@ export async function fetchEleves(params: EleveListParams = {}): Promise<Eleve[]
   return res.data
 }
 
-export async function fetchElevesTotal(q?: string): Promise<number> {
+export async function fetchElevesTotal(q?: string, params: Pick<EleveListParams, 'classe_id' | 'statut'> = {}): Promise<number> {
   const res = await api.get<{ total: number }>('/api/eleves/compte', {
-    params: q ? { q } : undefined,
+    params: { ...(q ? { q } : {}), ...params },
   })
   return res.data.total
-}
-
-export async function fetchEleve(matricule: string): Promise<Eleve> {
-  const res = await api.get<Eleve>(`/api/eleves/${matricule}`)
-  return res.data
 }
 
 export async function fetchDossierEleve(matricule: string): Promise<DossierEleve> {

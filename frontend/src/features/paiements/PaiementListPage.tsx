@@ -1,23 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Wallet, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Input } from '@/components/ui/Input'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch, ToolbarDate } from '@/components/ui/PageToolbar'
 import { Pagination } from '@/components/ui/Pagination'
-import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate, formatMontant } from '@/lib/format'
-import { fetchPaiements, fetchPaiementsTotal, deletePaiement } from './api'
+import { fetchPaiements, fetchPaiementsTotal, fetchPaiementStats, deletePaiement } from './api'
 import PaiementFormDrawer from './PaiementFormDrawer'
 import type { Paiement } from './types'
 
@@ -31,9 +30,8 @@ const MODE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function PaiementListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'comptable'
-  const canDelete = user?.role === 'admin' || user?.role === 'comptable'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -71,6 +69,11 @@ export default function PaiementListPage() {
     }),
   })
 
+  const { data: stats } = useQuery({
+    queryKey: ['paiements', 'stats'],
+    queryFn: fetchPaiementStats,
+  })
+
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total])
 
   useEffect(() => {
@@ -98,36 +101,80 @@ export default function PaiementListPage() {
           onAction={canWrite ? () => { setEditing(null); setDrawerOpen(true) } : undefined}
         />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <SearchInput
-            className="flex-1"
-            placeholder="Rechercher par élève, code, mode…"
-            value={search}
-            onChange={setSearch}
-          />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <Input
-              type="date"
-              label="Du"
-              className="w-full sm:w-44"
-              value={dateDebut}
-              onChange={(e) => setDateDebut(e.target.value)}
-            />
-            <Input
-              type="date"
-              label="Au"
-              className="w-full sm:w-44"
-              value={dateFin}
-              onChange={(e) => setDateFin(e.target.value)}
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {stats && (
+            <>
+              <Card className="flex flex-col justify-between p-4 min-h-[112px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Total payé</p>
+                    <p className="text-xs text-[var(--color-ink-faint)]">tout l'historique</p>
+                  </div>
+                  <Wallet className="size-5 shrink-0 text-[var(--color-success)]" strokeWidth={1.75} />
+                </div>
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                  {formatMontant(stats.total_encaisse)}
+                </p>
+              </Card>
+              <Card className="flex flex-col justify-between p-4 min-h-[112px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Restant dû</p>
+                    <p className="text-xs text-[var(--color-ink-faint)]">échéances non soldées</p>
+                  </div>
+                  <AlertTriangle className="size-5 shrink-0 text-[var(--color-danger)]" strokeWidth={1.75} />
+                </div>
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                  {formatMontant(stats.montant_impaye)}
+                </p>
+              </Card>
+              <Card className="flex flex-col justify-between p-4 min-h-[112px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Échéances soldées</p>
+                    <p className="text-xs text-[var(--color-ink-faint)]">tout l'historique</p>
+                  </div>
+                  <CheckCircle2 className="size-5 shrink-0 text-[var(--color-action)]" strokeWidth={1.75} />
+                </div>
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                  {stats.nb_echeances_soldees}
+                </p>
+              </Card>
+              <Card className="flex flex-col justify-between p-4 min-h-[112px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Échéances impayées</p>
+                    <p className="text-xs text-[var(--color-ink-faint)]">en attente ou partielles</p>
+                  </div>
+                  <Clock className="size-5 shrink-0 text-[var(--color-warning)]" strokeWidth={1.75} />
+                </div>
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                  {stats.nb_echeances_impayees}
+                </p>
+              </Card>
+            </>
+          )}
         </div>
+
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher un paiement"
+          />
+          <ToolbarDate prefix="Du" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} aria-label="Date de début" />
+          <ToolbarDate prefix="Au" value={dateFin} onChange={(e) => setDateFin(e.target.value)} aria-label="Date de fin" />
+          <span className="ml-2 truncate text-[11.5px] text-[var(--ink-faint)]">
+            {total} paiement{total > 1 ? 's' : ''}
+          </span>
+        </PageToolbar>
 
         {loadingPaiements ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger les paiements." />
+            <EmptyState title="Erreur" message="Impossible de charger les paiements." />
           </div>
         ) : paiements.length === 0 ? (
           <div className="py-16">

@@ -4,25 +4,15 @@ import { useQuery } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Breadcrumbs } from '@/components/ui/PageHeader'
 import { formatDate, formatMoyenne } from '@/lib/format'
-import { baremeNiveau } from '@/lib/bareme'
+import { baremeNiveau, appreciation, utiliseCoefficient } from '@/lib/bareme'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { fetchBulletinDetail, downloadBulletinPdf } from './api'
-
-function getMoyenneAppreciation(m: number, bareme: number): string {
-  const pct = m / bareme
-  if (pct >= 0.8) return 'Excellent'
-  if (pct >= 0.7) return 'Très bien'
-  if (pct >= 0.6) return 'Bien'
-  if (pct >= 0.5) return 'Passable'
-  return 'Insuffisant'
-}
 
 function getMoyenneTone(m: number, bareme: number): 'success' | 'info' | 'warning' | 'danger' {
   const pct = m / bareme
@@ -58,18 +48,33 @@ export default function BulletinDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24">
-        <Spinner label="Chargement du bulletin…" />
+      <div className="flex flex-col gap-6">
+        <div className="skeleton h-[20px] w-64" />
+        <Card className="p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="space-y-2">
+              <div className="skeleton h-[24px] w-[320px]" />
+              <div className="skeleton h-[14px] w-[240px]" />
+            </div>
+            <div className="space-y-2 text-right">
+              <div className="skeleton h-[36px] w-[80px] ml-auto" />
+              <div className="skeleton h-[14px] w-[60px] ml-auto" />
+            </div>
+          </div>
+          <div className="skeleton mt-6 h-[180px] w-full" />
+        </Card>
       </div>
     )
   }
 
   if (isError || !bulletin) {
-    return <EmptyState message="Impossible de charger ce bulletin." />
+    return <EmptyState title="Erreur" message="Impossible de charger ce bulletin." />
   }
 
   const bareme = baremeNiveau(bulletin.classe.niveau)
-  const estEf1 = bareme === 10
+  // Colonnes Coeff / Note×Coeff présentes quand le bulletin est pondéré :
+  // EF2/lycée (trimestres /20) et TRIMESTRES de la 6ème (pondérés sur /10).
+  const montreCoeff = utiliseCoefficient(bulletin.classe.niveau, bulletin.trimestre.type)
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,7 +89,7 @@ export default function BulletinDetailPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+              <h2 className="font-[var(--font-serif)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                 Bulletin — {bulletin.eleve.prenom} {bulletin.eleve.nom}
               </h2>
               <Badge tone={bulletin.statut === 'PUBLIE' ? 'success' : 'neutral'}>
@@ -99,7 +104,7 @@ export default function BulletinDetailPage() {
             <div className="flex items-center gap-2 justify-end">
               <span className="text-3xl font-medium text-[var(--color-ink)]">{formatMoyenne(bulletin.moyenne_generale, bareme)}</span>
               <Badge tone={getMoyenneTone(bulletin.moyenne_generale, bareme)}>
-                {getMoyenneAppreciation(bulletin.moyenne_generale, bareme)}
+                {bulletin.moyenne_generale != null ? appreciation(bulletin.moyenne_generale, bareme) : '—'}
               </Badge>
             </div>
             {bulletin.rang != null && (
@@ -136,15 +141,16 @@ export default function BulletinDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Matière</TableHead>
-                  {/* EF1 : notes /10, aucun coefficient — on n'affiche que la moyenne. */}
-                  {estEf1 ? (
-                    <TableHead className="text-center">Moyenne</TableHead>
-                  ) : (
+                  {/* Pondéré (trimestre EF2/lycée ou 6ème) : Coefficient / Moyenne / Note × Coeff.
+                      EF1 en composition (moyenne simple) : seule la moyenne. */}
+                  {montreCoeff ? (
                     <>
                       <TableHead className="text-center">Coefficient</TableHead>
                       <TableHead className="text-center">Moyenne</TableHead>
                       <TableHead className="text-center">Note × Coefficient</TableHead>
                     </>
+                  ) : (
+                    <TableHead className="text-center">Moyenne</TableHead>
                   )}
                 </TableRow>
               </TableHeader>
@@ -152,13 +158,7 @@ export default function BulletinDetailPage() {
                 {bulletin.details.map((d) => (
                   <TableRow key={d.id}>
                     <TableCell className="font-medium text-[var(--color-ink)]">{d.cours_nom}</TableCell>
-                    {estEf1 ? (
-                      <TableCell className="text-center">
-                        <Badge tone={getMoyenneTone(d.moyenne, bareme)}>
-                          {formatMoyenne(d.moyenne, bareme)}
-                        </Badge>
-                      </TableCell>
-                    ) : (
+                    {montreCoeff ? (
                       <>
                         <TableCell className="text-center text-[var(--color-ink-dim)]">{d.coefficient}</TableCell>
                         <TableCell className="text-center">
@@ -170,6 +170,12 @@ export default function BulletinDetailPage() {
                           {(d.moyenne * d.coefficient).toFixed(2)}
                         </TableCell>
                       </>
+                    ) : (
+                      <TableCell className="text-center">
+                        <Badge tone={getMoyenneTone(d.moyenne, bareme)}>
+                          {formatMoyenne(d.moyenne, bareme)}
+                        </Badge>
+                      </TableCell>
                     )}
                   </TableRow>
                 ))}

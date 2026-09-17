@@ -11,12 +11,9 @@ import { toast } from '@/components/ui/toast'
 import { required, minNumber, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { Classe } from '@/features/shared/types'
 import type { ClasseCreateInput } from './api'
+import { NIVEAUX_CLASSES } from '@/lib/niveaux'
 
-const NIVEAUX = [
-  '1ère Année', '2ème Année', '3ème Année',
-  '4ème Année', '5ème Année', '6ème Année',
-  '7ème Année', '8ème Année', '9ème Année',
-].map((n) => ({ value: n, label: n }))
+const NIVEAUX = NIVEAUX_CLASSES.map((n) => ({ value: n, label: n }))
 
 interface Props {
   open: boolean

@@ -4,21 +4,19 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SearchInput } from '@/components/ui/SearchInput'
+import { PageToolbar, ToolbarSearch } from '@/components/ui/PageToolbar'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
-import { useAuth } from '@/auth/useAuth'
 import { fetchSalles, createSalle, updateSalle, deleteSalle } from './api'
 import SalleFormDrawer from './SalleFormDrawer'
 import type { Salle, SalleCreateInput } from './types'
 
 export default function SalleListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: salles = [], isLoading, isError } = useQuery({ queryKey: ['salles'], queryFn: fetchSalles })
 
@@ -54,7 +52,7 @@ export default function SalleListPage() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-[10px]">
         <PageHeader
           title="Salles"
           count={salles.length}
@@ -63,18 +61,23 @@ export default function SalleListPage() {
           onAction={canWrite ? () => setDrawerOpen(true) : undefined}
         />
 
-        <SearchInput
-          className="w-full"
-          placeholder="Rechercher une salle…"
-          value={search}
-          onChange={setSearch}
-        />
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher une salle"
+          />
+          <span className="ml-2 text-[11.5px] text-[var(--ink-faint)]">
+            {salles.length} salle{salles.length > 1 ? 's' : ''}
+          </span>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger la liste des salles." />
+            <EmptyState title="Erreur" message="Impossible de charger la liste des salles." />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16">

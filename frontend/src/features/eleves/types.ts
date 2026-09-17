@@ -18,6 +18,16 @@ export interface Eleve {
   statut: string
   acte_naissance: boolean
   carnet_sante: boolean
+  numero_acte: string | null
+  jugement_suppletif: string | null
+  date_acte: string | null
+  delivre_par: string | null
+  nom_pere: string | null
+  prenom_pere: string | null
+  fonction_pere: string | null
+  nom_mere: string | null
+  prenom_mere: string | null
+  fonction_mere: string | null
   created_at: string
   updated_at: string
   tuteur: Tuteur
@@ -34,10 +44,20 @@ export interface EleveCreateInput {
   adresse?: string | null
   statut: string
   tuteur_id: number
-  classe_id?: number | null
+  classe_id: number
   annee_scolaire_id?: number | null
   acte_naissance?: boolean
   carnet_sante?: boolean
+  numero_acte?: string | null
+  jugement_suppletif?: string | null
+  date_acte?: string | null
+  delivre_par?: string | null
+  nom_pere?: string | null
+  prenom_pere?: string | null
+  fonction_pere?: string | null
+  nom_mere?: string | null
+  prenom_mere?: string | null
+  fonction_mere?: string | null
 }
 
 export interface EleveUpdateInput {
@@ -53,6 +73,16 @@ export interface EleveUpdateInput {
   photo?: string | null
   acte_naissance?: boolean
   carnet_sante?: boolean
+  numero_acte?: string | null
+  jugement_suppletif?: string | null
+  date_acte?: string | null
+  delivre_par?: string | null
+  nom_pere?: string | null
+  prenom_pere?: string | null
+  fonction_pere?: string | null
+  nom_mere?: string | null
+  prenom_mere?: string | null
+  fonction_mere?: string | null
 }
 
 export interface MoyenneTrimestre {

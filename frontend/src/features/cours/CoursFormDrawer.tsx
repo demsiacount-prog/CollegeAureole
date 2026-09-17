@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { fetchClasses } from '@/features/classes/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
 import { required, positiveNumber, validateFields, hasErrors, type Errors } from '@/lib/validation'
-import { baremeNiveau } from '@/lib/bareme'
+import { utiliseCoefficient } from '@/lib/bareme'
 import type { Cours, CoursCreateInput } from './types'
 
 interface Props {
@@ -144,7 +144,8 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
             <label className="block text-sm font-medium text-[var(--color-ink)] mb-1">Classes</label>
             <p className="mb-3 text-xs text-[var(--color-ink-faint)]">
               Cochez les classes où la matière est enseignée. Le coefficient ne concerne que le second cycle
-              (notes /20) ; il est fixé à 1 pour les classes du premier cycle (notes /10, moyenne simple).
+              (notes /20) et les trimestres de la 6ème (pondérés sur /10) ; il est fixé à 1 pour les
+              compositions du premier cycle (notes /10, moyenne simple).
             </p>
             {errors.classes && <p className="mb-1 text-xs text-[var(--color-danger)]">{errors.classes}</p>}
             {classes.length === 0 ? (
@@ -164,7 +165,7 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
                       <span className="text-sm text-[var(--color-ink)] flex-1">
                         {cl.niveau} — {cl.nom}
                       </span>
-                      {selected && baremeNiveau(cl.niveau) !== 10 && (
+                      {selected && utiliseCoefficient(cl.niveau, 'TRIMESTRE') && (
                         <div className="flex items-center gap-2">
                           <label
                             htmlFor={`coeff-${cl.id}`}
@@ -181,7 +182,7 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
                             onChange={(e) => updateCoefficient(cl.id, e.target.value)}
                             placeholder="1"
                             aria-label={`Coefficient pour ${cl.niveau} — ${cl.nom}`}
-                            className="h-8 w-20 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-center text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+                            className="h-8 w-20 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-center text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
                           />
                         </div>
                       )}

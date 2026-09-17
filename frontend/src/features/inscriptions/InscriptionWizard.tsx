@@ -38,9 +38,11 @@ interface Props {
 
 const emptyForm = {
   nom: '', prenom: '', dateNaissance: '', lieuNaissance: '', sexe: 'M',
+  nomPere: '', prenomPere: '', fonctionPere: '', nomMere: '', prenomMere: '', fonctionMere: '',
   tuteurNom: '', tuteurPrenom: '', tuteurEmail: '', tuteurTelephone: '', tuteurAdresse: '', tuteurProfession: '',
   niveauId: '', classeId: '', anneeScolaireId: '',
   acte_naissance: false, carnet_sante: false,
+  numero_acte: '', jugement_suppletif: '', date_acte: '', delivre_par: '',
   observation: '',
 }
 
@@ -141,6 +143,16 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
           statut: 'actif',
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
+          numero_acte: form.numero_acte.trim() || null,
+          jugement_suppletif: form.jugement_suppletif.trim() || null,
+          date_acte: form.date_acte || null,
+          delivre_par: form.delivre_par.trim() || null,
+          nom_pere: form.nomPere.trim() || null,
+          prenom_pere: form.prenomPere.trim() || null,
+          fonction_pere: form.fonctionPere.trim() || null,
+          nom_mere: form.nomMere.trim() || null,
+          prenom_mere: form.prenomMere.trim() || null,
+          fonction_mere: form.fonctionMere.trim() || null,
         },
         classe_id: form.classeId ? Number(form.classeId) : null,
         id_annee_scolaire: anneeActive?.id ?? Number(form.anneeScolaireId),
@@ -195,7 +207,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                   <button
                     key={s.id}
                     onClick={() => done && setStep(s.id)}
-                    className="flex w-full items-center gap-3 rounded px-3 py-2.5 text-left transition-all"
+                    className="flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-all"
                     style={{
                       background: active ? 'var(--color-surface-2)' : 'transparent',
                       cursor: done ? 'pointer' : 'default',
@@ -208,7 +220,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                       }}
                     >
                       {done ? (
-                        <CheckCircle size={13} className="text-white" />
+                        <CheckCircle size={13} className="text-[var(--color-ink)]" />
                       ) : (
                         <Icon size={13} className={active ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]'} />
                       )}
@@ -305,6 +317,46 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                     set('lieuNaissance', e.target.value)
                     if (errors.lieuNaissance) setErrors((prev) => ({ ...prev, lieuNaissance: undefined }))
                   }} required error={errors.lieuNaissance} />
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      label="Nom du père"
+                      placeholder="Diallo"
+                      value={form.nomPere}
+                      onChange={(e) => set('nomPere', e.target.value)}
+                    />
+                    <Input
+                      label="Prénom du père"
+                      placeholder="Modibo"
+                      value={form.prenomPere}
+                      onChange={(e) => set('prenomPere', e.target.value)}
+                    />
+                    <Input
+                      label="Fonction du père"
+                      placeholder="Commerçant"
+                      value={form.fonctionPere}
+                      onChange={(e) => set('fonctionPere', e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      label="Nom de la mère"
+                      placeholder="Coulibaly"
+                      value={form.nomMere}
+                      onChange={(e) => set('nomMere', e.target.value)}
+                    />
+                    <Input
+                      label="Prénom de la mère"
+                      placeholder="Aminata"
+                      value={form.prenomMere}
+                      onChange={(e) => set('prenomMere', e.target.value)}
+                    />
+                    <Input
+                      label="Fonction de la mère"
+                      placeholder="Ménagère"
+                      value={form.fonctionMere}
+                      onChange={(e) => set('fonctionMere', e.target.value)}
+                    />
+                  </div>
                   <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-info)]/30 bg-[var(--color-info-wash)] px-3 py-2">
                     <AlertCircle size={14} className="mt-0.5 shrink-0 text-[var(--color-info)]" />
                     <span className="text-xs text-[var(--color-info)]">
@@ -508,6 +560,12 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                   {Object.entries(DOCS_LABELS).map(([field, label]) => {
                     const checked = form[field as keyof typeof form] as boolean
                     const file = docFiles[field] ?? null
+                    const isActe = field === 'acte_naissance'
+                    const acteCivilValide =
+                      isActe &&
+                      ((form.numero_acte.trim() || form.jugement_suppletif.trim()) &&
+                        !!form.date_acte &&
+                        !!form.delivre_par.trim())
                     return (
                       <div
                         key={field}
@@ -520,7 +578,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div
-                              className="flex size-9 shrink-0 items-center justify-center rounded"
+                              className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
                               style={{ background: checked ? 'var(--color-success-wash)' : 'var(--color-surface-2)' }}
                             >
                               {checked ? (
@@ -542,7 +600,8 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                           <button
                             type="button"
                             onClick={() => set(field, !checked)}
-                            className="rounded border px-3 py-1.5 text-xs font-medium transition-all"
+                            disabled={isActe && !acteCivilValide && !checked}
+                            className="rounded-[var(--radius-sm)] border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
                             style={{
                               background: checked ? 'var(--color-success-wash)' : 'var(--color-surface)',
                               color: checked ? 'var(--color-success)' : 'var(--color-ink-dim)',
@@ -552,6 +611,49 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                             {checked ? 'Reçu' : 'Marquer reçu'}
                           </button>
                         </div>
+
+                        {isActe && !checked && (
+                          <div className="mt-4 space-y-3">
+                            <p className="text-[11px] font-semibold text-[var(--color-ink-dim)]">
+                              État civil à renseigner avant de marquer reçu :
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input
+                                label="Acte de naissance N°"
+                                placeholder="ex. N° 1234/25"
+                                value={form.numero_acte}
+                                onChange={(e) => set('numero_acte', e.target.value)}
+                              />
+                              <Input
+                                label="Jugement supplétif N°"
+                                placeholder="ex. N° 567/25"
+                                value={form.jugement_suppletif}
+                                onChange={(e) => set('jugement_suppletif', e.target.value)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input
+                                label="Date de l'acte"
+                                type="date"
+                                value={form.date_acte}
+                                onChange={(e) => set('date_acte', e.target.value)}
+                              />
+                              <Input
+                                label="Délivré par"
+                                placeholder="ex. Mairie de Bamako"
+                                value={form.delivre_par}
+                                onChange={(e) => set('delivre_par', e.target.value)}
+                              />
+                            </div>
+                            {!acteCivilValide && (
+                              <p className="flex items-center gap-1.5 text-[11px] text-[var(--color-info)]">
+                                <AlertCircle size={12} strokeWidth={1.75} />
+                                Renseignez un N° d'acte ou de jugement, la date et le délivrant pour activer « Marquer reçu ».
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         {canImport ? (
                           <div className="mt-3 flex items-center gap-3">
                             <label className="flex cursor-pointer items-center gap-2 rounded border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
@@ -640,6 +742,27 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                           </div>
                         ))}
                       </div>
+                      {form.acte_naissance && (
+                        <div className="mt-3 space-y-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">État civil</p>
+                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
+                            <span className="text-[var(--color-ink-faint)]">N° acte : </span>
+                            {form.numero_acte || '—'}
+                          </p>
+                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
+                            <span className="text-[var(--color-ink-faint)]">Jugement supplétif : </span>
+                            {form.jugement_suppletif || '—'}
+                          </p>
+                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
+                            <span className="text-[var(--color-ink-faint)]">Date de l'acte : </span>
+                            {form.date_acte || '—'}
+                          </p>
+                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
+                            <span className="text-[var(--color-ink-faint)]">Délivré par : </span>
+                            {form.delivre_par || '—'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {form.observation && (

@@ -9,6 +9,7 @@ export interface Tuteur {
   telephone: string
   adresse: string
   profession: string
+  lien_parente: string | null
   created_at: string
   updated_at: string
 }
@@ -96,6 +97,19 @@ export interface Enseignant {
   telephone: string
   adresse: string
   specialite: string
+  genre: string | null
+  nina: string | null
+  date_naissance: string | null
+  categorie: string | null
+  echelon: string | null
+  fonction: string | null
+  sf_nombre_enfants: string | null
+  date_contrat: string | null
+  classe_tenue: string | null
+  dernier_poste: string | null
+  date_arrivee_cap: string | null
+  diplome: string | null
+  observations: string | null
   created_at: string
   updated_at: string
 }

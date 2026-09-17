@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2 } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch } from '@/components/ui/PageToolbar'
 import { Pagination } from '@/components/ui/Pagination'
-import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
@@ -22,9 +21,8 @@ import type { Tuteur } from '@/features/shared/types'
 const PAGE_SIZE = 50
 
 export default function TuteurListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -70,7 +68,7 @@ export default function TuteurListPage() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-[10px]">
         <PageHeader
           title="Tuteurs"
           count={total}
@@ -79,17 +77,23 @@ export default function TuteurListPage() {
           onAction={canWrite ? openCreate : undefined}
         />
 
-        <SearchInput
-          placeholder="Rechercher par nom, téléphone, profession…"
-          value={search}
-          onChange={setSearch}
-        />
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher un tuteur"
+          />
+          <span className="ml-2 text-[11.5px] text-[var(--ink-faint)]">
+            {total} tuteur{total > 1 ? 's' : ''}
+          </span>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger la liste des tuteurs." />
+            <EmptyState title="Erreur" message="Impossible de charger la liste des tuteurs." />
           </div>
         ) : tuteurs.length === 0 ? (
           <div className="py-16">

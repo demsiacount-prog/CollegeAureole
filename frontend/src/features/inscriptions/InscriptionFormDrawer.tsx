@@ -30,6 +30,7 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
   const [matriculeEleve, setMatriculeEleve] = useState(initialMatricule ?? '')
   const [idClasse, setIdClasse] = useState('')
   const [idAnneeScolaire, setIdAnneeScolaire] = useState(initialAnneeScolaireId != null ? String(initialAnneeScolaireId) : activeAnneeId != null ? String(activeAnneeId) : '')
+  const [nbRedoublements, setNbRedoublements] = useState('0')
   const [observation, setObservation] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -40,6 +41,7 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
       setMatriculeEleve(initialMatricule ?? '')
       setIdAnneeScolaire(initialAnneeScolaireId != null ? String(initialAnneeScolaireId) : activeAnneeId != null ? String(activeAnneeId) : '')
       setIdClasse('')
+      setNbRedoublements('0')
       setObservation('')
       setErrors({})
       setSubmitError(null)
@@ -61,6 +63,7 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
         matricule_eleve: matriculeEleve,
         id_classe: Number(idClasse),
         id_annee_scolaire: Number(idAnneeScolaire),
+        nb_redoublements: Math.max(0, Math.floor(Number(nbRedoublements) || 0)),
         observation: observation || null,
       })
       // Succès : le parent referme le drawer ; on réinitialise pour une
@@ -68,6 +71,7 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
       setMatriculeEleve('')
       setIdClasse('')
       setIdAnneeScolaire('')
+      setNbRedoublements('0')
       setObservation('')
       setErrors({})
     } catch (err) {
@@ -113,6 +117,16 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
               <option key={c.id} value={c.id}>{c.niveau} — {c.nom}</option>
             ))}
           </Select>
+
+          <Input
+            label="Nombre de redoublements"
+            type="number"
+            min={0}
+            step={1}
+            value={nbRedoublements}
+            onChange={(e) => setNbRedoublements(e.target.value.replace(/[^\d]/g, ''))}
+            hint="Combien de fois l'élève redouble cette classe."
+          />
 
           <Input label="Observation (optionnel)" placeholder="ex. Redoublant" value={observation} onChange={(e) => setObservation(e.target.value)} />
 

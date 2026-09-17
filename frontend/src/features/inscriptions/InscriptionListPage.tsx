@@ -9,9 +9,8 @@ import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch, ToolbarFilter } from '@/components/ui/PageToolbar'
 import { Pagination } from '@/components/ui/Pagination'
-import { SearchInput } from '@/components/ui/SearchInput'
-import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { Avatar } from '@/components/ui/Avatar'
@@ -19,7 +18,6 @@ import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate } from '@/lib/format'
-import { useAuth } from '@/auth/useAuth'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
 import { fetchInscriptions, fetchInscriptionsTotal, deleteInscription, createInscription } from './api'
 import InscriptionWizard from './InscriptionWizard'
@@ -38,9 +36,8 @@ const statutTone = (s: string): 'success' | 'warning' | 'danger' | 'neutral' => 
 const PAGE_SIZE = 50
 
 export default function InscriptionListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
 
@@ -143,9 +140,9 @@ export default function InscriptionListPage() {
               key={t}
               onClick={() => setTab(t)}
               className={clsx(
-                'rounded px-4 py-1.5 text-sm font-medium transition-all',
+                'rounded-[var(--radius-sm)] px-4 py-1.5 text-sm font-medium transition-all',
                 tab === t
-                  ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-soft)]'
+                  ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-sm)]'
                   : 'bg-transparent text-[var(--color-ink-dim)] hover:text-[var(--color-ink)]',
               )}
             >
@@ -173,33 +170,33 @@ export default function InscriptionListPage() {
               })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <SearchInput
-                className="flex-1"
-                placeholder="Rechercher par nom, prénom ou matricule…"
+            <PageToolbar>
+              <ToolbarSearch
+                placeholder="Rechercher"
                 value={search}
-                onChange={setSearch}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Rechercher une inscription"
               />
-              <Select label="" value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} disabled={!annees.length}>
+              <ToolbarFilter value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} disabled={!annees.length} aria-label="Filtrer par année">
                 <option value="">Toutes les années</option>
                 {annees.map((a) => (
                   <option key={a.id} value={a.id}>{a.libelle}</option>
                 ))}
-              </Select>
-              <Select label="" value={filterStatut} onChange={(e) => setFilterStatut(e.target.value)}>
+              </ToolbarFilter>
+              <ToolbarFilter value={filterStatut} onChange={(e) => setFilterStatut(e.target.value)} aria-label="Filtrer par statut">
                 <option value="">Tous les statuts</option>
                 <option value="Inscrit">Inscrit</option>
                 <option value="Redoublant">Redoublant</option>
                 <option value="Transféré">Transféré</option>
                 <option value="Exclu">Exclu</option>
-              </Select>
-            </div>
+              </ToolbarFilter>
+            </PageToolbar>
 
             {isLoading ? (
               <TableSkeleton rows={8} />
             ) : isError ? (
               <div className="py-16">
-                <EmptyState message="Impossible de charger les inscriptions." />
+                <EmptyState title="Erreur" message="Impossible de charger les inscriptions." />
               </div>
             ) : inscriptions.length === 0 ? (
               <div className="py-16">
@@ -214,6 +211,7 @@ export default function InscriptionListPage() {
                       <TableHead>Année</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead className="text-center">Red.</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -236,6 +234,9 @@ export default function InscriptionListPage() {
                         <TableCell className="text-[var(--color-ink-dim)]">{formatDate(i.date_inscription)}</TableCell>
                         <TableCell>
                           <Badge tone={statutTone(i.statut)}>{i.statut}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-[var(--color-ink-dim)]">
+                          {i.nb_redoublements > 0 ? `${i.nb_redoublements}×` : '—'}
                         </TableCell>
                         <TableCell className="text-right">
                           {canDelete && (
@@ -275,7 +276,7 @@ export default function InscriptionListPage() {
                 setTab('liste')
               }}
               onCancel={() => setTab('liste')}
-              canImport={user?.role === 'admin'}
+              canImport={true}
             />
           </div>
         )}

@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2, Eye } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Drawer } from '@/components/ui/Drawer'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch, ToolbarFilter } from '@/components/ui/PageToolbar'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { fetchClasses, fetchClasseDetail, deleteClasse } from './api'
 import { ClasseFormDrawer } from './ClasseFormDrawer'
@@ -18,11 +19,24 @@ import type { Classe } from '@/features/shared/types'
 import { formatDate } from '@/lib/format'
 
 export default function ClasseListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
+  const canWrite = true
   const qc = useQueryClient()
 
   const { data: classes = [], isLoading, isError } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
+
+  const [search, setSearch] = useState('')
+  const [filterNiveau, setFilterNiveau] = useState('')
+
+  const niveaux = useMemo(() => [...new Set(classes.map((c) => c.niveau))].sort(), [classes])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return classes.filter((c) => {
+      if (filterNiveau && c.niveau !== filterNiveau) return false
+      if (q && !`${c.niveau} ${c.nom}`.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [classes, search, filterNiveau])
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Classe | null>(null)
@@ -53,21 +67,36 @@ export default function ClasseListPage() {
       <div className="flex flex-col gap-5">
         <PageHeader
           title="Classes"
-          count={classes.length}
-          countLabel={`classe${classes.length > 1 ? 's' : ''}`}
+          count={filtered.length}
+          countLabel={`classe${filtered.length > 1 ? 's' : ''}`}
           actionLabel={canWrite ? 'Nouvelle classe' : undefined}
           onAction={canWrite ? openCreate : undefined}
         />
+
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher une classe…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher une classe"
+          />
+          <ToolbarFilter value={filterNiveau} onChange={(e) => setFilterNiveau(e.target.value)} aria-label="Filtrer par niveau">
+            <option value="">Tous les niveaux</option>
+            {niveaux.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </ToolbarFilter>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger la liste des classes." />
+            <EmptyState title="Erreur" message="Impossible de charger la liste des classes." />
           </div>
-        ) : classes.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-16">
-            <EmptyState message="Aucune classe enregistrée pour le moment." />
+            <EmptyState message={search || filterNiveau ? 'Aucune classe ne correspond à cette recherche.' : 'Aucune classe enregistrée pour le moment.'} />
           </div>
         ) : (
           <TableContainer>
@@ -83,7 +112,7 @@ export default function ClasseListPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {classes.map((c) => (
+                {filtered.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-[var(--color-ink)]">{c.niveau}</TableCell>
                     <TableCell className="font-medium text-[var(--color-ink)]">{c.nom}</TableCell>
@@ -92,14 +121,15 @@ export default function ClasseListPage() {
                     <TableCell className="text-[var(--color-ink-dim)]">{c.mensualite.toLocaleString('fr-FR')} FCFA</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => setDetailId(c.id)}
-                          className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                          aria-label="Voir les élèves"
-                          title="Voir les élèves"
-                        >
-                          <Eye size={14} strokeWidth={1.75} />
-                        </button>
+                        <Tooltip content="Voir les élèves">
+                          <button
+                            onClick={() => setDetailId(c.id)}
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            aria-label="Voir les élèves"
+                          >
+                            <Eye size={14} strokeWidth={1.75} />
+                          </button>
+                        </Tooltip>
                         {canWrite && (
                           <button
                             onClick={() => openEdit(c)}
@@ -138,7 +168,7 @@ export default function ClasseListPage() {
           {loadingDetail ? (
             <TableSkeleton rows={6} />
           ) : !detail ? (
-            <EmptyState message="Impossible de charger les élèves de cette classe." />
+            <EmptyState title="Erreur" message="Impossible de charger les élèves de cette classe." />
           ) : detail.eleves.length === 0 ? (
             <EmptyState message="Aucun élève affecté à cette classe." />
           ) : (

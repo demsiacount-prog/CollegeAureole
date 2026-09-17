@@ -9,6 +9,19 @@ export interface EnseignantCreateInput {
   telephone: string
   adresse: string
   specialite: string
+  genre?: string
+  nina?: string
+  date_naissance?: string
+  categorie?: string
+  echelon?: string
+  fonction?: string
+  sf_nombre_enfants?: string
+  date_contrat?: string
+  classe_tenue?: string
+  dernier_poste?: string
+  date_arrivee_cap?: string
+  diplome?: string
+  observations?: string
 }
 
 export interface EnseignantDossier {

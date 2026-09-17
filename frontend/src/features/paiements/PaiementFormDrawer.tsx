@@ -175,9 +175,9 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
             <div className="flex gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-1">
               <button
                 type="button"
-                className={`flex-1 rounded-[var(--radius-xs)] px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex-1 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'individuel'
-                    ? 'bg-[var(--color-action)] text-white'
+                    ? 'bg-[var(--color-action)] text-[var(--color-ink)]'
                     : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('individuel')}
@@ -186,9 +186,9 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
               </button>
               <button
                 type="button"
-                className={`flex-1 rounded-[var(--radius-xs)] px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex-1 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'groupe'
-                    ? 'bg-[var(--color-action)] text-white'
+                    ? 'bg-[var(--color-action)] text-[var(--color-ink)]'
                     : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('groupe')}
@@ -310,7 +310,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                                     setRemisesParEcheance((prev) => { const n = { ...prev }; delete n[ech.id]; return n })
                                   }
                                 }}
-                                className="w-28 rounded-[var(--radius-xs)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
+                                className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
                               />
                               <input
                                 type="text"
@@ -324,7 +324,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                                     }))
                                   }
                                 }}
-                                className="flex-1 rounded-[var(--radius-xs)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
+                                className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
                               />
                             </div>
                           )}

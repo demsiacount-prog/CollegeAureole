@@ -44,19 +44,6 @@ export interface Echeance {
   total_remises: number
 }
 
-export interface Relance extends Echeance {
-  matricule_eleve: string | null
-  eleve_nom: string | null
-  eleve_prenom: string | null
-  classe_nom: string | null
-  niveau_classe: string | null
-  code_tuteur: string | null
-  tuteur_nom: string | null
-  tuteur_prenom: string | null
-  telephone_tuteur: string | null
-  email_tuteur: string | null
-}
-
 export interface Remise {
   id: number
   id_echeance: number
@@ -72,6 +59,13 @@ export interface RemiseCreateInput {
   montant: number
   motif?: string | null
   date: string
+}
+
+export interface PaiementStats {
+  total_encaisse: number
+  montant_impaye: number
+  nb_echeances_soldees: number
+  nb_echeances_impayees: number
 }
 
 export interface PaiementGroupeInput {

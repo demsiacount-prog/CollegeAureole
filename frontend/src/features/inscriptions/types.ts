@@ -6,6 +6,7 @@ export interface Inscription {
   id_annee_scolaire: number
   statut: string
   statut_passage: string
+  nb_redoublements: number
   diplome: boolean
   montant_total: number
   credit_disponible: number
@@ -41,6 +42,7 @@ export interface InscriptionCreateInput {
   id_classe: number | null
   id_annee_scolaire: number
   statut?: string
+  nb_redoublements?: number
   montant_total?: number
   date_inscription?: string
   observation?: string | null

@@ -1,35 +1,35 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
-import { Pencil, Phone, MapPin, Briefcase, ChevronDown } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useParams, Link } from 'react-router-dom'
+import { Pencil, GraduationCap, Cake, ChevronDown, User, ClipboardList, UserX, FileText, CreditCard, Files } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Avatar } from '@/components/ui/Avatar'
-import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { Breadcrumbs } from '@/components/ui/PageHeader'
+import { InfoSection, InfoField } from '@/components/ui/InfoGrid'
 import { formatDate, formatMontant, formatMoyenne } from '@/lib/format'
 import { extractErrorMessage } from '@/lib/api'
 import { baremeNiveau } from '@/lib/bareme'
 import { toast } from '@/components/ui/toast'
+import { urlAbsolue } from '@/lib/server'
 import { fetchDossierEleve, updateEleve } from './api'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
 import { createInscription } from '@/features/inscriptions/api'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
-import { countVisibleDocuments, ELEVE_DOCS_LABELS } from '@/features/documents/labels'
-import { uploadDocument } from '@/features/documents/api'
-import type { DossierEleve, NoteEleve, InscriptionDetail, AbsenceEleve } from './types'
+import { useDocuments } from '@/features/documents/hooks'
+import type { DossierEleve, InscriptionDetail, AbsenceEleve, BulletinEleve } from './types'
+import { niveauOrdre } from '@/lib/niveaux'
+import { FicheSuiviSection } from '@/features/rapports/FicheSuiviSection'
+import { FicheMensuelleSection } from '@/features/rapports/FicheMensuelleSection'
+import { PiecesClesDossier } from './PiecesClesDossier'
 
 export default function EleveDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canImportDocs = user?.role === 'admin'
+  const canWrite = true
+  const canImportDocs = true
   const [editOpen, setEditOpen] = useState(false)
   const [inscriptionOpen, setInscriptionOpen] = useState(false)
 
@@ -39,40 +39,14 @@ export default function EleveDetailPage() {
     enabled: !!matricule,
   })
 
-  const anneeMap = useMemo(() => {
-    const map: Record<number, string> = {}
-    for (const insc of dossier?.inscriptions ?? []) {
-      if (insc.annee_scolaire) map[insc.annee_scolaire.id] = insc.annee_scolaire.libelle
-    }
-    if (dossier?.annee_scolaire && !(dossier.annee_scolaire.id in map)) {
-      map[dossier.annee_scolaire.id] = dossier.annee_scolaire.libelle
-    }
-    return map
-  }, [dossier])
+  const { data: documentsData } = useDocuments('eleve', matricule ?? '')
 
-  const anneeNiveau = useMemo(() => {
-    const map: Record<number, string> = {}
-    for (const insc of dossier?.inscriptions ?? []) {
-      if (insc.annee_scolaire && insc.classe?.niveau) map[insc.annee_scolaire.id] = insc.classe.niveau
-    }
-    return map
-  }, [dossier])
-
-  const resultats = useMemo(
-    () => regrouperResultats(dossier?.notes ?? [], anneeMap, anneeNiveau),
-    [dossier, anneeMap, anneeNiveau],
-  )
   const anneeActiveId = dossier?.annee_scolaire?.id
   // Un élève déjà inscrit (ou redoublant) pour l'année active n'a plus de
   // bouton « Inscrire » : l'inscription existe déjà.
   const dejaInscritAnneeActive = (dossier?.inscriptions ?? []).some(
     (i) => ['Inscrit', 'Redoublant'].includes(i.statut) && (anneeActiveId == null || i.id_annee_scolaire === anneeActiveId),
   )
-  const nbAnneesAvecResultats = resultats.anneesTriees.length
-  const anneeResultatsDefaut =
-    anneeActiveId != null && resultats.parAnnee.has(anneeActiveId)
-      ? anneeActiveId
-      : (resultats.anneesTriees[0]?.id ?? null)
 
   const anneesRanges = useMemo(() => {
     const seen = new Map<number, { id: number; libelle: string; dateDebut: string; dateFin: string }>()
@@ -96,104 +70,146 @@ export default function EleveDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24">
-        <Spinner label="Chargement du dossier…" />
+      <div className="w-full">
+        <div className="-mx-5 -mt-[18px] flex flex-col gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <span className="skeleton size-[48px] shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="skeleton h-[18px] w-1/3 max-w-[240px]" />
+              <div className="skeleton h-[12px] w-1/2 max-w-[320px]" />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="skeleton h-[34px] w-[88px]" />
+            <div className="skeleton h-[34px] w-[104px]" />
+          </div>
+        </div>
+        <div className="border-b border-[var(--border)]">
+          <div className="skeleton mt-4 h-[32px] w-64" />
+        </div>
+        <div className="skeleton mt-6 h-[220px] w-full" />
       </div>
     )
   }
 
   if (isError || !dossier) {
-    return <EmptyState message="Impossible de charger ce dossier élève." />
+    return <EmptyState title="Erreur" message="Impossible de charger ce dossier élève." />
   }
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-6">
-      <Breadcrumbs
-        items={[
-          { label: 'Élèves', to: '/app/eleves' },
-          { label: `${dossier.prenom} ${dossier.nom}` },
-        ]}
-      />
-
-      <Card className="p-6">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
-          <div className="flex items-start gap-4">
-            <Avatar nom={dossier.nom} prenom={dossier.prenom} photo={dossier.photo} size="lg" highlighted />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                  {dossier.prenom} {dossier.nom}
-                </h2>
-                <Badge tone={dossier.statut === 'actif' ? 'success' : 'neutral'}>
-                  {dossier.statut === 'actif' ? 'Actif' : 'Inactif'}
-                </Badge>
-              </div>
-              <p className="mt-1 font-[var(--font-mono)] text-xs text-[var(--color-ink-faint)]">{dossier.matricule}</p>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-[var(--color-ink-dim)]">
-                <span>Né(e) le {formatDate(dossier.date_de_naissance)} à {dossier.lieu_de_naissance}</span>
-                <span>{dossier.classe ? `${dossier.classe.niveau} — ${dossier.classe.nom}` : 'Non affecté à une classe'}</span>
-              </div>
+      <div className="flex flex-col">
+      {/* Type C v2 — Hero band (fond surface, bordure basse, avatar 48px) */}
+      <div className="-mx-5 -mt-[18px] flex flex-col gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <span className="flex size-[48px] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--border)] bg-[var(--surface-3)] font-[var(--font-sans)] text-[16px] font-semibold text-[var(--ink-dim)]">
+            {dossier.photo ? (
+              <img src={urlAbsolue(dossier.photo)} alt="" className="size-full object-cover" />
+            ) : (
+              `${dossier.prenom.charAt(0)}${dossier.nom.charAt(0)}`.toUpperCase()
+            )}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate font-[var(--font-serif)] text-[18px] font-semibold leading-[1.2] text-[var(--ink)]">
+                {dossier.prenom} {dossier.nom}
+              </h1>
+              <Badge tone={dossier.statut === 'actif' ? 'success' : 'neutral'}>
+                {dossier.statut === 'actif' ? 'Actif' : 'Inactif'}
+              </Badge>
+            </div>
+            <div className="mt-[3px] flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--ink-faint)]">
+              <span className="flex items-center gap-1">
+                <GraduationCap className="size-3" strokeWidth={1.75} />
+                {dossier.classe ? `${dossier.classe.niveau} — ${dossier.classe.nom}` : 'Non affecté à une classe'}
+              </span>
+              <span className="flex items-center gap-1">
+                <Cake className="size-3" strokeWidth={1.75} />
+                Né(e) le {formatDate(dossier.date_de_naissance)}
+              </span>
+              <span className="font-[var(--font-mono)] text-[10.5px]">{dossier.matricule}</span>
             </div>
           </div>
-          {canWrite && (
-            <div className="flex gap-2">
-              {!dejaInscritAnneeActive && (
-                <Button variant="primary" onClick={() => setInscriptionOpen(true)}>
-                  Inscrire
-                </Button>
-              )}
-              <Button variant="secondary" onClick={() => setEditOpen(true)}>
-                <Pencil strokeWidth={1.75} className="size-4" />
-                Modifier
-              </Button>
-            </div>
-          )}
         </div>
-      </Card>
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-2">
+            {!dejaInscritAnneeActive && (
+              <Button variant="primary" onClick={() => setInscriptionOpen(true)}>
+                Inscrire
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil strokeWidth={1.75} className="size-4" />
+              Modifier
+            </Button>
+          </div>
+        )}
+      </div>
 
-      
-      
 
       <Tabs
         tabs={[
           {
             key: 'profil',
             label: 'Profil',
+            icon: User,
             content: <ProfilTab dossier={dossier} />,
           },
           {
             key: 'inscriptions',
             label: 'Inscriptions',
+            icon: ClipboardList,
             count: dossier.inscriptions.length,
             content: <InscriptionsTab inscriptions={dossier.inscriptions} />,
           },
           {
-            key: 'notes',
-            label: 'Résultats',
-            count: nbAnneesAvecResultats,
-            content: <NotesTab resultats={resultats} defaultExpandedId={anneeResultatsDefaut} />,
-          },
-          {
             key: 'absences',
             label: 'Absences',
+            icon: UserX,
             count: nbAbsencesActives,
             content: <AbsencesTab groups={absencesParAnnee} defaultExpandedId={anneeAbsencesDefaut} />,
           },
-        
+          {
+            key: 'bulletins',
+            label: 'Bulletins',
+            icon: FileText,
+            count: dossier.bulletins.length,
+            content: <BulletinsTab bulletins={dossier.bulletins} />,
+          },
           {
             key: 'documents',
             label: 'Documents',
-            count: countVisibleDocuments(dossier.documents, ELEVE_DOCS_LABELS),
+            icon: Files,
+            count: documentsData?.length ?? 0,
             content: (
-              <DocumentsTab
-                documents={dossier.documents}
-                labels={ELEVE_DOCS_LABELS}
-                invalidateKey={['eleve-dossier', dossier.matricule]}
-                upload={(typeDocument, file) => uploadDocument(dossier.matricule, typeDocument, file)}
-                canEdit={canImportDocs}
-              />
+              <>
+                {[7, 8, 9].includes(niveauOrdre(dossier.classe?.niveau) ?? -1) && (
+                  <FicheSuiviSection matricule={dossier.matricule} />
+                )}
+                {(() => {
+                  const ordre = niveauOrdre(dossier.classe?.niveau)
+                  return ordre != null && ordre >= 1 && ordre <= 6 ? (
+                    <FicheMensuelleSection
+                      matricule={dossier.matricule}
+                      anneeId={anneeActiveId}
+                      niveau={dossier.classe?.niveau}
+                    />
+                  ) : null
+                })()}
+                <DocumentsTab
+                  entiteType="eleve"
+                  entiteId={dossier.matricule}
+                  readOnly={!canImportDocs}
+                />
+              </>
             ),
+          },
+          {
+            key: 'paiements',
+            label: 'Paiements',
+            icon: CreditCard,
+            count: dossier.inscriptions.reduce((somme, i) => somme + i.paiements.length, 0),
+            content: <PaiementsTab inscriptions={dossier.inscriptions} />,
           },
         ]}
       />
@@ -238,66 +254,119 @@ export default function EleveDetailPage() {
 
 function ProfilTab({ dossier }: { dossier: DossierEleve }) {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations personnelles</CardTitle>
-        </CardHeader>
-        <CardBody className="flex flex-col gap-2.5 text-sm">
-          <Row label="Sexe" value={dossier.sexe === 'M' ? 'Masculin' : 'Féminin'} />
-          <Row label="Date de naissance" value={formatDate(dossier.date_de_naissance)} />
-          <Row label="Lieu de naissance" value={dossier.lieu_de_naissance} />
-          <Row label="Adresse" value={dossier.adresse ?? '—'} />
-        </CardBody>
-      </Card>
+    <div>
+      <InfoSection title="Informations personnelles">
+        <InfoField label="Sexe" value={dossier.sexe === 'M' ? 'Masculin' : 'Féminin'} />
+        <InfoField label="Date de naissance" value={formatDate(dossier.date_de_naissance)} mono />
+        <InfoField label="Lieu de naissance" value={dossier.lieu_de_naissance ?? '—'} />
+        <InfoField label="Père" value={formatParent(dossier.nom_pere, dossier.prenom_pere, dossier.fonction_pere)} />
+        <InfoField label="Mère" value={formatParent(dossier.nom_mere, dossier.prenom_mere, dossier.fonction_mere)} />
+        <InfoField label="Adresse" value={dossier.adresse ?? '—'} />
+      </InfoSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tuteur</CardTitle>
-        </CardHeader>
-        <CardBody className="flex flex-col gap-2.5 text-sm">
-          <p className="font-medium text-[var(--color-ink)]">
-            {dossier.tuteur.prenom} {dossier.tuteur.nom}
-          </p>
-          <p className="flex items-center gap-2 text-[var(--color-ink-dim)]">
-            <Briefcase strokeWidth={1.75} className="size-3.5 text-[var(--color-ink-faint)]" /> {dossier.tuteur.profession}
-          </p>
-          <p className="flex items-center gap-2 text-[var(--color-ink-dim)]">
-            <Phone strokeWidth={1.75} className="size-3.5 text-[var(--color-ink-faint)]" /> {dossier.tuteur.telephone}
-          </p>
-          <p className="flex items-center gap-2 text-[var(--color-ink-dim)]">
-            <MapPin strokeWidth={1.75} className="size-3.5 text-[var(--color-ink-faint)]" /> {dossier.tuteur.adresse}
-          </p>
-        </CardBody>
-      </Card>
+      <InfoSection title="Tuteur">
+        <InfoField
+          label="Tuteur légal"
+          value={`${dossier.tuteur.prenom} ${dossier.tuteur.nom}`}
+          to={`/app/tuteurs/${dossier.tuteur.id}`}
+        />
+        <InfoField label="Profession" value={dossier.tuteur.profession ?? '—'} />
+        <InfoField label="Téléphone" value={dossier.tuteur.telephone} mono />
+        <InfoField label="Adresse" value={dossier.tuteur.adresse} />
+      </InfoSection>
 
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Documents administratifs</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-3 text-sm md:grid-cols-2">
-          <div className="rounded-lg border border-[var(--color-border-soft)] px-3 py-2">
-            <p className="text-[var(--color-ink-faint)]">Acte de naissance</p>
-            <p className="mt-1 font-medium text-[var(--color-ink)]">{dossier.acte_naissance ? 'Présent' : 'À compléter'}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--color-border-soft)] px-3 py-2">
-            <p className="text-[var(--color-ink-faint)]">Carnet de santé</p>
-            <p className="mt-1 font-medium text-[var(--color-ink)]">{dossier.carnet_sante ? 'Présent' : 'À compléter'}</p>
-          </div>
-          
-        </CardBody>
-      </Card>
+      <InfoSection title="Carnet de santé">
+        <InfoField label="Carnet de santé" value={dossier.carnet_sante ? 'Présent' : 'À compléter'} />
+      </InfoSection>
+
+      <PiecesClesDossier dossier={dossier} />
     </div>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function BulletinsTab({ bulletins }: { bulletins: BulletinEleve[] }) {
+  if (bulletins.length === 0) return <EmptyState message="Aucun bulletin généré." />
+  const sorted = [...bulletins].sort((a, b) => b.id_trimestre - a.id_trimestre)
   return (
-    <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] py-1.5 last:border-0">
-      <span className="text-[var(--color-ink-faint)]">{label}</span>
-      <span className="text-[var(--color-ink)]">{value}</span>
-    </div>
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Période</TableHead>
+            <TableHead className="text-right">Moyenne</TableHead>
+            <TableHead className="text-right">Rang</TableHead>
+            <TableHead className="text-right">Statut</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((b) => (
+            <TableRow key={b.id}>
+              <TableCell>
+                <Link
+                  to={`/app/bulletins/${b.id}`}
+                  className="font-medium text-[var(--color-action)] hover:underline"
+                >
+                  Trimestre {b.id_trimestre}
+                </Link>
+              </TableCell>
+              <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                {formatMoyenne(b.moyenne_generale, 20)}
+              </TableCell>
+              <TableCell className="text-right text-[var(--color-ink-dim)]">
+                {b.rang != null ? `${b.rang}ᵉ` : '—'}
+              </TableCell>
+              <TableCell className="text-right">
+                <Badge tone={b.statut === 'PUBLIE' ? 'success' : 'neutral'}>
+                  {b.statut === 'PUBLIE' ? 'Publié' : 'Brouillon'}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
+}
+
+function PaiementsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }) {
+  const paiements = inscriptions.flatMap((insc) => insc.paiements)
+  if (paiements.length === 0) return <EmptyState message="Aucun paiement enregistré pour cet élève." />
+  const sorted = [...paiements].sort((a, b) => b.date.localeCompare(a.date))
+  return (
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-left">Code</TableHead>
+            <TableHead className="text-right">Montant</TableHead>
+            <TableHead className="text-right">Mode</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((p) => (
+            <TableRow key={p.id}>
+              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--color-ink-dim)]">
+                {formatDate(p.date)}
+              </TableCell>
+              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--color-ink-dim)]">
+                {p.code_paiement ?? '—'}
+              </TableCell>
+              <TableCell className="text-right font-medium text-[var(--color-ink)]">
+                {formatMontant(p.montant)}
+              </TableCell>
+              <TableCell className="text-right text-[var(--color-ink-dim)]">{p.mode ?? '—'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )
+}
+
+function formatParent(nom: string | null, prenom: string | null, fonction: string | null): string {
+  const nomComplet = [nom, prenom].filter(Boolean).join(' ') || '—'
+  return fonction ? `${nomComplet} — ${fonction}` : nomComplet
 }
 
 function InscriptionsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }) {
@@ -342,251 +411,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs text-[var(--color-ink-faint)]">{label}</p>
       <p className="mt-0.5 font-medium text-[var(--color-ink)]">{value}</p>
-    </div>
-  )
-}
-
-interface PeriodeResultat {
-  trimestre: NonNullable<NoteEleve['trimestre']>
-  notes: NoteEleve[]
-  estComplete: boolean
-  moyennesParMatiere: {
-    cours: NoteEleve['cours']
-    moyenne: number
-    nbNotes: number
-    coefficient: number
-    enseignant: NoteEleve['enseignant']
-  }[]
-}
-
-function coefficientCours(cours: NoteEleve['cours'], idClasse: number): number {
-  const aff = cours.coefficients.find((a) => a.id_classe === idClasse)
-  return aff ? aff.coefficient : 1
-}
-
-// EF2 et au-delà : moyenne pondérée par coefficients.
-// EF1 : moyenne arithmétique simple (notes /10, coefficients non applicables).
-function moyennePeriode(moyennes: { moyenne: number; coefficient: number }[], ponderee: boolean): number | null {
-  if (!ponderee) {
-    return moyennes.length > 0 ? moyennes.reduce((somme, m) => somme + m.moyenne, 0) / moyennes.length : null
-  }
-  return moyennePonderee(moyennes)
-}
-
-function moyennePonderee(moyennes: { moyenne: number; coefficient: number }[]): number | null {
-  let sommePonderee = 0
-  let sommeCoefficients = 0
-  for (const m of moyennes) {
-    sommePonderee += m.moyenne * m.coefficient
-    sommeCoefficients += m.coefficient
-  }
-  return sommeCoefficients > 0 ? sommePonderee / sommeCoefficients : null
-}
-
-interface AnneeResultat {
-  id: number
-  libelle: string
-  bareme: number
-  estPrimaire: boolean
-  coursAttendus: { id: number; nom: string }[]
-  periodes: PeriodeResultat[]
-  moyenneAnnuelle: number | null
-}
-
-interface ResultatsEleve {
-  parAnnee: Map<number, AnneeResultat>
-  anneesTriees: AnneeResultat[]
-}
-
-function regrouperResultats(notes: NoteEleve[], anneeMap: Record<number, string>, anneeNiveau: Record<number, string>): ResultatsEleve {
-  const parPeriode = new Map<number, PeriodeResultat>()
-  for (const n of notes) {
-    const trimestre = n.trimestre
-    if (!trimestre) continue
-    let periode = parPeriode.get(trimestre.id)
-    if (!periode) {
-      periode = { trimestre, notes: [], estComplete: false, moyennesParMatiere: [] }
-      parPeriode.set(trimestre.id, periode)
-    }
-    periode.notes.push(n)
-  }
-
-  for (const periode of parPeriode.values()) {
-    const byCours = new Map<number, { cours: NoteEleve['cours']; total: number; nbNotes: number; coefficient: number; enseignant: NoteEleve['enseignant'] }>()
-    for (const n of periode.notes) {
-      const cell = byCours.get(n.cours.id)
-      if (cell) {
-        cell.total += n.note
-        cell.nbNotes += 1
-        cell.enseignant = n.enseignant
-      } else {
-        byCours.set(n.cours.id, { cours: n.cours, total: n.note, nbNotes: 1, coefficient: coefficientCours(n.cours, n.id_classe), enseignant: n.enseignant })
-      }
-    }
-    periode.moyennesParMatiere = [...byCours.values()]
-      .map((cell) => ({ cours: cell.cours, moyenne: cell.total / cell.nbNotes, nbNotes: cell.nbNotes, coefficient: cell.coefficient, enseignant: cell.enseignant }))
-      .sort((a, b) => a.cours.nom.localeCompare(b.cours.nom))
-  }
-
-  const parAnnee = new Map<number, AnneeResultat>()
-  for (const periode of parPeriode.values()) {
-    const aid = periode.trimestre.annee_scolaire_id
-    let annee = parAnnee.get(aid)
-    if (!annee) {
-      const niveau = anneeNiveau[aid] ?? null
-      const bareme = niveau ? baremeNiveau(niveau) : (periode.trimestre.type === 'COMPOSITION' ? 10 : 20)
-      annee = {
-        id: aid,
-        libelle: anneeMap[aid] ?? `Année ${aid}`,
-        bareme,
-        estPrimaire: bareme === 10,
-        coursAttendus: [],
-        periodes: [],
-        moyenneAnnuelle: null,
-      }
-      parAnnee.set(aid, annee)
-    }
-    annee.periodes.push(periode)
-  }
-
-  for (const annee of parAnnee.values()) {
-    const coursById = new Map<number, { id: number; nom: string }>()
-    for (const periode of annee.periodes) {
-      for (const m of periode.moyennesParMatiere) {
-        if (!coursById.has(m.cours.id)) coursById.set(m.cours.id, { id: m.cours.id, nom: m.cours.nom })
-      }
-    }
-    annee.coursAttendus = [...coursById.values()].sort((a, b) => a.nom.localeCompare(b.nom))
-    for (const periode of annee.periodes) {
-      periode.estComplete =
-        annee.coursAttendus.length > 0 && periode.moyennesParMatiere.length === annee.coursAttendus.length
-    }
-    annee.periodes.sort((a, b) => new Date(a.trimestre.date_debut).getTime() - new Date(b.trimestre.date_debut).getTime())
-
-    const completes = annee.periodes.filter((p) => p.estComplete)
-    annee.moyenneAnnuelle =
-      completes.length > 0
-        ? completes.reduce((somme, p) => {
-            const moyenne = moyennePeriode(p.moyennesParMatiere, !annee.estPrimaire)
-            return somme + (moyenne ?? 0)
-          }, 0) / completes.length
-        : null
-  }
-
-  const anneesTriees = [...parAnnee.values()].sort((a, b) => {
-    const dernierA = Math.max(...a.periodes.map((p) => new Date(p.trimestre.date_debut).getTime()))
-    const dernierB = Math.max(...b.periodes.map((p) => new Date(p.trimestre.date_debut).getTime()))
-    return dernierB - dernierA
-  })
-
-  return { parAnnee, anneesTriees }
-}
-
-function NotesTab({ resultats, defaultExpandedId }: { resultats: ResultatsEleve; defaultExpandedId: number | null }) {
-  const [expanded, setExpanded] = useState<Set<number>>(
-    () => new Set(defaultExpandedId != null ? [defaultExpandedId] : []),
-  )
-
-  if (resultats.anneesTriees.length === 0) return <EmptyState message="Aucune matière et aucune note enregistrée." />
-
-  const toggle = (id: number) =>
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
-  return (
-    <div className="flex flex-col gap-4">
-      {resultats.anneesTriees.map((annee) => {
-        const ouvert = expanded.has(annee.id)
-        return (
-          <div key={annee.id} className="flex flex-col gap-4">
-            <button
-              type="button"
-              onClick={() => toggle(annee.id)}
-              className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-1)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-2)]"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <h4 className="font-medium text-[var(--color-ink)]">{annee.libelle}</h4>
-                <Badge tone="neutral" className="text-xs">
-                  {annee.periodes.length} période{annee.periodes.length > 1 ? 's' : ''}
-                </Badge>
-                {annee.moyenneAnnuelle != null && (
-                  <span className="text-sm font-medium text-[var(--color-ink)]">
-                    Moy. annuelle {annee.moyenneAnnuelle.toFixed(2)} /{annee.bareme}
-                  </span>
-                )}
-              </div>
-              <ChevronDown
-                strokeWidth={1.75}
-                className={`size-4 shrink-0 text-[var(--color-ink-faint)] transition-transform ${ouvert ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {ouvert && (
-              <div className="flex flex-col gap-4">
-                {annee.periodes.map((periode) => {
-                  const avg = moyennePeriode(periode.moyennesParMatiere, !annee.estPrimaire)
-                  return (
-                    <Card key={periode.trimestre.id}>
-                      <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium text-[var(--color-ink)]">{periode.trimestre.nom}</h4>
-                          <Badge tone={annee.estPrimaire ? 'warning' : 'info'} className="text-xs">
-                            {annee.estPrimaire ? 'Composition' : 'Trimestre'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          {periode.estComplete ? (
-                            <>
-                              <span className="text-[var(--color-ink-dim)]">
-                                {periode.moyennesParMatiere.length} matière{periode.moyennesParMatiere.length > 1 ? 's' : ''} notée{periode.moyennesParMatiere.length > 1 ? 's' : ''}
-                              </span>
-                              <span className="font-medium text-[var(--color-ink)]">Moy. {avg!.toFixed(2)} /{annee.bareme}</span>
-                            </>
-                          ) : (
-                            <Badge tone="danger" className="text-xs">
-                              Incomplète · {periode.moyennesParMatiere.length}/{annee.coursAttendus.length} matières
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <TableContainer className="rounded-none border-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Matière</TableHead>
-                              <TableHead>Enseignant</TableHead>
-                              <TableHead className="text-right">Note /{annee.bareme}</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {annee.coursAttendus.map((cours) => {
-                              const detail = periode.moyennesParMatiere.find((m) => m.cours.id === cours.id) ?? null
-                              return (
-                                <TableRow key={cours.id}>
-                                  <TableCell className="text-[var(--color-ink)]">{cours.nom}</TableCell>
-                                  <TableCell className="text-[var(--color-ink-dim)]">
-                                    {detail ? `${detail.enseignant.prenom} ${detail.enseignant.nom}` : '—'}
-                                  </TableCell>
-                                  <TableCell className="text-right font-medium text-[var(--color-ink)]">
-                                    {detail ? detail.moyenne.toFixed(2) : '—'}
-                                  </TableCell>
-                                </TableRow>
-                              )
-                            })}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -642,6 +466,7 @@ function AbsencesTab({ groups, defaultExpandedId }: { groups: AnneeAbsences[]; d
   return (
     <div className="flex flex-col gap-4">
       {groups.map((g) => {
+       
         const ouvert = expanded.has(g.anneeId)
         return (
           <div key={g.anneeId} className="flex flex-col gap-3">
@@ -676,8 +501,11 @@ function AbsencesTab({ groups, defaultExpandedId }: { groups: AnneeAbsences[]; d
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                    
                       {g.absences.map((a) => (
+                      
                         <TableRow key={a.id}>
+                          
                           <TableCell className="text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</TableCell>
                           <TableCell className="text-[var(--color-ink)]">{a.cours?.nom ?? '—'}</TableCell>
                           <TableCell className="text-[var(--color-ink-dim)]">{a.motif ?? '—'}</TableCell>

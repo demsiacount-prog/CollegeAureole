@@ -9,12 +9,11 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { Pagination } from '@/components/ui/Pagination'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SearchInput } from '@/components/ui/SearchInput'
+import { PageToolbar, ToolbarSearch } from '@/components/ui/PageToolbar'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
-import { useAuth } from '@/auth/useAuth'
 import { formatDate } from '@/lib/format'
 import { fetchAbsences, fetchAbsencesTotal, createAbsence, justifierAbsence } from './api'
 import AbsenceFormDrawer from './AbsenceFormDrawer'
@@ -29,8 +28,7 @@ const justifieeParam = (f: 'tous' | 'justifiees' | 'non-justifiees'): boolean | 
 }
 
 export default function AbsenceListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
+  const canWrite = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -98,7 +96,7 @@ export default function AbsenceListPage() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-[10px]">
         <PageHeader
           title="Absences"
           subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Suivi des absences et justifications</p>}
@@ -106,56 +104,49 @@ export default function AbsenceListPage() {
           onAction={canWrite ? () => setDrawerOpen(true) : undefined}
         />
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-          <Card>
-            <div className="px-5 pt-5">
-              <p className="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--color-ink-faint)]">Total absences</p>
-            </div>
-            <div className="px-5 pb-5 pt-2">
-              <p className="text-2xl font-semibold text-[var(--color-ink)]">{stats.total}</p>
-            </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--color-mod-ress)' }}>
+            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">Total absences</p>
+            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--color-ink)]">{stats.total}</p>
           </Card>
-          <Card>
-            <div className="px-5 pt-5">
-              <p className="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--color-ink-faint)]">Non justifiées</p>
-            </div>
-            <div className="px-5 pb-5 pt-2">
-              <p className="text-2xl font-semibold text-[var(--color-warning)]">{stats.nonJust}</p>
-            </div>
+          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--color-warning)' }}>
+            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">Non justifiées</p>
+            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--color-warning)]">{stats.nonJust}</p>
           </Card>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <SearchInput
-            className="flex-1"
-            placeholder="Rechercher un élève, cours…"
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
             value={search}
-            onChange={setSearch}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher un élève"
           />
-          <div className="flex gap-1.5">
-            {(['tous', 'justifiees', 'non-justifiees'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilterJustifiee(f)}
-                className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
-                  filterJustifiee === f
-                    ? f === 'tous' ? 'bg-[var(--color-action)] text-[var(--color-surface)]'
-                    : f === 'justifiees' ? 'bg-[var(--color-success)] text-[var(--color-surface)]'
-                    : 'bg-[var(--color-warning)] text-[var(--color-surface)]'
-                    : 'bg-[var(--color-surface-2)] text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]'
-                }`}
-              >
-                {f === 'tous' ? 'Toutes' : f === 'justifiees' ? 'Justifiées' : 'Non justifiées'}
-              </button>
-            ))}
+          <div className="flex h-[30px] shrink-0 items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-1">
+            {(['tous', 'justifiees', 'non-justifiees'] as const).map((f) => {
+              const active = filterJustifiee === f
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilterJustifiee(f)}
+                  className={`h-full rounded-[var(--radius-sm)] px-2.5 text-[11.5px] font-medium transition-colors ${
+                    active
+                      ? 'bg-[var(--surface-3)] text-[var(--ink)]'
+                      : 'bg-transparent text-[var(--ink-faint)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {f === 'tous' ? 'Toutes' : f === 'justifiees' ? 'Justifiées' : 'Non justifiées'}
+                </button>
+              )
+            })}
           </div>
-        </div>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger les absences." />
+            <EmptyState title="Erreur" message="Impossible de charger les absences." />
           </div>
         ) : absences.length === 0 ? (
           <div className="py-16">

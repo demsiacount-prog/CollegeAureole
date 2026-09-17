@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Zap, Info, CheckCircle2, XCircle, Clock, Ban } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
@@ -17,6 +16,7 @@ import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
+import { estNiveauJardin } from '@/lib/niveaux'
 import { fetchClasses } from '@/features/classes/api'
 import { calculerAutomatiquement, fetchResultatsClasse, modifierStatutPassage } from './api'
 import type { RapportAuto, StatutPassage } from './types'
@@ -31,13 +31,13 @@ const STATUT_INFO: Record<StatutPassage, { label: string; tone: 'neutral' | 'suc
 const STATUT_OPTIONS: StatutPassage[] = ['EN_ATTENTE', 'ADMIS', 'RECALE', 'EXCLU']
 
 export default function ResultatListPage() {
-  const { user } = useAuth()
-  const canDecide = user?.role === 'admin' || user?.role === 'directeur'
+  const canDecide = true
   const qc = useQueryClient()
 
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
   const [classeId, setClasseId] = useState<number | null>(null)
   const activeClasseId = classeId ?? classes[0]?.id ?? null
+  const selectedClasse = classes.find((c) => c.id === activeClasseId) ?? null
 
   const { data: resultats, isLoading, isError } = useQuery({
     queryKey: ['resultats', activeClasseId],
@@ -95,7 +95,14 @@ export default function ResultatListPage() {
         />
       </div>
 
-      {classes.length === 0 ? (
+      {selectedClasse && estNiveauJardin(selectedClasse.niveau) ? (
+        <div className="py-16">
+          <EmptyState
+            title="Pas de passage au jardin d'enfants"
+            message="Les résultats de passage ne s'appliquent qu'aux classes du fondamental (1ère à 9ème Année)."
+          />
+        </div>
+      ) : classes.length === 0 ? (
         <div className="py-16">
           <EmptyState message="Aucune classe enregistrée pour le moment." />
         </div>
@@ -103,7 +110,7 @@ export default function ResultatListPage() {
         <TableSkeleton rows={8} />
       ) : isError || !resultats ? (
         <div className="py-16">
-          <EmptyState message="Impossible de charger les résultats de cette classe." />
+          <EmptyState title="Erreur" message="Impossible de charger les résultats de cette classe." />
         </div>
       ) : (
         <>

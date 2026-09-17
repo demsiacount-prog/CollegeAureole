@@ -9,7 +9,6 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
-import { useAuth } from '@/auth/useAuth'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
 import { fetchClasses } from '@/features/classes/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
@@ -26,9 +25,8 @@ function hhmm(t: string) {
 
 
 export default function SeanceListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
@@ -178,7 +176,7 @@ export default function SeanceListPage() {
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger les séances." />
+            <EmptyState title="Erreur" message="Impossible de charger les séances." />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16">
@@ -189,11 +187,11 @@ export default function SeanceListPage() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="w-28 border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-left text-xs font-medium text-[var(--color-ink-faint)]">
+                  <th className="w-28 border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-[9px] text-left text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--color-ink-faint)]">
                     Horaire
                   </th>
                   {JOURS.map((j) => (
-                    <th key={j} className="border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-center text-xs font-semibold text-[var(--color-ink)] last:border-r-0">
+                    <th key={j} className="border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-[9px] text-center text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--color-ink)] last:border-r-0">
                       {j}
                     </th>
                   ))}

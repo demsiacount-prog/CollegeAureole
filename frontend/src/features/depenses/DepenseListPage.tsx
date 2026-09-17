@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Trash2 } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Input } from '@/components/ui/Input'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch, ToolbarFilter, ToolbarDate } from '@/components/ui/PageToolbar'
 import { Pagination } from '@/components/ui/Pagination'
-import { SearchInput } from '@/components/ui/SearchInput'
-import { Select } from '@/components/ui/Select'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
@@ -35,9 +32,8 @@ const CATEGORIE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function DepenseListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'comptable'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -106,40 +102,29 @@ export default function DepenseListPage() {
           onAction={canWrite ? () => { setEditing(null); setDrawerOpen(true) } : undefined}
         />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <SearchInput
-            className="flex-1"
-            placeholder="Rechercher par libellé, description…"
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
             value={search}
-            onChange={setSearch}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher une dépense"
           />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <Input
-              type="date"
-              label="Du"
-              className="w-full sm:w-44"
-              value={dateDebut}
-              onChange={(e) => setDateDebut(e.target.value)}
-            />
-            <Input
-              type="date"
-              label="Au"
-              className="w-full sm:w-44"
-              value={dateFin}
-              onChange={(e) => setDateFin(e.target.value)}
-            />
-          </div>
-          <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="w-full sm:w-48">
+          <ToolbarDate prefix="Du" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} aria-label="Date de début" />
+          <ToolbarDate prefix="Au" value={dateFin} onChange={(e) => setDateFin(e.target.value)} aria-label="Date de fin" />
+          <ToolbarFilter value={catFilter} onChange={(e) => setCatFilter(e.target.value)} aria-label="Filtrer par catégorie">
             <option value="">Toutes catégories</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORIE_LABELS[c]}</option>)}
-          </Select>
-        </div>
+          </ToolbarFilter>
+          <span className="ml-2 truncate text-[11.5px] text-[var(--ink-faint)]">
+            {total} dépense{total > 1 ? 's' : ''} — {formatMontant(compte.total_montant)}
+          </span>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger les dépenses." />
+            <EmptyState title="Erreur" message="Impossible de charger les dépenses." />
           </div>
         ) : depenses.length === 0 ? (
           <div className="py-16">

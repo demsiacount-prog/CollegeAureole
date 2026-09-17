@@ -2,32 +2,35 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { UserCheck, UserX, Pencil, GraduationCap } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageToolbar, ToolbarSearch, ToolbarFilter } from '@/components/ui/PageToolbar'
 import { Pagination } from '@/components/ui/Pagination'
-import { SearchInput } from '@/components/ui/SearchInput'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
-import { activerEleve, createEleve, desactiverEleve, fetchEleves, fetchElevesTotal, updateEleve } from './api'
+import { activerEleve, desactiverEleve, fetchEleves, fetchElevesTotal, updateEleve } from './api'
+import { fetchClasses } from '@/features/classes/api'
 import { createInscription } from '@/features/inscriptions/api'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
+import InscriptionWizard from '@/features/inscriptions/InscriptionWizard'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import type { Eleve } from './types'
 
 const PAGE_SIZE = 50
 
 export default function EleveListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
+  const canWrite = true
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [filterClasse, setFilterClasse] = useState('')
+  const [filterStatut, setFilterStatut] = useState('')
   const [page, setPage] = useState(1)
 
   useEffect(() => {
@@ -37,16 +40,27 @@ export default function EleveListPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, filterClasse, filterStatut])
+
+  const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
 
   const { data: eleves = [], isLoading, isFetching, isError } = useQuery({
-    queryKey: ['eleves', 'liste', page, debouncedSearch],
-    queryFn: () => fetchEleves({ skip: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE, q: debouncedSearch }),
+    queryKey: ['eleves', 'liste', page, debouncedSearch, filterClasse, filterStatut],
+    queryFn: () => fetchEleves({
+      skip: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      q: debouncedSearch,
+      classe_id: filterClasse ? Number(filterClasse) : undefined,
+      statut: filterStatut || undefined,
+    }),
   })
 
   const { data: total = 0 } = useQuery({
-    queryKey: ['eleves', 'total', debouncedSearch],
-    queryFn: () => fetchElevesTotal(debouncedSearch),
+    queryKey: ['eleves', 'total', debouncedSearch, filterClasse, filterStatut],
+    queryFn: () => fetchElevesTotal(debouncedSearch, {
+      classe_id: filterClasse ? Number(filterClasse) : undefined,
+      statut: filterStatut || undefined,
+    }),
   })
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total])
@@ -55,6 +69,7 @@ export default function EleveListPage() {
     if (page > totalPages) setPage(totalPages)
   }, [page, totalPages])
 
+  const [showWizard, setShowWizard] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Eleve | null>(null)
   const [inscriptionOpen, setInscriptionOpen] = useState(false)
@@ -62,13 +77,9 @@ export default function EleveListPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['eleves'] })
+    queryClient.invalidateQueries({ queryKey: ['inscriptions'] })
   }
 
-  const createMutation = useMutation({
-    mutationFn: createEleve,
-    onSuccess: () => { toast('Élève créé'); invalidate() },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
-  })
   const updateMutation = useMutation({
     mutationFn: ({ matricule, payload }: { matricule: string; payload: Parameters<typeof updateEleve>[1] }) =>
       updateEleve(matricule, payload),
@@ -86,11 +97,6 @@ export default function EleveListPage() {
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 
-  function openCreate() {
-    setEditing(null)
-    setDrawerOpen(true)
-  }
-
   function openEdit(eleve: Eleve) {
     setEditing(eleve)
     setDrawerOpen(true)
@@ -98,26 +104,65 @@ export default function EleveListPage() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-5">
-        <PageHeader
-          title="Élèves"
-          count={total}
-          countLabel={`élève${total > 1 ? 's' : ''} enregistré${total > 1 ? 's' : ''}`}
-          actionLabel={canWrite ? 'Nouvel élève' : undefined}
-          onAction={canWrite ? openCreate : undefined}
-        />
+      <div className="flex flex-col gap-[10px]">
+          <PageHeader
+            title="Élèves"
+            count={total}
+            countLabel={`élève${total > 1 ? 's' : ''} enregistré${total > 1 ? 's' : ''}`}
+            actionLabel={!showWizard && canWrite ? 'Nouvelle inscription' : undefined}
+            onAction={!showWizard && canWrite ? () => setShowWizard(true) : undefined}
+          />
 
-        <SearchInput
-          placeholder="Rechercher par nom, matricule, classe…"
-          value={search}
-          onChange={setSearch}
-        />
+        {showWizard ? (
+          <InscriptionWizard
+            onComplete={() => {
+              invalidate()
+              queryClient.invalidateQueries({ queryKey: ['tuteurs'] })
+              setShowWizard(false)
+            }}
+            onCancel={() => setShowWizard(false)}
+            canImport={true}
+          />
+        ) : (
+        <>
+          <PageToolbar>
+            <ToolbarSearch
+              placeholder="Rechercher un élève…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Rechercher un élève"
+            />
+            <ToolbarFilter
+              value={filterClasse}
+              onChange={(e) => setFilterClasse(e.target.value)}
+              aria-label="Filtrer par classe"
+            >
+              <option value="">Toutes les classes</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.niveau} — {c.nom}
+                </option>
+              ))}
+            </ToolbarFilter>
+            <ToolbarFilter
+              value={filterStatut}
+              onChange={(e) => setFilterStatut(e.target.value)}
+              aria-label="Filtrer par statut"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="actif">Actif</option>
+              <option value="inactif">Inactif</option>
+            </ToolbarFilter>
+            <span className="ml-2 text-[11.5px] text-[var(--ink-faint)]">
+              {total} élève{total > 1 ? 's' : ''}
+            </span>
+          </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger la liste des élèves." />
+            <EmptyState title="Erreur" message="Impossible de charger la liste des élèves." />
           </div>
         ) : eleves.length === 0 ? (
           <div className="py-16">
@@ -164,37 +209,45 @@ export default function EleveListPage() {
                       {canWrite && (
                         <>
                           {!eleve.classe && (
+                            <Tooltip content="Inscrire">
                             <button
-                              title="Inscrire"
                               onClick={() => { setInscriptionMatricule(eleve.matricule); setInscriptionOpen(true) }}
+                              aria-label="Inscrire"
                               className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-action-wash)] hover:text-[var(--color-action-bright)]"
                             >
                               <GraduationCap strokeWidth={1.75} className="size-4" />
                             </button>
+                            </Tooltip>
                           )}
+                          <Tooltip content="Modifier">
                           <button
-                            title="Modifier"
                             onClick={() => openEdit(eleve)}
+                            aria-label="Modifier"
                             className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
                           >
                             <Pencil strokeWidth={1.75} className="size-4" />
                           </button>
+                          </Tooltip>
                           {eleve.statut === 'actif' ? (
+                            <Tooltip content="Désactiver">
                             <button
-                              title="Désactiver"
                               onClick={() => desactiverMutation.mutate(eleve.matricule)}
+                              aria-label="Désactiver"
                               className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
                             >
                               <UserX strokeWidth={1.75} className="size-4" />
                             </button>
+                            </Tooltip>
                           ) : (
+                            <Tooltip content="Activer">
                             <button
-                              title="Activer"
                               onClick={() => activerMutation.mutate(eleve.matricule)}
+                              aria-label="Activer"
                               className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]"
                             >
                               <UserCheck strokeWidth={1.75} className="size-4" />
                             </button>
+                            </Tooltip>
                           )}
                         </>
                       )}
@@ -210,14 +263,18 @@ export default function EleveListPage() {
         {total > 0 && (
         <Pagination page={page} totalPages={totalPages} onChange={setPage} isFetching={isFetching} />
       )}
+        </>
+        )}
 
       <EleveFormDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         eleve={editing}
-        onCreate={(payload) => createMutation.mutateAsync(payload)}
+        onCreate={async () => {
+          throw new Error('La création d’un élève passe par une inscription.')
+        }}
         onUpdate={(matricule, payload) => updateMutation.mutateAsync({ matricule, payload })}
-        canImport={user?.role === 'admin'}
+        canImport={true}
       />
 
       <InscriptionFormDrawer

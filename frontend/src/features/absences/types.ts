@@ -16,13 +16,6 @@ export interface Absence {
   cours: Cours | null
 }
 
-export interface AlerteAbsence {
-  matricule_eleve: string
-  nom: string
-  prenom: string
-  nb_absences_non_justifiees: number
-}
-
 export interface AbsenceCreateInput {
   matricule_eleve: string
   id_cours?: number | null

@@ -53,11 +53,6 @@ export interface BulletinDetailFull extends Bulletin {
   }
 }
 
-export interface BulletinGenerateInput {
-  matricule_eleve: string
-  id_trimestre: number
-}
-
 export interface BulletinGenerateClasseInput {
   id_classe: number
   id_trimestre: number
@@ -66,4 +61,44 @@ export interface BulletinGenerateClasseInput {
 export interface BulletinPublierInput {
   id_classe: number
   id_trimestre: number
+}
+
+export interface BulletinAnnuelLigne {
+  id_cours: number
+  cours_nom: string
+  coefficient: number
+  note_comp: number | null
+  note_classe: number | null
+  moyenne: number | null
+  points: number | null
+  appreciation: string | null
+}
+
+export interface BulletinAnnuelBloc {
+  id_trimestre: number
+  nom: string
+  type: 'TRIMESTRE' | 'COMPOSITION'
+  id_classe: number
+  bareme: number
+  moyenne_generale: number | null
+  rang: number | null
+  effectif: number | null
+  moyenne_premier: number | null
+  lignes: BulletinAnnuelLigne[]
+  totaux_coefficients: number
+  totaux_points: number
+}
+
+export interface BulletinAnnuel {
+  eleve: { matricule: string; nom: string; prenom: string }
+  classe: { id: number; niveau: string; nom: string }
+  annee_libelle: string | null
+  bareme: number
+  trimestres: BulletinAnnuelBloc[]
+  moyenne_annuelle: number | null
+  rang_annuel: number | null
+  mention_annuelle: string | null
+  decision: string | null
+  officiel?: boolean
+  statut: 'OK' | 'AUCUN_TRIMESTRE' | string
 }

@@ -6,21 +6,19 @@ import { Drawer } from '@/components/ui/Drawer'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SearchInput } from '@/components/ui/SearchInput'
+import { PageToolbar, ToolbarSearch } from '@/components/ui/PageToolbar'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
-import { useAuth } from '@/auth/useAuth'
 import { fetchCours, createCours, updateCours, deleteCours } from './api'
 import CoursFormDrawer from './CoursFormDrawer'
 import type { Cours, CoursCreateInput } from './types'
 
 export default function CoursListPage() {
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
-  const canDelete = user?.role === 'admin'
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: cours = [], isLoading, isError } = useQuery({ queryKey: ['cours'], queryFn: fetchCours })
 
@@ -60,7 +58,7 @@ export default function CoursListPage() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-[10px]">
         <PageHeader
           title="Cours"
           count={cours.length}
@@ -69,18 +67,23 @@ export default function CoursListPage() {
           onAction={canWrite ? () => setDrawerOpen(true) : undefined}
         />
 
-        <SearchInput
-          className="w-full"
-          placeholder="Rechercher un cours…"
-          value={search}
-          onChange={setSearch}
-        />
+        <PageToolbar>
+          <ToolbarSearch
+            placeholder="Rechercher"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Rechercher un cours"
+          />
+          <span className="ml-2 text-[11.5px] text-[var(--ink-faint)]">
+            {cours.length} cours
+          </span>
+        </PageToolbar>
 
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : isError ? (
           <div className="py-16">
-            <EmptyState message="Impossible de charger la liste des cours." />
+            <EmptyState title="Erreur" message="Impossible de charger la liste des cours." />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16">

@@ -1,4 +1,4 @@
-import { appreciation } from '@/lib/bareme'
+import { appreciation, utiliseCoefficient } from '@/lib/bareme'
 import { DocumentHeader, DocumentYearBox } from '@/components/print/DocumentHeader'
 import { DocumentSignatures } from '@/components/print/DocumentSignatures'
 import { DocumentFooter } from '@/components/print/DocumentFooter'
@@ -18,7 +18,9 @@ export function BulletinDocument({
   anneeLabel?: string
   etab?: Etablissement | null
 }) {
-  const estEf1 = bareme === 10
+  // Colonnes Coeff / Note×Coeff uniquement quand le bulletin est pondéré :
+  // EF2/lycée (trimestres /20) et TRIMESTRES de la 6ème (pondérés sur /10).
+  const montreCoeff = utiliseCoefficient(detail.classe.niveau, detail.trimestre.type)
   const mention = detail.moyenne_generale != null ? appreciation(detail.moyenne_generale, bareme) : null
 
   return (
@@ -54,7 +56,7 @@ export function BulletinDocument({
           <tr>
             <th>Matière</th>
             <th className="num">Moyenne</th>
-            {!estEf1 && (
+            {montreCoeff && (
               <>
                 <th className="num">Coeff</th>
                 <th className="num">Note × Coeff</th>
@@ -67,7 +69,7 @@ export function BulletinDocument({
             <tr key={d.id}>
               <td>{d.cours_nom}</td>
               <td className="num">{d.moyenne != null ? format2(d.moyenne) : '—'}</td>
-              {!estEf1 && (
+              {montreCoeff && (
                 <>
                   <td className="num">{d.coefficient}</td>
                   <td className="num">{d.moyenne != null ? format2(d.moyenne * d.coefficient) : '—'}</td>
@@ -76,7 +78,7 @@ export function BulletinDocument({
             </tr>
           ))}
         </tbody>
-        {!estEf1 && (
+        {montreCoeff && (
           <tfoot>
             <tr>
               <td>Totaux</td>

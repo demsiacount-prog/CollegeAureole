@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
-import type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Relance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult } from './types'
+import type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult, PaiementStats } from './types'
 
-export type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Relance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult }
+export type { Paiement, PaiementCreateInput, PaiementUpdateInput, PaiementResult, Echeance, Remise, RemiseCreateInput, PaiementGroupeInput, PaiementGroupeResult, PaiementStats }
 
 export async function fetchPaiements(params?: {
   id_inscription?: number
@@ -27,8 +27,8 @@ export async function fetchPaiementsTotal(params?: {
   return res.data.total
 }
 
-export async function fetchRelances(): Promise<Relance[]> {
-  const res = await api.get<Relance[]>('/api/paiements/relances')
+export async function fetchPaiementStats(): Promise<PaiementStats> {
+  const res = await api.get<PaiementStats>('/api/paiements/stats')
   return res.data
 }
 

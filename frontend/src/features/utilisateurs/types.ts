@@ -1,26 +1,12 @@
-import type { Role } from '@/types'
-
 export interface Utilisateur {
   id: number
   nom: string
   prenom: string
   email: string
-  role: Role
+  role: string
   actif: boolean
   created_at: string
   updated_at: string
-}
-
-export const ROLES: { value: Role; label: string }[] = [
-  { value: 'admin', label: 'Administrateur' },
-  { value: 'directeur', label: 'Directeur' },
-  { value: 'comptable', label: 'Comptable' },
-]
-
-export const ROLE_LABELS: Record<Role, string> = {
-  admin: 'Administrateur',
-  directeur: 'Directeur',
-  comptable: 'Comptable',
 }
 
 export interface UtilisateurCreateInput {
@@ -28,13 +14,15 @@ export interface UtilisateurCreateInput {
   prenom: string
   email: string
   mot_de_passe: string
-  role: Role
+  role: string
 }
 
-export interface UtilisateurUpdateInput {
-  nom: string
-  prenom: string
-  email: string
-  role: Role
-  actif: boolean
+export const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  DIRECTEUR: 'Directeur',
+  SECRETAIRE: 'Secrétaire',
+  ENSEIGNANT: 'Enseignant',
+  COMPTABLE: 'Comptable',
 }
+
+export const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))

@@ -1,156 +1,106 @@
-import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Drawer } from '@/components/ui/Drawer'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Button } from '@/components/ui/Button'
-import { extractErrorMessage } from '@/lib/api'
-import { toast } from '@/components/ui/toast'
-import { createUtilisateur, updateUtilisateur } from './api'
-import { required, email as validEmail, minLength, validateFields, hasErrors, type Errors } from '@/lib/validation'
-import type { Role } from '@/types'
-import { ROLES, type Utilisateur } from './types'
+import { required, email, minLength, validateFields, hasErrors, type Errors } from '@/lib/validation'
+import { ROLE_OPTIONS, type UtilisateurCreateInput } from './types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  utilisateur?: Utilisateur | null
+  onSubmit: (data: UtilisateurCreateInput) => void
 }
 
-export default function UtilisateurFormDrawer({ open, onClose, utilisateur }: Props) {
-  const qc = useQueryClient()
-  const isEdit = !!utilisateur
-
-  const [nom, setNom] = useState('')
+export default function UtilisateurFormDrawer({ open, onClose, onSubmit }: Props) {
   const [prenom, setPrenom] = useState('')
-  const [email, setEmail] = useState('')
+  const [nom, setNom] = useState('')
+  const [emailValue, setEmailValue] = useState('')
+  const [role, setRole] = useState('ADMIN')
   const [motDePasse, setMotDePasse] = useState('')
-  const [role, setRole] = useState<Role>('comptable')
-  const [actif, setActif] = useState(true)
-  const [error, setError] = useState('')
   const [errors, setErrors] = useState<Errors>({})
 
-  useEffect(() => {
-    if (open) {
-      setNom(utilisateur?.nom ?? '')
-      setPrenom(utilisateur?.prenom ?? '')
-      setEmail(utilisateur?.email ?? '')
-      setMotDePasse('')
-      setRole(utilisateur?.role ?? 'comptable')
-      setActif(utilisateur?.actif ?? true)
-      setError('')
-      setErrors({})
-    }
-  }, [open, utilisateur])
-
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
     const errs = validateFields({
       prenom: required(prenom, 'Le prénom'),
       nom: required(nom, 'Le nom'),
-      email: required(email, "L'e-mail") ?? validEmail(email),
-      mot_de_passe: isEdit ? undefined : required(motDePasse, 'Le mot de passe') ?? minLength(motDePasse, 8, 'Le mot de passe'),
+      email: required(emailValue, 'L’e-mail') ?? email(emailValue),
+      mot_de_passe: required(motDePasse, 'Le mot de passe') ?? minLength(motDePasse, 8, 'Le mot de passe'),
     })
     setErrors(errs)
     if (hasErrors(errs)) return
-    mutation.mutate()
+    onSubmit({ prenom, nom, email: emailValue, mot_de_passe: motDePasse, role })
+    setPrenom('')
+    setNom('')
+    setEmailValue('')
+    setRole('ADMIN')
+    setMotDePasse('')
+    setErrors({})
   }
 
-  const mutation = useMutation({
-    mutationFn: () => {
-      if (isEdit) {
-        return updateUtilisateur(utilisateur!.id, { nom, prenom, email, role, actif })
-      }
-      return createUtilisateur({ nom, prenom, email, mot_de_passe: motDePasse, role })
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['utilisateurs'] })
-      toast(isEdit ? 'Compte modifié.' : 'Compte créé.')
-      onClose()
-    },
-    onError: (err) => setError(extractErrorMessage(err)),
-  })
-
   return (
-    <Drawer open={open} onClose={onClose} title={isEdit ? 'Modifier le compte' : 'Nouveau compte'}>
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} noValidate className="flex flex-col h-full">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Prénom"
-              placeholder="ex. Aminata"
-              value={prenom}
-              onChange={(e) => {
-                setPrenom(e.target.value)
-                if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
-              }}
-              required
-              error={errors.prenom}
-            />
-            <Input
-              label="Nom"
-              placeholder="ex. Diallo"
-              value={nom}
-              onChange={(e) => {
-                setNom(e.target.value)
-                if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
-              }}
-              required
-              error={errors.nom}
-            />
-          </div>
+    <Drawer open={open} onClose={onClose} title="Nouvel utilisateur">
+      <form onSubmit={handleSubmit} noValidate className="flex h-full flex-col">
+        <div className="flex-1 space-y-4 overflow-y-auto p-6">
+          <Input
+            label="Prénom"
+            value={prenom}
+            onChange={(e) => {
+              setPrenom(e.target.value)
+              if (errors.prenom) setErrors((prev) => ({ ...prev, prenom: undefined }))
+            }}
+            placeholder="ex. Aminata"
+            required
+            error={errors.prenom}
+          />
+          <Input
+            label="Nom"
+            value={nom}
+            onChange={(e) => {
+              setNom(e.target.value)
+              if (errors.nom) setErrors((prev) => ({ ...prev, nom: undefined }))
+            }}
+            placeholder="ex. Traoré"
+            required
+            error={errors.nom}
+          />
           <Input
             label="E-mail"
             type="email"
-            placeholder="ex. aminata.diallo@ecole.ml"
-            value={email}
+            value={emailValue}
             onChange={(e) => {
-              setEmail(e.target.value)
+              setEmailValue(e.target.value)
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
             }}
+            placeholder="ex. aminata@ecole.ml"
             required
             error={errors.email}
           />
-          {!isEdit && (
-            <Input
-              label="Mot de passe"
-              type="password"
-              placeholder="8 caractères minimum"
-              value={motDePasse}
-              onChange={(e) => {
-                setMotDePasse(e.target.value)
-                if (errors.mot_de_passe) setErrors((prev) => ({ ...prev, mot_de_passe: undefined }))
-              }}
-              required
-              minLength={8}
-              error={errors.mot_de_passe}
-            />
-          )}
-          <Select label="Rôle" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </Select>
-          {isEdit && (
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-[var(--color-ink)]">Statut</label>
-              <button
-                type="button"
-                onClick={() => setActif(!actif)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${actif ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'}`}
-              >
-                <span className={`inline-block size-4 rounded-full bg-[var(--color-surface)] transition-transform ${actif ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-              <span className="text-sm text-[var(--color-ink-dim)]">{actif ? 'Actif' : 'Inactif'}</span>
-            </div>
-          )}
-          {error && (
-            <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
-              {error}
-            </p>
-          )}
+          <Select
+            label="Rôle"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            options={ROLE_OPTIONS}
+          />
+          <Input
+            label="Mot de passe"
+            type="password"
+            value={motDePasse}
+            onChange={(e) => {
+              setMotDePasse(e.target.value)
+              if (errors.mot_de_passe) setErrors((prev) => ({ ...prev, mot_de_passe: undefined }))
+            }}
+            placeholder="Au moins 8 caractères"
+            required
+            error={errors.mot_de_passe}
+          />
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button type="submit" variant="primary" isLoading={mutation.isPending}>{isEdit ? 'Enregistrer' : 'Créer'}</Button>
+        <div className="border-t border-[var(--color-border)] p-4">
+          <Button type="submit" variant="primary" className="w-full">
+            Créer l'utilisateur
+          </Button>
         </div>
       </form>
     </Drawer>

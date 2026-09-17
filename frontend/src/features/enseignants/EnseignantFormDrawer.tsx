@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { createEnseignant, updateEnseignant } from './api'
 import { extractErrorMessage } from '@/lib/api'
@@ -26,6 +27,19 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
     email: '',
     adresse: '',
     specialite: '',
+    genre: '',
+    nina: '',
+    date_naissance: '',
+    categorie: '',
+    echelon: '',
+    fonction: '',
+    sf_nombre_enfants: '',
+    date_contrat: '',
+    classe_tenue: '',
+    dernier_poste: '',
+    date_arrivee_cap: '',
+    diplome: '',
+    observations: '',
   })
   const [error, setError] = useState('')
   const [errors, setErrors] = useState<Errors>({})
@@ -39,6 +53,19 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
         email: enseignant?.email ?? '',
         adresse: enseignant?.adresse ?? '',
         specialite: enseignant?.specialite ?? '',
+        genre: enseignant?.genre ?? '',
+        nina: enseignant?.nina ?? '',
+        date_naissance: enseignant?.date_naissance ?? '',
+        categorie: enseignant?.categorie ?? '',
+        echelon: enseignant?.echelon ?? '',
+        fonction: enseignant?.fonction ?? '',
+        sf_nombre_enfants: enseignant?.sf_nombre_enfants ?? '',
+        date_contrat: enseignant?.date_contrat ?? '',
+        classe_tenue: enseignant?.classe_tenue ?? '',
+        dernier_poste: enseignant?.dernier_poste ?? '',
+        date_arrivee_cap: enseignant?.date_arrivee_cap ?? '',
+        diplome: enseignant?.diplome ?? '',
+        observations: enseignant?.observations ?? '',
       })
       setError('')
       setErrors({})
@@ -64,10 +91,15 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
   }
 
   const mutation = useMutation({
-    mutationFn: () =>
-      isEdit
-        ? updateEnseignant(enseignant!.matricule, form)
-        : createEnseignant(form),
+    mutationFn: () => {
+      const corps: EnseignantCreateInput = {
+        ...form,
+        date_naissance: form.date_naissance || undefined,
+        date_contrat: form.date_contrat || undefined,
+        date_arrivee_cap: form.date_arrivee_cap || undefined,
+      }
+      return isEdit ? updateEnseignant(enseignant!.matricule, corps) : createEnseignant(corps)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['enseignants'] })
       qc.invalidateQueries({ queryKey: ['enseignant-dossier'] })
@@ -150,7 +182,92 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
             set('adresse')(e)
             if (errors.adresse) setErrors((prev) => ({ ...prev, adresse: undefined }))
           }} error={errors.adresse} />
-          
+
+          <div className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+            <div className="col-span-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-dim)]">
+              Renseignements administratifs
+            </div>
+            <Select
+              label="Genre"
+              value={form.genre ?? ''}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, genre: e.target.value }))
+              }}
+              options={[
+                { value: '', label: '—' },
+                { value: 'M', label: 'Masculin' },
+                { value: 'F', label: 'Féminin' },
+              ]}
+            />
+            <Input
+              label="NINA"
+              value={form.nina ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, nina: e.target.value }))}
+            />
+            <Input
+              label="Date de naissance"
+              type="date"
+              value={form.date_naissance ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, date_naissance: e.target.value }))}
+            />
+            <Input
+              label="Catégorie"
+              placeholder="ex. Titulaire / Contractuel"
+              value={form.categorie ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
+            />
+            <Input
+              label="Échelon"
+              value={form.echelon ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, echelon: e.target.value }))}
+            />
+            <Input
+              label="Fonction"
+              placeholder="ex. Directeur / Enseignant"
+              value={form.fonction ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, fonction: e.target.value }))}
+            />
+            <Input
+              label="Nbre d’enfants (SF)"
+              value={form.sf_nombre_enfants ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, sf_nombre_enfants: e.target.value }))}
+            />
+            <Input
+              label="Date de contrat"
+              type="date"
+              value={form.date_contrat ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, date_contrat: e.target.value }))}
+            />
+            <Input
+              label="Classe tenue"
+              value={form.classe_tenue ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, classe_tenue: e.target.value }))}
+            />
+            <Input
+              label="Dernier poste occupé"
+              value={form.dernier_poste ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, dernier_poste: e.target.value }))}
+            />
+            <Input
+              label="Date d’arrivée au CAP"
+              type="date"
+              value={form.date_arrivee_cap ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, date_arrivee_cap: e.target.value }))}
+            />
+            <Input
+              label="Diplôme"
+              value={form.diplome ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, diplome: e.target.value }))}
+            />
+            <div className="col-span-2">
+              <Input
+                label="Observations"
+                value={form.observations ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, observations: e.target.value }))}
+              />
+            </div>
+          </div>
+
           {error && (
             <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
               {error}

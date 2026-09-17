@@ -10,6 +10,12 @@ export interface Etablissement {
   date_initialisation: string | null
   academie: string | null
   cap: string | null
+  village_quartier: string | null
+  commune: string | null
+  cercle: string | null
+  statut_administratif: string | null
+  type_ecole: string | null
+  mode: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -24,4 +30,10 @@ export interface EtablissementUpdate {
   logo?: string | null
   academie?: string | null
   cap?: string | null
+  village_quartier?: string | null
+  commune?: string | null
+  cercle?: string | null
+  statut_administratif?: string | null
+  type_ecole?: string | null
+  mode?: string | null
 }

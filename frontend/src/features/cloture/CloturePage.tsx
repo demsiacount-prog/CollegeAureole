@@ -52,9 +52,15 @@ export default function CloturePage() {
 
   if (isLoading) {
     return (
-      <Card>
-        <TableSkeleton rows={8} columns={5} />
-      </Card>
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          title="Clôture d'année scolaire"
+          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+        />
+        <Card>
+          <TableSkeleton rows={8} columns={5} />
+        </Card>
+      </div>
     )
   }
 
@@ -77,7 +83,12 @@ export default function CloturePage() {
 
   if (rapport) {
     return (
-      <Card className="mx-auto max-w-lg p-8 text-center">
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          title="Clôture d'année scolaire"
+          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+        />
+        <Card className="mx-auto max-w-lg p-8 text-center">
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[var(--color-success-wash)]">
           <CheckCircle2 className="size-7 text-[var(--color-success)]" strokeWidth={1.75} />
         </span>
@@ -93,7 +104,8 @@ export default function CloturePage() {
           <Stat label="Redoublants" value={rapport.rapport.recale_redoublement} />
           <Stat label="Exclus" value={rapport.rapport.exclus} />
         </div>
-      </Card>
+        </Card>
+      </div>
     )
   }
 

@@ -1,28 +1,23 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
-import { Pencil, BookOpen, GraduationCap } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Pencil, BookOpen, GraduationCap, User, History, Files } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Avatar } from '@/components/ui/Avatar'
-import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { Breadcrumbs } from '@/components/ui/PageHeader'
+import { InfoSection, InfoField } from '@/components/ui/InfoGrid'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
-import { countVisibleDocuments, ENSEIGNANT_DOCS_LABELS } from '@/features/documents/labels'
-import { fetchDocumentsEnseignant, uploadDocumentEnseignant } from '@/features/documents/api'
+import { useDocuments } from '@/features/documents/hooks'
 import { formatDate } from '@/lib/format'
 import { fetchEnseignantDossier } from './api'
 import EnseignantFormDrawer from './EnseignantFormDrawer'
 
 export default function EnseignantDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const { user } = useAuth()
-  const canWrite = user?.role === 'admin' || user?.role === 'directeur'
+  const canWrite = true
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: dossier, isLoading, isError, refetch } = useQuery({
@@ -31,102 +26,105 @@ export default function EnseignantDetailPage() {
     enabled: !!matricule,
   })
 
-  const { data: documents } = useQuery({
-    queryKey: ['enseignant-documents', matricule],
-    queryFn: () => fetchDocumentsEnseignant(matricule!),
-    enabled: !!matricule,
-  })
+  const { data: documents } = useDocuments('enseignant', matricule ?? '')
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24">
-        <Spinner label="Chargement du dossier enseignant…" />
+      <div className="w-full">
+        <div className="-mx-5 -mt-[18px] flex flex-col gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <span className="skeleton size-[48px] shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="skeleton h-[18px] w-1/3 max-w-[240px]" />
+              <div className="skeleton h-[12px] w-1/2 max-w-[320px]" />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="skeleton h-[34px] w-[120px]" />
+          </div>
+        </div>
+        <div className="border-b border-[var(--border)]">
+          <div className="skeleton mt-4 h-[32px] w-64" />
+        </div>
+        <div className="skeleton mt-6 h-[220px] w-full" />
       </div>
     )
   }
 
   if (isError || !dossier) {
-    return <EmptyState message="Impossible de charger ce dossier enseignant." />
+    return <EmptyState title="Erreur" message="Impossible de charger ce dossier enseignant." />
   }
 
   const e = dossier.enseignant
 
   return (
-    <div className="flex flex-col gap-6">
-      <Breadcrumbs
-        items={[
-          { label: 'Enseignants', to: '/app/enseignants' },
-          { label: `${e.prenom} ${e.nom}` },
-        ]}
-      />
-
-      <Card className="p-6">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
-          <div className="flex items-start gap-4">
-            <Avatar nom={e.nom} prenom={e.prenom} size="lg" highlighted />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                  {e.prenom} {e.nom}
-                </h2>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-[var(--color-ink-dim)]">
-               
-                
-                <span className="flex items-center gap-1.5">
-                  <GraduationCap size={14} strokeWidth={1.75} className="text-[var(--color-ink-faint)]" />
-                  {e.specialite}
-                </span>
-              </div>
+    <div className="w-full">
+      <div className="flex flex-col">
+      {/* Type C v2 — Hero band (avatar 48px, nom serif 18px, métadonnées, actions) */}
+      <div className="-mx-5 -mt-[18px] flex flex-col gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <span className="flex size-[48px] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--border)] bg-[var(--surface-3)] font-[var(--font-sans)] text-[16px] font-semibold text-[var(--ink-dim)]">
+            {`${e.prenom.charAt(0)}${e.nom.charAt(0)}`.toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate font-[var(--font-serif)] text-[18px] font-semibold leading-[1.2] text-[var(--ink)]">
+              {e.prenom} {e.nom}
+            </h1>
+            <div className="mt-[3px] flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--ink-faint)]">
+              <span className="flex items-center gap-1">
+                <GraduationCap className="size-3" strokeWidth={1.75} />
+                {e.specialite}
+              </span>
+              <span className="font-[var(--font-mono)] text-[10.5px] capitalize">{e.matricule}</span>
             </div>
           </div>
-          {canWrite && (
+        </div>
+        {canWrite && (
+          <div className="flex shrink-0 items-center gap-2">
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil size={16} strokeWidth={1.75} className="mr-1.5" />
+              <Pencil strokeWidth={1.75} className="mr-1.5 size-4" />
               Modifier
             </Button>
-          )}
-        </div>
-      </Card>
+          </div>
+        )}
+      </div>
 
       <Tabs
         tabs={[
           {
             key: 'infos',
             label: 'Profil',
+            icon: User,
             content: (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Informations personnelles</CardTitle>
-                  </CardHeader>
-                  <CardBody className="flex flex-col gap-2.5 text-sm">
-                    <Row label="Spécialité" value={e.specialite} />
-                    <Row label="Email" value={e.email} />
-                    <Row label="Téléphone" value={e.telephone} />
-                    <Row label="Adresse" value={e.adresse} />
-                    <Row label="Inscrit le" value={formatDate(e.created_at)} />
-                  </CardBody>
-                </Card>
+              <div className="gap-5 grid grid-cols-2">
+                <InfoSection title="Informations personnelles">
+                  <InfoField label="Spécialité" value={e.specialite} />
+                  <InfoField label="Email" value={e.email} />
+                  <InfoField label="Téléphone" value={e.telephone} />
+                  <InfoField label="Adresse" value={e.adresse} />
+                  <InfoField label="Matricule" value={e.matricule} mono />
+                  <InfoField label="Inscrit le" value={formatDate(e.created_at)} />
+                </InfoSection>
               </div>
             ),
           },
           {
             key: 'historique',
             label: 'Historique',
+            icon: History,
             count: dossier.historique.length,
             content: <HistoriqueTab historique={dossier.historique} />,
           },
           {
             key: 'documents',
             label: 'Documents',
-            count: countVisibleDocuments(documents ?? [], ENSEIGNANT_DOCS_LABELS),
+            icon: Files,
+            count: documents?.length ?? 0,
             content: (
               <DocumentsTab
-                documents={documents ?? []}
-                labels={ENSEIGNANT_DOCS_LABELS}
-                invalidateKey={['enseignant-documents', matricule!]}
-                upload={(typeDocument, file) => uploadDocumentEnseignant(matricule!, typeDocument, file)}
+                entiteType="enseignant"
+                entiteId={matricule!}
+                readOnly={!canWrite}
               />
             ),
           },
@@ -138,15 +136,7 @@ export default function EnseignantDetailPage() {
         open={editOpen}
         onClose={() => { refetch(); setEditOpen(false) }}
       />
-    </div>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] py-1.5 last:border-0">
-      <span className="text-[var(--color-ink-faint)]">{label}</span>
-      <span className="text-[var(--color-ink)]">{value}</span>
+      </div>
     </div>
   )
 }

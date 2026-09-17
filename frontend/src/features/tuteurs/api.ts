@@ -8,6 +8,7 @@ export interface TuteurCreateInput {
   telephone: string
   adresse: string
   profession: string
+  lien_parente?: string | null
 }
 
 export async function fetchTuteurs(params?: { q?: string; skip?: number; limit?: number }): Promise<Tuteur[]> {

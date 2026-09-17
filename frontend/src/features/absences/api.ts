@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
-import type { Absence, AlerteAbsence, AbsenceCreateInput, AbsenceJustifierInput } from './types'
+import type { Absence, AbsenceCreateInput, AbsenceJustifierInput } from './types'
 
-export type { Absence, AlerteAbsence, AbsenceCreateInput, AbsenceJustifierInput }
+export type { Absence, AbsenceCreateInput, AbsenceJustifierInput }
 
 export async function fetchAbsences(params?: {
   classe_id?: number
@@ -29,11 +29,6 @@ export async function fetchAbsencesTotal(params?: {
 }): Promise<number> {
   const res = await api.get<{ total: number }>('/api/absences/compte', { params })
   return res.data.total
-}
-
-export async function fetchAlertesAbsences(seuil = 3): Promise<AlerteAbsence[]> {
-  const res = await api.get<AlerteAbsence[]>('/api/absences/alertes', { params: { seuil } })
-  return res.data
 }
 
 export async function createAbsence(body: AbsenceCreateInput): Promise<Absence> {

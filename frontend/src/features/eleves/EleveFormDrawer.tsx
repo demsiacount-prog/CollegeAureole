@@ -31,9 +31,19 @@ const emptyForm = {
   lieu_de_naissance: '',
   sexe: 'M',
   adresse: '',
+  numero_acte: '',
+  jugement_suppletif: '',
+  date_acte: '',
+  delivre_par: '',
   statut: 'actif',
   acte_naissance: false,
   carnet_sante: false,
+  nom_pere: '',
+  prenom_pere: '',
+  fonction_pere: '',
+  nom_mere: '',
+  prenom_mere: '',
+  fonction_mere: '',
   tuteur_id: '',
   classe_id: '',
   tuteur_mode: 'create' as 'create' | 'select',
@@ -43,6 +53,7 @@ const emptyForm = {
   tuteur_email: '',
   tuteur_profession: '',
   tuteur_adresse: '',
+  tuteur_lien_parente: '',
 }
 
 const DOCS_LABELS: Record<string, string> = {
@@ -79,6 +90,16 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
         statut: eleve.statut,
         acte_naissance: eleve.acte_naissance,
         carnet_sante: eleve.carnet_sante,
+        numero_acte: eleve.numero_acte ?? '',
+        jugement_suppletif: eleve.jugement_suppletif ?? '',
+        date_acte: eleve.date_acte ?? '',
+        delivre_par: eleve.delivre_par ?? '',
+        nom_pere: eleve.nom_pere ?? '',
+        prenom_pere: eleve.prenom_pere ?? '',
+        fonction_pere: eleve.fonction_pere ?? '',
+        nom_mere: eleve.nom_mere ?? '',
+        prenom_mere: eleve.prenom_mere ?? '',
+        fonction_mere: eleve.fonction_mere ?? '',
         tuteur_id: String(eleve.tuteur.id),
         classe_id: eleve.classe ? String(eleve.classe.id) : '',
         tuteur_mode: 'select',
@@ -102,6 +123,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
     }
     if (!isEdit) {
       rules.date_de_naissance = required(form.date_de_naissance, 'La date de naissance')
+      rules.classe_id = required(form.classe_id, 'La classe')
     }
     if (form.tuteur_mode === 'create') {
       rules.tuteur_prenom = required(form.tuteur_prenom, 'Le prénom du tuteur')
@@ -127,6 +149,16 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
           statut: form.statut,
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
+          numero_acte: form.numero_acte.trim() || null,
+          jugement_suppletif: form.jugement_suppletif.trim() || null,
+          date_acte: form.date_acte || null,
+          delivre_par: form.delivre_par.trim() || null,
+          nom_pere: form.nom_pere.trim() || null,
+          prenom_pere: form.prenom_pere.trim() || null,
+          fonction_pere: form.fonction_pere.trim() || null,
+          nom_mere: form.nom_mere.trim() || null,
+          prenom_mere: form.prenom_mere.trim() || null,
+          fonction_mere: form.fonction_mere.trim() || null,
           classe_id: form.classe_id ? Number(form.classe_id) : null,
         })
         matricule = eleve.matricule
@@ -140,6 +172,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
             email: form.tuteur_email.trim(),
             adresse: form.tuteur_adresse.trim() || 'Non renseignée',
             profession: form.tuteur_profession.trim() || 'Non renseignée',
+            lien_parente: form.tuteur_lien_parente.trim() || null,
           })
           tuteurId = created.id
         } else {
@@ -156,8 +189,18 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
           statut: form.statut,
           acte_naissance: form.acte_naissance,
           carnet_sante: form.carnet_sante,
+          numero_acte: form.numero_acte.trim() || null,
+          jugement_suppletif: form.jugement_suppletif.trim() || null,
+          date_acte: form.date_acte || null,
+          delivre_par: form.delivre_par.trim() || null,
+          nom_pere: form.nom_pere.trim() || null,
+          prenom_pere: form.prenom_pere.trim() || null,
+          fonction_pere: form.fonction_pere.trim() || null,
+          nom_mere: form.nom_mere.trim() || null,
+          prenom_mere: form.prenom_mere.trim() || null,
+          fonction_mere: form.fonction_mere.trim() || null,
           tuteur_id: tuteurId,
-          classe_id: form.classe_id ? Number(form.classe_id) : null,
+          classe_id: Number(form.classe_id),
         })
         matricule = (createdEleve as Eleve)?.matricule
       }
@@ -248,9 +291,90 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
         />
         <Input label="Adresse" placeholder="ex. Badalabougou, Bamako" value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
 
+        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">État civil</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Acte de naissance N°"
+              placeholder="ex. N° 1234/25"
+              value={form.numero_acte}
+              onChange={(e) => setForm({ ...form, numero_acte: e.target.value })}
+            />
+            <Input
+              label="Ou jugement supplétif N°"
+              placeholder="ex. N° 567/25"
+              value={form.jugement_suppletif}
+              onChange={(e) => setForm({ ...form, jugement_suppletif: e.target.value })}
+            />
+            <Input
+              label="Date de l'acte"
+              type="date"
+              value={form.date_acte}
+              onChange={(e) => setForm({ ...form, date_acte: e.target.value })}
+            />
+            <Input
+              label="Délivré par"
+              placeholder="ex. Mairie de Bamako"
+              value={form.delivre_par}
+              onChange={(e) => setForm({ ...form, delivre_par: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            label="Nom du père"
+            placeholder="ex. Diallo"
+            value={form.nom_pere}
+            onChange={(e) => setForm({ ...form, nom_pere: e.target.value })}
+          />
+          <Input
+            label="Prénom du père"
+            placeholder="ex. Modibo"
+            value={form.prenom_pere}
+            onChange={(e) => setForm({ ...form, prenom_pere: e.target.value })}
+          />
+          <Input
+            label="Fonction du père"
+            placeholder="ex. Commerçant"
+            value={form.fonction_pere}
+            onChange={(e) => setForm({ ...form, fonction_pere: e.target.value })}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            label="Nom de la mère"
+            placeholder="ex. Coulibaly"
+            value={form.nom_mere}
+            onChange={(e) => setForm({ ...form, nom_mere: e.target.value })}
+          />
+          <Input
+            label="Prénom de la mère"
+            placeholder="ex. Aminata"
+            value={form.prenom_mere}
+            onChange={(e) => setForm({ ...form, prenom_mere: e.target.value })}
+          />
+          <Input
+            label="Fonction de la mère"
+            placeholder="ex. Ménagère"
+            value={form.fonction_mere}
+            onChange={(e) => setForm({ ...form, fonction_mere: e.target.value })}
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Classe" value={form.classe_id} onChange={(e) => setForm({ ...form, classe_id: e.target.value })}>
-            <option value="">Non affecté</option>
+          <Select
+            label="Classe"
+            value={form.classe_id}
+            onChange={(e) => {
+              setForm({ ...form, classe_id: e.target.value })
+              if (errors.classe_id) setErrors((prev) => ({ ...prev, classe_id: undefined }))
+            }}
+            required={!isEdit}
+            error={errors.classe_id}
+          >
+            {isEdit && <option value="">Non affecté</option>}
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.niveau} —{c.nom}
@@ -420,6 +544,12 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
                     placeholder="ex. Badalabougou, Bamako"
                     value={form.tuteur_adresse}
                     onChange={(e) => setForm({ ...form, tuteur_adresse: e.target.value })}
+                  />
+                  <Input
+                    label="Lien de parenté"
+                    placeholder="ex. Oncle, Grand-père…"
+                    value={form.tuteur_lien_parente}
+                    onChange={(e) => setForm({ ...form, tuteur_lien_parente: e.target.value })}
                   />
                 </div>
               </div>

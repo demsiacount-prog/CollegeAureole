@@ -37,6 +37,12 @@ export default function FicheEtablissementTab() {
         cap: data.cap ?? '',
         email: data.email ?? '',
         logo: data.logo ?? '',
+        village_quartier: data.village_quartier ?? '',
+        commune: data.commune ?? '',
+        cercle: data.cercle ?? '',
+        statut_administratif: data.statut_administratif ?? '',
+        type_ecole: data.type_ecole ?? '',
+        mode: data.mode ?? '',
       })
     }
   }, [data])
@@ -81,7 +87,7 @@ export default function FicheEtablissementTab() {
   if (isError || !data || !form) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-[var(--color-danger)]/20 bg-[var(--color-danger-wash)] px-4 py-3 text-sm text-[var(--color-danger)]">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-wash)] px-4 py-3 text-sm text-[var(--color-danger)]">
           La fiche de l’établissement n’existe pas encore. Elle est créée lors de la
           configuration initiale de l’application.
         </div>
@@ -108,12 +114,18 @@ export default function FicheEtablissementTab() {
       logo: form.logo?.trim() || null,
       academie: form.academie?.trim() || null,
       cap: form.cap?.trim() || null,
+      village_quartier: form.village_quartier?.trim() || null,
+      commune: form.commune?.trim() || null,
+      cercle: form.cercle?.trim() || null,
+      statut_administratif: form.statut_administratif?.trim() || null,
+      type_ecole: form.type_ecole?.trim() || null,
+      mode: form.mode?.trim() || null,
     })
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
           <Building2 size={14} strokeWidth={1.75} />
           Établissement
@@ -152,7 +164,7 @@ export default function FicheEtablissementTab() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-[var(--color-border)] p-4" noValidate>
+      <form onSubmit={handleSubmit} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4" noValidate>
         <div className="text-xs font-semibold text-[var(--color-ink)]">Modifier la fiche</div>
         <p className="mt-0.5 text-[11px] text-[var(--color-ink-dim)]">
           Ces informations identifient l’établissement dans l’ensemble du système.
@@ -198,6 +210,40 @@ export default function FicheEtablissementTab() {
             onChange={(e) => setForm((f) => f && { ...f, cap: e.target.value })}
           />
           <Input
+            label="Village / Quartier"
+            value={form.village_quartier ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, village_quartier: e.target.value })}
+            hint="Utilisé dans le rapport succinct de rentrée."
+          />
+          <Input
+            label="Commune"
+            value={form.commune ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, commune: e.target.value })}
+          />
+          <Input
+            label="Cercle"
+            value={form.cercle ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, cercle: e.target.value })}
+          />
+          <Input
+            label="Statut administratif"
+            placeholder="ex. Public / Privé / Communautaire"
+            value={form.statut_administratif ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, statut_administratif: e.target.value })}
+          />
+          <Input
+            label="Type d’école"
+            placeholder="ex. Conventionné / Non conventionné"
+            value={form.type_ecole ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, type_ecole: e.target.value })}
+          />
+          <Input
+            label="Mode d’enseignement"
+            placeholder="ex. Double vacation / Continu"
+            value={form.mode ?? ''}
+            onChange={(e) => setForm((f) => f && { ...f, mode: e.target.value })}
+          />
+          <Input
             label="Téléphone"
             type="tel"
             value={form.telephone ?? ''}
@@ -230,16 +276,16 @@ export default function FicheEtablissementTab() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+              className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
             >
               {form.logo ? (
                 <img
                   src={urlAbsolue(form.logo)}
                   alt="Logo de l’établissement"
-                  className="h-14 w-14 shrink-0 rounded-lg bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                  className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
                 />
               ) : (
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
                   {uploading
                     ? <Loader2 size={20} strokeWidth={1.75} className="animate-spin" />
                     : <ImagePlus size={20} strokeWidth={1.75} />}

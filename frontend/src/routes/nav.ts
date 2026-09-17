@@ -1,36 +1,36 @@
-import type { Role } from '@/types'
 import {
   LayoutDashboard,
   GraduationCap,
-  UserRound,
   Users,
-  BookOpen,
-  NotebookPen,
-  FileText,
+  Building2,
   ClipboardList,
-  Award,
-  CalendarCheck,
-  UserPlus,
-  CalendarClock,
-  DoorOpen,
-  Wallet,
-  Receipt,
+  HeartHandshake,
+  BookOpen,
+  Pencil,
+  FileText,
+  Trophy,
+  CalendarDays,
+  UserX,
+  CreditCard,
+  PieChart,
   Settings,
+  DoorOpen,
+  FolderOpen,
   FlagTriangleRight,
   type LucideIcon,
 } from 'lucide-react'
 
 export interface NavItem {
+  id: string
   label: string
   path: string
   icon: LucideIcon
-  roles: Role[]
-  count?: number
 }
 
 export interface NavSection {
-  title: string
-  /** Token CSS de couleur module (var(--color-mod-*)). null/absent → aucune identité de module. */
+  /** Label de groupe affiché dans la sidebar. null = item standalone (pas de label). */
+  title: string | null
+  /** Token CSS de couleur module (var(--color-mod-*)). null → aucune identité de module. */
   moduleColor?: string | null
   items: NavItem[]
 }
@@ -43,53 +43,58 @@ export const MOD_COLORS = {
   fin: 'var(--color-mod-fin)',
 } as const
 
-const ALL_ROLES: Role[] = ['admin', 'directeur', 'comptable']
-const DIRECTION: Role[] = ['admin', 'directeur']
-
+/** Design system §31 — Architecture de navigation : 5 groupes + item standalone. */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'Vue d’ensemble',
+    title: null,
     moduleColor: null,
-    items: [{ label: 'Tableau de bord', path: '/app', icon: LayoutDashboard, roles: ALL_ROLES }],
+    items: [{ id: 'tableau-de-bord', label: 'Tableau de bord', path: '/app', icon: LayoutDashboard }],
   },
   {
-    title: 'Pilotage',
-    moduleColor: MOD_COLORS.vie,
+    title: 'Élèves & Classes',
+    moduleColor: MOD_COLORS.peda,
     items: [
-      { label: 'Élèves', path: '/app/eleves', icon: GraduationCap, roles: ALL_ROLES },
-      { label: 'Enseignants', path: '/app/enseignants', icon: UserRound, roles: ALL_ROLES },
-      { label: 'Tuteurs', path: '/app/tuteurs', icon: Users, roles: ALL_ROLES },
-      { label: 'Classes', path: '/app/classes', icon: BookOpen, roles: ALL_ROLES },
-      { label: 'Salles', path: '/app/salles', icon: DoorOpen, roles: ALL_ROLES },
+      { id: 'eleves', label: 'Élèves', path: '/app/eleves', icon: Users },
+      { id: 'classes', label: 'Classes', path: '/app/classes', icon: Building2 },
+      { id: 'inscriptions', label: 'Inscriptions', path: '/app/inscriptions', icon: ClipboardList },
+      { id: 'tuteurs', label: 'Tuteurs', path: '/app/tuteurs', icon: HeartHandshake },
     ],
   },
   {
     title: 'Pédagogie',
     moduleColor: MOD_COLORS.peda,
     items: [
-      { label: 'Inscriptions', path: '/app/inscriptions', icon: UserPlus, roles: DIRECTION },
-      { label: 'Absences', path: '/app/absences', icon: CalendarCheck, roles: DIRECTION },
-      { label: 'Notes', path: '/app/notes', icon: FileText, roles: DIRECTION },
-      { label: 'Bulletins', path: '/app/bulletins', icon: ClipboardList, roles: DIRECTION },
-      { label: 'Résultats', path: '/app/resultats', icon: Award, roles: DIRECTION },
-      { label: 'Cours', path: '/app/cours', icon: NotebookPen, roles: DIRECTION },
-      { label: 'Emploi du temps', path: '/app/seances', icon: CalendarClock, roles: DIRECTION },
+      { id: 'enseignants', label: 'Enseignants', path: '/app/enseignants', icon: GraduationCap },
+      { id: 'cours', label: 'Cours', path: '/app/cours', icon: BookOpen },
+      { id: 'notes', label: 'Notes', path: '/app/notes', icon: Pencil },
+      { id: 'bulletins', label: 'Bulletins', path: '/app/bulletins', icon: FileText },
+      { id: 'resultats', label: 'Résultats', path: '/app/resultats', icon: Trophy },
+    ],
+  },
+  {
+    title: 'Vie scolaire',
+    moduleColor: MOD_COLORS.vie,
+    items: [
+      { id: 'seances', label: 'Séances', path: '/app/seances', icon: CalendarDays },
+      { id: 'absences', label: 'Absences', path: '/app/absences', icon: UserX },
     ],
   },
   {
     title: 'Finances',
     moduleColor: MOD_COLORS.fin,
     items: [
-      { label: 'Paiements', path: '/app/paiements', icon: Wallet, roles: ['admin', 'comptable'] },
-      { label: 'Dépenses', path: '/app/depenses', icon: Receipt, roles: ['admin', 'comptable'] },
+      { id: 'paiements', label: 'Paiements', path: '/app/paiements', icon: CreditCard },
+      { id: 'depenses', label: 'Dépenses', path: '/app/depenses', icon: PieChart },
     ],
   },
   {
     title: 'Administration',
     moduleColor: null,
     items: [
-      { label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight, roles: DIRECTION },
-      { label: 'Paramètres', path: '/app/parametres', icon: Settings, roles: ['admin', 'directeur'] },
+      { id: 'salles', label: 'Salles', path: '/app/salles', icon: DoorOpen },
+      { id: 'documents', label: 'Documents administratifs', path: '/app/documents', icon: FolderOpen },
+      { id: 'cloture', label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight },
+      { id: 'parametres', label: 'Paramètres', path: '/app/parametres', icon: Settings },
     ],
   },
 ]
@@ -103,11 +108,17 @@ export interface ModuleInfo {
  *  segments pour matcher les pages de détail (ex: /app/eleves/MAT). */
 export function moduleForPath(path: string): ModuleInfo | null {
   for (const section of NAV_SECTIONS) {
+    const flatTitle = section.title ?? section.items[0]?.label
     for (const item of section.items) {
       if (path === item.path || path.startsWith(`${item.path}/`)) {
-        return { title: section.title, moduleColor: section.moduleColor ?? null }
+        return { title: flatTitle ?? '', moduleColor: section.moduleColor ?? null }
       }
     }
   }
   return null
+}
+
+/** Flat list de tous les items (pour la Command Palette §40). */
+export function allNavItems(): NavItem[] {
+  return NAV_SECTIONS.flatMap((s) => s.items)
 }

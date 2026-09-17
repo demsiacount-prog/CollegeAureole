@@ -1,6 +1,7 @@
-import { X } from 'lucide-react'
+import { useEffect } from 'react'
+import { AlertTriangle, CheckCircle2, type LucideIcon } from 'lucide-react'
+import { clsx } from 'clsx'
 import { Button } from './Button'
-import { useModalStack } from './modalStack'
 
 interface Props {
   open: boolean
@@ -10,31 +11,44 @@ interface Props {
   description?: string
   confirmLabel?: string
   variant?: 'danger' | 'success'
+  isLoading?: boolean
   children?: React.ReactNode
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel = 'Confirmer', variant = 'danger', children }: Props) {
-  useModalStack(open)
+/** Design system §36 — Modal de confirmation (actions destructives exclusivement). */
+export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel = 'Supprimer', variant = 'danger', isLoading, children }: Props) {
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open) return null
 
+  const Icon: LucideIcon = variant === 'danger' ? AlertTriangle : CheckCircle2
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl">
-        <div className="flex items-start justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[var(--color-ink)]">{title}</h3>
-          <button onClick={onClose} className="text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]" aria-label="Fermer">
-            <X size={20} strokeWidth={1.75} />
-          </button>
+    <div className="animate-fade-in fixed inset-0 z-[200] flex items-center justify-center bg-black/55">
+      <div className="animate-modal-in w-[360px] rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-float)]">
+        <div
+          className={clsx(
+            'mb-[14px] flex size-9 items-center justify-center rounded-[var(--radius-lg)]',
+            variant === 'danger' ? 'bg-[var(--danger-w)] text-[var(--danger)]' : 'bg-[var(--success-w)] text-[var(--success)]',
+          )}
+        >
+          <Icon size={22} strokeWidth={1.75} />
         </div>
-        {description && <p className="mb-4 text-sm text-[var(--color-ink-dim)]">{description}</p>}
-        {children && <div className="mb-4">{children}</div>}
+        <h3 className="mb-2 font-[var(--font-serif)] text-[16px] font-semibold text-[var(--ink)]">{title}</h3>
+        {description && <div className="mb-5 text-[13px] leading-[1.6] text-[var(--ink-dim)]">{description}</div>}
+        {children && <div className="mb-5">{children}</div>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
-          <Button variant={variant === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
+          <Button variant={variant === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} isLoading={isLoading}>
             {confirmLabel}
           </Button>
         </div>

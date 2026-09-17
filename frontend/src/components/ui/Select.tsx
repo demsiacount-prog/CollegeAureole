@@ -15,10 +15,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id ?? generatedId
 
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-[5px]">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-[var(--color-ink-dim)]">
+          <label htmlFor={selectId} className="text-[12px] font-medium text-[var(--ink-dim)]">
             {label}
+            {rest.required && <span className="ml-[2px] text-[var(--danger)]">*</span>}
           </label>
         )}
         <div className="relative">
@@ -27,10 +28,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             aria-invalid={!!error}
             className={clsx(
-              'h-10 w-full appearance-none rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-9 text-sm text-[var(--color-ink)]',
-              'transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)] focus-visible:border-[var(--color-halo)]',
-              error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+              'h-[34px] w-full appearance-none rounded-[var(--radius-md)] border bg-[var(--surface)] pl-[11px] pr-[30px] text-[13px] text-[var(--ink)]',
+              'transition-colors duration-100 cursor-pointer',
+              'focus:outline-none cursor-pointer',
+              error
+                ? 'focus:border-[var(--danger)] focus:shadow-[0_0_0_3px_rgba(224,112,127,0.20)]'
+                : 'focus:border-[var(--action)] focus:shadow-[0_0_0_3px_var(--action-ring)]',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              error ? 'border-[var(--danger)]' : 'border-[var(--border)]',
               className,
             )}
             {...rest}
@@ -43,9 +48,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 ))
               : children}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
+          <ChevronDown className="pointer-events-none absolute right-[10px] top-1/2 size-3 -translate-y-1/2 text-[var(--ink-faint)]" />
         </div>
-        {error && <p className="text-xs text-[var(--color-danger)]">{error}</p>}
+        {error && <p className="text-[11.5px] text-[var(--danger)]">{error}</p>}
       </div>
     )
   },

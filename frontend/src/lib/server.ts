@@ -9,7 +9,13 @@
 export const SERVEUR_STORAGE_KEY = 'aureole_serveur'
 
 /** Hôte local par défaut en mode mono-poste (serveur installé sur le même poste). */
-export const HOTE_LOCAL = 'http://localhost:8000'
+// En production (binaire distribué), le serveur écoute sur 8000 (service /
+// exécutable `college-aureole-serveur`). En dev, uvicorn + relais Vite
+// utilisent 3000 : on reprend la même cible que le proxy (VITE_API_TARGET)
+// pour que `tauri dev` trouve le serveur sans configuration manuelle.
+export const HOTE_LOCAL = import.meta.env.DEV
+  ? import.meta.env.VITE_API_TARGET || 'http://localhost:3000'
+  : 'http://localhost:8000'
 
 /** Vrai si l'interface s'exécute dans la fenêtre Tauri. */
 export function estDesktop(): boolean {

@@ -339,17 +339,13 @@ export default function SetupWizard() {
           <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--color-mod-ress)]/10 blur-3xl" />
 
           <div className="relative flex items-center gap-3">
-            {etLogo ? (
+            {etLogo && (
               <img
                 src={urlAbsolue(etLogo)}
                 alt="Logo de l’établissement"
-                className="h-12 w-12 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                className="h-12 w-12 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
               />
-            ) : (
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
-                <GraduationCap className="h-6 w-6" />
-              </span>
-            )}
+            ) }
             <div>
               <p className="text-xl font-semibold text-[var(--color-halo)]">
                 {etNom.trim()}
@@ -385,10 +381,10 @@ export default function SetupWizard() {
                 <img
                   src={urlAbsolue(etLogo)}
                   alt="Logo de l’établissement"
-                  className="h-10 w-10 rounded-lg bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                  className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
                 />
               ) : (
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
                   <GraduationCap className="h-5 w-5" />
                 </span>
               )}
@@ -409,7 +405,7 @@ export default function SetupWizard() {
             )}
 
             {step === 'configured' && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-soft)]">
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
                 <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-success)] text-white">
                   <CheckCircle2 className="size-7" />
                 </span>
@@ -431,7 +427,7 @@ export default function SetupWizard() {
             )}
 
             {step === 'running' && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-soft)]">
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
                 <StepIndicator current={activeStep} />
                 {runEnEchec ? (
                   <div>
@@ -517,10 +513,10 @@ export default function SetupWizard() {
 
             {step === 'form' && (
               <>
-                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)]">
+                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]">
                   <div className="mb-5 flex items-start justify-between">
                     <div>
-                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-action-wash)] text-[var(--color-action)]">
+                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-action-wash)] text-[var(--color-action)]">
                         <GraduationCap className="h-4 w-4" />
                       </div>
                       <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
@@ -537,7 +533,7 @@ export default function SetupWizard() {
                     <button
                       type="button"
                       onClick={toggleTheme}
-                      className="rounded-md border border-[var(--color-border)] p-2 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]"
+                      className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-2 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]"
                       aria-label="Changer de thème"
                     >
                       {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -688,16 +684,16 @@ export default function SetupWizard() {
                             type="button"
                             onClick={() => logoFileRef.current?.click()}
                             disabled={logoUploading}
-                            className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]"
+                            className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-action)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
                           >
                             {etLogo ? (
                               <img
                                 src={urlAbsolue(etLogo)}
                                 alt="Aperçu du logo"
-                                className="h-14 w-14 shrink-0 rounded-lg bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                                className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
                               />
                             ) : (
-                              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
+                              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
                                 {logoUploading
                                   ? <Loader2 size={20} strokeWidth={1.75} className="animate-spin" />
                                   : <ImagePlus size={20} strokeWidth={1.75} />}
@@ -804,14 +800,14 @@ export default function SetupWizard() {
                               required
                               minLength={8}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
                                 fieldErrors.mot_de_passe ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
                               )}
                             />
                             <button
                               type="button"
                               onClick={() => setShowPwd((v) => !v)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)]"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] p-1 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)]"
                               aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                             >
                               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -850,7 +846,7 @@ export default function SetupWizard() {
                                 if (fieldErrors.date_debut) setFieldErrors((p) => ({ ...p, date_debut: undefined }))
                               }}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
                                 fieldErrors.date_debut ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
                               )}
                             />
@@ -871,7 +867,7 @@ export default function SetupWizard() {
                                 if (fieldErrors.date_fin) setFieldErrors((p) => ({ ...p, date_fin: undefined }))
                               }}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
                                 fieldErrors.date_fin ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
                               )}
                             />
@@ -926,9 +922,7 @@ export default function SetupWizard() {
                   </form>
                 </div>
 
-                <p className="mt-8 text-center text-xs text-[var(--color-ink-faint)]">
-                  Les données sont stockées localement sur cet appareil.
-                </p>
+                
               </>
             )}
           </div>

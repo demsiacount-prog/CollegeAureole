@@ -39,10 +39,10 @@ export function ServerSetup({ adresseInitiale }: { adresseInitiale?: string | nu
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-base)] px-6 text-[var(--color-ink)]">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-xl bg-[var(--color-surface-2)] ring-1 ring-[var(--color-border)]">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface-2)] ring-1 ring-[var(--color-border)]">
             <ServerCog size={26} strokeWidth={1.5} className="text-[var(--color-halo)]" />
           </div>
-          <h1 className="font-[var(--font-display)] text-2xl font-semibold">Serveur introuvable</h1>
+          <h1 className="font-[var(--font-serif)] text-2xl font-semibold">Serveur introuvable</h1>
           <p className="mt-2 text-sm text-[var(--color-ink-dim)]">
             L’application n’a pas pu se connecter au serveur installé sur cet ordinateur.
             Vérifiez qu’il est bien démarré, puis réessayez.
@@ -51,7 +51,7 @@ export function ServerSetup({ adresseInitiale }: { adresseInitiale?: string | nu
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-lg bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)] ring-1 ring-[var(--color-border-soft)]"
+          className="rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] ring-1 ring-[var(--color-border-soft)]"
         >
           <Button type="submit" variant="primary" className="w-full" isLoading={teste}>
             Réessayer

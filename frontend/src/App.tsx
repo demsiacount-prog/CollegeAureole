@@ -4,13 +4,13 @@ import { Loader2 } from 'lucide-react'
 import { AuthProvider } from '@/auth/AuthContext'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { ServerGate } from '@/components/ServerGate'
-import { ProtectedRoute, RoleRoute } from '@/auth/ProtectedRoute'
+import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import { LoginPage } from '@/pages/LoginPage'
 import SetupWizard from '@/pages/SetupWizard'
-import { AccessDeniedPage, NotFoundPage } from '@/pages/StatusPages'
+import { NotFoundPage } from '@/pages/StatusPages'
 import { api } from '@/lib/api'
 
 const loadDashboard = () => import('@/pages/DashboardPage')
@@ -32,6 +32,7 @@ const loadPaiementList = () => import('@/features/paiements/PaiementListPage')
 const loadDepenseList = () => import('@/features/depenses/DepenseListPage')
 const loadParametres = () => import('@/features/parametres/ParametresPage')
 const loadResultatList = () => import('@/features/resultats/ResultatListPage')
+const loadDocumentAdministratif = () => import('@/features/rapports/DocumentAdministratifPage')
 const loadSalleList = () => import('@/features/salles/SalleListPage')
 const loadCloture = () => import('@/features/cloture/CloturePage')
 
@@ -54,12 +55,9 @@ const PaiementListPage = lazy(loadPaiementList)
 const DepenseListPage = lazy(loadDepenseList)
 const ParametresPage = lazy(loadParametres)
 const ResultatListPage = lazy(loadResultatList)
+const DocumentAdministratifPage = lazy(loadDocumentAdministratif)
 const SalleListPage = lazy(loadSalleList)
 const CloturePage = lazy(loadCloture)
-
-const ALL_ROLES: import('@/types').Role[] = ['admin', 'directeur', 'comptable']
-const DIRECTION: import('@/types').Role[] = ['admin', 'directeur']
-const FINANCE: import('@/types').Role[] = ['admin', 'comptable']
 
 function SuspenseRoute({ children }: { children: React.ReactNode }) {
   return (
@@ -111,42 +109,32 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/app" element={<AppLayout />}>
                 <Route index element={<SuspenseRoute><DashboardPage /></SuspenseRoute>} />
-                <Route path="acces-refuse" element={<AccessDeniedPage />} />
 
-                <Route element={<RoleRoute allow={ALL_ROLES} />}>
-                  <Route path="eleves" element={<SuspenseRoute><EleveListPage /></SuspenseRoute>} />
-                  <Route path="eleves/:matricule" element={<SuspenseRoute><EleveDetailPage /></SuspenseRoute>} />
-                  <Route path="enseignants" element={<SuspenseRoute><EnseignantListPage /></SuspenseRoute>} />
-                  <Route path="enseignants/:matricule" element={<SuspenseRoute><EnseignantDetailPage /></SuspenseRoute>} />
-                  <Route path="tuteurs" element={<SuspenseRoute><TuteurListPage /></SuspenseRoute>} />
-                  <Route path="tuteurs/:id" element={<SuspenseRoute><TuteurDetailPage /></SuspenseRoute>} />
-                  <Route path="classes" element={<SuspenseRoute><ClasseListPage /></SuspenseRoute>} />
-                  <Route path="salles" element={<SuspenseRoute><SalleListPage /></SuspenseRoute>} />
-                </Route>
+                <Route path="eleves" element={<SuspenseRoute><EleveListPage /></SuspenseRoute>} />
+                <Route path="eleves/:matricule" element={<SuspenseRoute><EleveDetailPage /></SuspenseRoute>} />
+                <Route path="enseignants" element={<SuspenseRoute><EnseignantListPage /></SuspenseRoute>} />
+                <Route path="enseignants/:matricule" element={<SuspenseRoute><EnseignantDetailPage /></SuspenseRoute>} />
+                <Route path="tuteurs" element={<SuspenseRoute><TuteurListPage /></SuspenseRoute>} />
+                <Route path="tuteurs/:id" element={<SuspenseRoute><TuteurDetailPage /></SuspenseRoute>} />
+                <Route path="classes" element={<SuspenseRoute><ClasseListPage /></SuspenseRoute>} />
+                <Route path="salles" element={<SuspenseRoute><SalleListPage /></SuspenseRoute>} />
+                <Route path="documents" element={<SuspenseRoute><DocumentAdministratifPage /></SuspenseRoute>} />
 
-                <Route element={<RoleRoute allow={DIRECTION} />}>
-                  <Route path="cours" element={<SuspenseRoute><CoursListPage /></SuspenseRoute>} />
-                  <Route path="notes" element={<SuspenseRoute><NoteListPage /></SuspenseRoute>} />
-                  <Route path="absences" element={<SuspenseRoute><AbsenceListPage /></SuspenseRoute>} />
-                  <Route path="inscriptions" element={<SuspenseRoute><InscriptionListPage /></SuspenseRoute>} />
-                  <Route path="seances" element={<SuspenseRoute><SeanceListPage /></SuspenseRoute>} />
-                  <Route path="bulletins" element={<SuspenseRoute><BulletinListPage /></SuspenseRoute>} />
-                  <Route path="bulletins/:id" element={<SuspenseRoute><BulletinDetailPage /></SuspenseRoute>} />
-                  <Route path="resultats" element={<SuspenseRoute><ResultatListPage /></SuspenseRoute>} />
-                </Route>
+                <Route path="cours" element={<SuspenseRoute><CoursListPage /></SuspenseRoute>} />
+                <Route path="notes" element={<SuspenseRoute><NoteListPage /></SuspenseRoute>} />
+                <Route path="absences" element={<SuspenseRoute><AbsenceListPage /></SuspenseRoute>} />
+                <Route path="inscriptions" element={<SuspenseRoute><InscriptionListPage /></SuspenseRoute>} />
+                <Route path="seances" element={<SuspenseRoute><SeanceListPage /></SuspenseRoute>} />
+                <Route path="bulletins" element={<SuspenseRoute><BulletinListPage /></SuspenseRoute>} />
+                <Route path="bulletins/:id" element={<SuspenseRoute><BulletinDetailPage /></SuspenseRoute>} />
+                <Route path="resultats" element={<SuspenseRoute><ResultatListPage /></SuspenseRoute>} />
 
-                <Route element={<RoleRoute allow={FINANCE} />}>
-                  <Route path="paiements" element={<SuspenseRoute><PaiementListPage /></SuspenseRoute>} />
-                  <Route path="depenses" element={<SuspenseRoute><DepenseListPage /></SuspenseRoute>} />
-                </Route>
+                <Route path="paiements" element={<SuspenseRoute><PaiementListPage /></SuspenseRoute>} />
+                <Route path="depenses" element={<SuspenseRoute><DepenseListPage /></SuspenseRoute>} />
 
-                <Route element={<RoleRoute allow={['admin', 'directeur']} />}>
-                  <Route path="parametres" element={<SuspenseRoute><ParametresPage /></SuspenseRoute>} />
-                </Route>
+                <Route path="parametres" element={<SuspenseRoute><ParametresPage /></SuspenseRoute>} />
 
-                <Route element={<RoleRoute allow={DIRECTION} />}>
-                  <Route path="cloture-annee" element={<SuspenseRoute><CloturePage /></SuspenseRoute>} />
-                </Route>
+                <Route path="cloture-annee" element={<SuspenseRoute><CloturePage /></SuspenseRoute>} />
               </Route>
             </Route>
 

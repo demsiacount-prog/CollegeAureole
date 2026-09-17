@@ -1,7 +1,14 @@
 import axios from 'axios'
 import { resoudreBaseUrl } from './server'
+import { trace } from './trace'
 
 export const TOKEN_STORAGE_KEY = 'aureole_token'
+
+// Empreinte courte d'un token pour le journal de débogage (jamais le JWT complet).
+export function traceToken(token: string | null): string {
+  if (!token) return '<aucun>'
+  return `${token.slice(0, 12)}…${token.slice(-4)}`
+}
 
 // L'API est appelée sur le backend FastAPI. En mode web, la même origine sert
 // l'interface et relaie /api vers le backend (proxy vite en dev) ; VITE_API_URL
@@ -18,6 +25,13 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+    // Mémorise le token de la requête (identifiant unique de la session au
+    // moment de son émission) : permet de distinguer une réponse 401 d'un
+    // ancien token d'une vraie expiration de la session courante.
+    ;(config as { _jwt?: string })._jwt = token
+  }
+  if (String(config.url ?? '').startsWith('/api/')) {
+    trace('→ requête', config.method?.toUpperCase(), config.url, 'jwt=', traceToken(token))
   }
   return config
 })
@@ -25,10 +39,54 @@ api.interceptors.request.use((config) => {
 export const AUTH_EXPIRED_EVENT = 'aureole:auth-expired'
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (String(response.config.url ?? '').startsWith('/api/')) {
+      trace('← réponse', response.status, response.config.method?.toUpperCase(), response.config.url)
+    }
+    return response
+  },
   (error) => {
+    // Une 401 peut provenir d'une requête émise AVANT une reconnexion (ex.
+    // /api/auth/moi démarré au chargement avec un ancien token périmé, lent
+    // à répondre). Si la requête utilisait un token différent de la session
+    // actuelle, cette réponse tardive ne doit pas déconnecter l'utilisateur
+    // qui vient de se (re)connecter. On ne signale l'expiration que pour un
+    // token toujours courant (ou une requête sans token : /connexion, 401 de
+    // mauvaise identification, sans session à préserver).
     if (error.response?.status === 401) {
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+      const tokenRequete = (error.config as { _jwt?: string } | undefined)?._jwt
+      const tokenCourant = localStorage.getItem(TOKEN_STORAGE_KEY)
+      // Une 401 consécutive à une redirection 307 cross-origine (requête sans
+      // slash final, FastAPI renvoie la bonne URL absolue vers le serveur)
+      // voit l'en-tête Authorization retiré par le navigateur : ce n'est pas
+      // une session expirée. On ne déconnecte que si la réponse 401 vient bien
+      // de l'origine prévue.
+      const urlFinale = (error.response.request as { responseURL?: string } | undefined)?.responseURL
+      const base = resoudreBaseUrl()
+      let memeOrigine = true
+      try {
+        if (urlFinale && base) {
+          memeOrigine = new URL(base).origin === new URL(urlFinale).origin
+        }
+      } catch {
+        /* URL mal formée : on ne se fie pas à ce test */
+      }
+      // Une session n'est expirée QUE si la requête elle-même portait le token
+      // courant et que le serveur (même origine) l'a refusée.
+      const expireSession = !!tokenRequete && tokenRequete === tokenCourant && memeOrigine
+      trace(
+        '! 401', error.config?.method?.toUpperCase(), error.config?.url,
+        'jwt requête=', traceToken(tokenRequete ?? null),
+        'jwt courant=', traceToken(tokenCourant),
+        expireSession ? '→ DECONNEXION' : '→ ignoré (ancien token, hors origine ou non authentifié)',
+      )
+      if (expireSession) {
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+      }
+    } else if (error.response?.status) {
+      trace('! erreur HTTP', error.response.status, error.config?.method?.toUpperCase(), error.config?.url)
+    } else {
+      trace('! erreur réseau', error.config?.method?.toUpperCase(), error.config?.url, String(error.message ?? error))
     }
     return Promise.reject(error)
   },

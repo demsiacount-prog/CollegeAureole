@@ -13,6 +13,7 @@ export interface Toast {
   tone: ToastTone
   action?: ToastAction
   duration: number
+  title?: string
 }
 
 let _nextId = 0
@@ -28,17 +29,17 @@ function _remove(id: number) {
   _emit()
 }
 
-export function toast(message: string, tone: ToastTone = 'success', opts?: { action?: ToastAction; duration?: number }) {
+export function toast(
+  message: string,
+  tone: ToastTone = 'success',
+  opts?: { action?: ToastAction; duration?: number; title?: string },
+) {
   const id = _nextId++
   // Design system §14 : les erreurs (danger) sont persistantes, les autres s'auto-ferment.
   const duration = opts?.duration ?? (tone === 'error' ? 0 : 4000)
-  _toasts = [..._toasts, { id, message, tone, action: opts?.action, duration }]
+  _toasts = [..._toasts, { id, message, tone, action: opts?.action, duration, title: opts?.title }]
   _emit()
   if (duration > 0) setTimeout(() => _remove(id), duration)
-}
-
-export function toastWithAction(message: string, action: ToastAction, tone: ToastTone = 'success', duration = 5000) {
-  toast(message, tone, { action, duration })
 }
 
 export function useToasts() {

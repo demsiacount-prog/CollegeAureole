@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './useAuth'
-import type { Role } from '@/types'
 import { Spinner } from '@/components/ui/Spinner'
+import { trace } from '@/lib/trace'
 
 export function ProtectedRoute() {
   const { isAuthenticated, isInitializing } = useAuth()
@@ -16,20 +16,8 @@ export function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
+    trace('ProtectedRoute → redirection /connexion (non authentifié)')
     return <Navigate to="/connexion" state={{ from: location }} replace />
-  }
-
-  return <Outlet />
-}
-
-/** À placer sous <ProtectedRoute>, restreint l'accès à certains rôles. */
-export function RoleRoute({ allow }: { allow: Role[] }) {
-  const { user } = useAuth()
-
-  if (!user) return null
-
-  if (!allow.includes(user.role)) {
-    return <Navigate to="/app/acces-refuse" replace />
   }
 
   return <Outlet />

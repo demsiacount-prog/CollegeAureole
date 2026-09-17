@@ -157,6 +157,17 @@
   white-space: nowrap;
 }
 
+/* Séparation visuelle des groupes de colonnes (registre : un bloc par période) */
+.doc-cell-border {
+  border-left: 1.5px solid #333;
+}
+
+/* Redimensionne les colonnes chiffrées du registre pour tenir sur une page */
+.doc-table-registre th,
+.doc-table-registre td {
+  padding: 4px 4px;
+}
+
 .doc-table tfoot td {
   border-top: 1.5px solid #111;
   border-bottom: none;
@@ -192,6 +203,22 @@
 .doc-summary-value {
   font-size: 12pt;
   font-weight: 700;
+}
+
+/* Bloc trimestriel du bulletin annuel */
+.doc-bloc-title {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: #333;
+}
+
+.doc-bloc-recap {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 8.5pt;
+  color: #444;
 }
 
 /* Bloc appréciation */
@@ -296,5 +323,1371 @@
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Aperçu des documents uploadés rendu en canvas (pdf.js) : page par page */
+  .preview-body,
+  .pdf-canvas-viewer,
+  .pdf-scroller {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  .preview-body > .mx-auto,
+  .pdf-scroller > div {
+    transform: none !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .pdf-page-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 210mm;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    display: block;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .pdf-page-canvas:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fiche de suivi au second cycle de l'Enseignement Fondamental (A4 paysage).
+   Reproduction de la maquette officielle : grille fixe 31 colonnes.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.doc-fiche {
+  width: 297mm;
+  min-height: 210mm;
+  font-size: 7.5pt;
+  line-height: 1.3;
+  padding: 6mm 10mm;
+}
+
+/* En-tête institutionnel */
+.fc-entete {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.fc-entete > .fc-gauche {
+  width: 40%;
+  padding-left: 2px;
+  font-size: 8.5pt;
+  line-height: 1.4;
+}
+
+.fc-entete > .fc-titre {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fc-titre-cadre {
+  width: 100%;
+  border: 2px solid #111;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.fc-titre-1,
+.fc-titre-2 {
+  font-weight: 700;
+  font-size: 10pt;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.fc-ministere {
+  font-weight: 700;
+  margin: 0;
+}
+
+.fc-organe {
+  margin: 0;
+  color: #333;
+}
+
+.fc-etoiles {
+  margin: 1px 0;
+}
+
+/* Tableaux */
+.fc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-top: 5px;
+}
+
+.fc-table th,
+.fc-table td {
+  border: 0.9px solid #000;
+  padding: 1px 3px;
+  vertical-align: middle;
+  text-align: center;
+  overflow: hidden;
+}
+
+.fc-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-table-ecole {
+  table-layout: fixed;
+  border: 1px solid #000;
+}
+
+.fc-table-ecole th,
+.fc-table-ecole td {
+  border: 1px solid #000;
+  padding: 2px 5px;
+  font-size: 8pt;
+  text-align: center;
+  height: 7mm;
+  min-height: 7mm;
+}
+
+.fc-table-ecole th {
+  font-weight: 700;
+}
+
+.fc-table-ecole td:first-child {
+  width: 8mm;
+}
+
+/* Identification de l'élève */
+.fc-ident {
+  margin: 2.5mm 0 4mm;
+  font-size: 9pt;
+}
+
+.fc-ident-row {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin-bottom: 2.5mm;
+}
+
+.fc-ident-label {
+  white-space: nowrap;
+}
+
+.fc-ident-label.fc-decale {
+  margin-left: 5mm;
+}
+
+.fc-ident-case {
+  border: 1px solid #000;
+  background: #f7f7f7;
+  height: 5.5mm;
+  line-height: 5.5mm;
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-ident-case.fc-flex {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fc-ident-case.fc-nom {
+  flex: 0 0 48mm;
+}
+
+.fc-ident-case.fc-pere {
+  flex: 0 0 69mm;
+}
+
+.fc-ident-case.fc-lieu {
+  flex: 0 0 58mm;
+}
+
+.fc-ident-case.fc-date {
+  flex: 0 0 37mm;
+}
+
+.fc-ident-case.fc-sex {
+  flex: 0 0 7mm;
+  height: 6.5mm;
+  line-height: 6.5mm;
+  text-align: center;
+}
+
+.fc-matricule {
+  display: flex;
+}
+
+.fc-matricule-boite {
+  width: 7mm;
+  height: 6mm;
+  border: 1px solid #000;
+  text-align: center;
+  font-size: 8pt;
+  font-weight: 600;
+  line-height: 6mm;
+}
+
+.fc-matricule-boite + .fc-matricule-boite {
+  margin-left: -1px;
+}
+
+/* Grille 23 colonnes */
+.fc-table-grille {
+  margin-top: 5px;
+  border: 1.1px solid #000;
+}
+
+.fc-table-grille th,
+.fc-table-grille td {
+  overflow: visible;
+}
+
+.fc-table-grille th {
+  font-size: 7pt;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.fc-table-grille .fc-periode {
+  font-size: 7pt;
+  font-weight: 700;
+}
+
+.fc-table-grille .fc-moyenne {
+  font-size: 7pt;
+  font-weight: normal;
+}
+
+.fc-table-grille .fc-tendance {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.fc-table-grille .fc-matiere {
+  text-align: left;
+  padding-left: 0;
+}
+
+.fc-table-grille .fc-v-stem {
+  vertical-align: middle;
+}
+
+.fc-table-grille .fc-tr {
+  font-size: 6.5pt;
+  font-weight: 700;
+}
+
+.fc-table-grille .fc-fois {
+  font-size: 6.5pt;
+  font-weight: 700;
+  padding: 0;
+}
+
+.fc-centre {
+  vertical-align: middle;
+}
+
+.fc-table-grille .fc-signature {
+  font-weight: 700;
+  font-size: 7pt;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.fc-table-grille .fc-ls {
+  font-weight: 700;
+  font-size: 6pt;
+  padding: 2px;
+  vertical-align: middle;
+}
+
+.fc-table-grille .fc-ls + .fc-ls {
+  border-top: none;
+}
+
+.fc-ls-tick {
+  text-decoration: underline;
+}
+
+.fc-nom-ecole {
+  text-align: left;
+  padding-left: 4px;
+}
+
+.fc-hatch {
+  background-image: repeating-linear-gradient(
+    45deg, #000, #000 0.4px, transparent 0.4px, transparent 4px
+  ),
+  repeating-linear-gradient(
+    -45deg, #000, #000 0.4px, transparent 0.4px, transparent 4px
+  );
+  background-color: #e8e8e8;
+}
+
+/* Remarques officielles */
+.fc-remarques {
+  margin-top: 5px;
+}
+
+.fc-remarques-titre {
+  font-size: 8.5pt;
+  letter-spacing: 0.02em;
+}
+
+.fc-remarques-titre b {
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+.fc-remarque {
+  margin: 1px 0 0 24mm;
+  font-size: 8.5pt;
+}
+
+/* Pied : lieu/date + Directeur d'école */
+.fc-pied {
+  margin-top: 8mm;
+  text-align: right;
+}
+
+.fc-fait {
+  margin: 0;
+  font-size: 9pt;
+}
+
+.fc-directeur {
+  margin: 8mm 0 0;
+  font-size: 9pt;
+  font-weight: 700;
+}
+
+@media print {
+  @page fiche {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .doc-fiche {
+    page: fiche;
+  }
+
+  .print-doc.doc-fiche {
+    width: 297mm;
+    min-height: 210mm;
+    padding: 6mm 10mm;
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bulletin de note officiel (6è à 9è) — A4 paysage.
+   Reproduction de la maquette : en-tête 3 blocs, titre encadré
+   « BULLETIN DE NOTE », tableau 19 colonnes (3 trimestres × 6), pied
+   Moyenne / Moyenne du 1er / Appréciation du Directeur.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.doc-bulletin {
+  width: 297mm;
+  min-height: 210mm;
+  font-size: 8px;
+  line-height: 1.35;
+  padding: 6mm 10mm;
+}
+
+.bn-entete {
+  display: flex;
+  align-items: stretch;
+  gap: 8mm;
+}
+
+.bn-gauche {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  text-align: center;
+}
+
+.bn-academie {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.bn-cap {
+  margin: 0;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.bn-cercle {
+  width: 26mm;
+  height: 26mm;
+  border: 1.6px solid #111;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  padding: 2mm;
+  overflow: hidden;
+}
+
+.bn-cercle-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bn-adr {
+  margin: 0;
+  font-size: 7.5px;
+  color: #444;
+}
+
+.bn-centre {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2mm;
+  text-align: center;
+  font-size: 8px;
+}
+
+.bn-centre p {
+  margin: 0;
+}
+
+.bn-champ {
+  font-weight: 700;
+}
+
+.bn-souligne {
+  display: inline-block;
+  min-width: 22mm;
+  border-bottom: 1px solid #111;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.bn-droite {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5mm;
+  font-size: 8px;
+}
+
+.bn-droite p {
+  margin: 0;
+}
+
+.bn-titre {
+  margin: 4mm auto 3mm;
+  width: fit-content;
+  border: 1.5px solid #111;
+  padding: 5px 12px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+.bn-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin-top: 2mm;
+}
+
+.bn-table th,
+.bn-table td {
+  border: 1px solid #111;
+  padding: 1px 2px;
+  font-size: 8px;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.bn-table .bn-matiere {
+  text-align: left;
+  padding-left: 4px;
+}
+
+.bn-table .bn-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.bn-tr-head {
+  background: #eee;
+  font-size: 8.5px;
+  font-weight: 700;
+}
+
+.bn-sub-head {
+  background: #f9f9f9;
+  height: 24px;
+  font-size: 6.5px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.bn-matiere-ital {
+  font-style: italic;
+}
+
+.bn-total td {
+  background: #f0f0f0;
+  font-weight: 700;
+}
+
+.bn-footer-wrapper {
+  display: flex;
+  align-items: stretch;
+  margin-top: 2mm;
+}
+
+.bn-footer-spacer {
+  width: 20.6mm;
+}
+
+.bn-footer {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  font-size: 8px;
+}
+
+.bn-footer-col p {
+  margin: 0;
+}
+
+.bn-ligne {
+  min-height: 6mm;
+  border-bottom: 1px solid #111;
+}
+
+.bn-parent {
+  margin-top: auto;
+  padding-top: 3mm;
+}
+
+@media print {
+  @page bulletin {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .doc-bulletin {
+    page: bulletin;
+  }
+
+  .print-doc.doc-bulletin {
+    width: 297mm;
+    min-height: 210mm;
+    padding: 6mm 10mm;
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────────
+   Rapport succinct de rentrée (officiel Mali) — A4 paysage.
+   En-tête à 3 blocs, Tableaux 1-3, note et signature du Directeur.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.rr-doc {
+  font-size: 9pt;
+  line-height: 1.4;
+}
+
+/* Conteneur paysage : l'aperçu doit reproduire le PDF reportlab (A4 paysage). */
+.doc-rentree {
+  width: 297mm;
+  min-height: 210mm;
+  padding: 6mm 10mm;
+  font-size: 8.5pt;
+}
+
+/* Largeurs du document calquées sur le générateur reportlab */
+.doc-rentree .rr-entete {
+  gap: 0;
+}
+
+.doc-rentree .rr-gauche {
+  width: 97mm;
+}
+
+.doc-rentree .rr-titre-cadre {
+  width: 97mm;
+}
+
+.doc-rentree .rr-droite {
+  width: 79mm;
+}
+
+.doc-rentree .rr-t1 .rr-lib-g {
+  width: 108mm;
+}
+
+.doc-rentree .rr-t1 .rr-col-cases {
+  width: 55mm;
+}
+
+.doc-rentree .rr-t1 .rr-col-cases:last-child {
+  width: 55mm;
+}
+
+.doc-rentree .rr-t2 {
+  max-width: none;
+}
+
+.doc-rentree .rr-salles {
+  width: 48mm;
+}
+
+@media print {
+  @page rentree {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .doc-rentree {
+    page: rentree;
+  }
+
+  .print-doc.doc-rentree {
+    width: 297mm;
+    min-height: 210mm;
+    padding: 6mm 10mm;
+  }
+}
+
+/* En-tête à 3 blocs */
+.rr-entete {
+  display: flex;
+  align-items: center;
+  gap: 6mm;
+  border-bottom: 2.2px solid #111;
+  padding-bottom: 4mm;
+}
+
+.rr-gauche {
+  width: 66mm;
+  font-size: 8.5pt;
+  line-height: 1.35;
+}
+
+.rr-gauche .rr-ministere {
+  margin: 0;
+  font-weight: 700;
+}
+
+.rr-gauche .rr-organe {
+  margin: 0;
+  color: #333;
+}
+
+.rr-titre {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.rr-titre-cadre {
+  width: 88mm;
+  border: 1.8px solid #111;
+  text-align: center;
+  padding: 2mm 3mm;
+}
+
+.rr-titre-1 {
+  font-size: 11.5pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.rr-titre-2 {
+  font-size: 8pt;
+  color: #333;
+}
+
+.rr-droite {
+  width: 54mm;
+  font-size: 8.5pt;
+  text-align: right;
+}
+
+.rr-droite .rr-rep,
+.rr-droite .rr-dev,
+.rr-droite .rr-annee {
+  margin: 0;
+}
+
+.rr-droite .rr-rep {
+  font-weight: 700;
+}
+
+/* Titres de tableau */
+.rr-table caption {
+  caption-side: top;
+  text-align: center;
+  font-size: 10.5pt;
+  font-weight: 700;
+  margin: 6mm 0 2mm;
+}
+
+/* Tableaux communs */
+.rr-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.rr-table th,
+.rr-table td {
+  border: 0.8px solid #999;
+  padding: 2.5px 4px;
+  vertical-align: middle;
+}
+
+.rr-table th {
+  border-top: 2px solid #111;
+  border-bottom: 1.6px solid #111;
+  font-size: 8pt;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rr-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tableau 1 : renseignements généraux */
+.rr-t1 .rr-lib-g {
+  width: 79mm;
+  line-height: 1.55;
+}
+
+.rr-t1 .rr-lib-g p {
+  margin: 0;
+}
+
+.rr-t1 .rr-souligne {
+  display: inline-block;
+  min-width: 34mm;
+  text-decoration: none;
+  border-bottom: 0.8px solid #111;
+  padding: 0 2px;
+}
+
+.rr-t1 .rr-col-cases {
+  width: 40mm;
+  vertical-align: top;
+  text-align: left;
+}
+
+.rr-t1 .rr-col-cases:last-child {
+  width: 27mm;
+}
+
+.rr-lib-minis {
+  margin: 0 0 2px;
+  font-size: 8.5pt;
+  font-weight: 700;
+}
+
+.rr-case {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1.45;
+}
+
+.rr-case .rr-coche {
+  font-size: 9pt;
+}
+
+/* Tableau 2 : effectifs (centré) */
+.rr-t2 {
+  margin: 0 auto;
+  max-width: 180mm;
+}
+
+.rr-t2 th {
+  white-space: normal;
+}
+
+.rr-t2 .rr-total td {
+  background: #f2f2f2;
+  font-weight: 700;
+}
+
+/* Tableau 3 : maîtres + salles */
+.rr-t3-bloc {
+  display: flex;
+  gap: 0;
+}
+
+.rr-t3 {
+  flex: 1;
+}
+
+.rr-salles {
+  width: 42mm;
+  margin-left: -0.8px;
+}
+
+.rr-salles th,
+.rr-salles td {
+  height: 8mm;
+}
+
+/* Note et signature */
+.rr-note {
+  margin-top: 6mm;
+  font-size: 8.5pt;
+  font-style: italic;
+  color: #444;
+}
+
+.rr-signature {
+  margin-top: 12mm;
+  width: 78mm;
+  margin-left: auto;
+  text-align: center;
+}
+
+.rr-sig-nom {
+  margin: 0;
+  font-size: 9.5pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rr-sig-role {
+  margin: 4mm 0 0;
+  font-size: 8.5pt;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fiche de renseignements de rentrée (officiel Mali) — A4 paysage.
+   Deux tableaux de 17 colonnes : trop larges pour le format portrait.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.doc-renseignements {
+  width: 297mm;
+  min-height: 210mm;
+  padding: 6mm 10mm;
+  font-size: 8.5pt;
+}
+
+.doc-renseignements .rr-t2 {
+  max-width: none;
+}
+
+.doc-renseignements .rr-table {
+  table-layout: auto;
+}
+
+@media print {
+  @page renseignements {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .doc-renseignements {
+    page: renseignements;
+  }
+
+  .print-doc.doc-renseignements {
+    width: 297mm;
+    min-height: 210mm;
+    padding: 6mm 10mm;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fiche de classement des élèves (A4 portrait) — une fiche par classe.
+   Chaque classe forme une page autonome : en-tête en haut, visas en pied de
+   page (ancré en bas de page), comme des documents séparés.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.page-break {
+  break-before: page;
+  page-break-before: always;
+}
+
+.doc-classement .classe-fiche {
+  display: flex;
+  flex-direction: column;
+  min-height: 277mm;
+}
+
+.doc-classement .classe-footer {
+  margin-top: auto;
+  padding-top: 26mm;
+}
+
+@media print {
+  .print-doc.doc-classement {
+    padding: 10mm 12mm;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fiche de notes mensuelle (doc7) — carte officielle d'un élève.
+   Cadre arrondi, logo circulaire, tableau matière × note × coef × observation.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.fm-card {
+  border: 1.8px solid #111;
+  border-radius: 14px;
+  padding: 7mm 8mm;
+  max-width: 172mm;
+  margin: 0 auto;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  background: #fff;
+}
+
+.fm-header {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  border-bottom: 1.6px solid #111;
+  padding-bottom: 3mm;
+  margin-bottom: 4mm;
+}
+
+.fm-logo {
+  width: 16mm;
+  height: 16mm;
+  border: 1px solid #666;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5.5pt;
+  color: #444;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fm-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.fm-header-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.fm-header-title strong {
+  font-size: 13pt;
+}
+
+.fm-header-tel {
+  font-size: 8pt;
+  font-weight: 400;
+  color: #333;
+}
+
+.fm-mois {
+  margin: 0 0 3mm;
+  font-weight: 700;
+}
+
+.fm-eleve {
+  margin: 0 0 3mm;
+}
+
+.fm-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 4mm;
+}
+
+.fm-table th,
+.fm-table td {
+  border: 0.8px solid #111;
+  padding: 2.5px 5px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.fm-table th {
+  background: #dedede;
+  font-size: 8.5pt;
+}
+
+.fm-table .fm-col-matiere {
+  text-align: left;
+  font-weight: 700;
+  width: 40%;
+}
+
+.fm-table tr.fm-total td {
+  background: #f0f0f0;
+  font-weight: 700;
+}
+
+.fm-recap {
+  display: flex;
+  justify-content: space-between;
+  margin: 2mm 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fm-appreciation {
+  border: 1px solid #111;
+  padding: 2mm 3mm;
+  margin: 4mm 0 5mm;
+}
+
+.fm-appreciation p {
+  margin: 0 0 2mm;
+  text-align: center;
+  font-weight: 700;
+}
+
+.fm-checks {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 2mm;
+  font-weight: 400;
+}
+
+.fm-signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9mm;
+  text-align: center;
+}
+
+.fm-sig {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  font-weight: 700;
+}
+
+.fm-sig-line {
+  border-bottom: 0.7px solid #111;
+  min-height: 9mm;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Carnet scolaire (doc8) — livret officiel mixte :
+   • 3 pages A5 portrait : couverture rose, état civil, résultats des
+     visites médicales (modèle officiel « carnet scolaire.html »).
+   • 3 pages A4 paysage : scolarité 1er/2ème cycles, parties médicales,
+     changements d'établissements.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.crn-doc {
+  font-family: 'Times New Roman', Times, serif;
+  color: #000;
+  background: #fff;
+}
+
+/* À l'écran, le carnet se parcourt horizontalement comme un livre :
+   les pages (toutes hautes de 210 mm) sont posées côte à côte. */
+.doc-carnet {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 8mm;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10mm;
+  overflow-x: auto;
+}
+
+.crn-page {
+  box-sizing: border-box;
+  background: #fff;
+  flex-shrink: 0;
+  page-break-after: always;
+  break-after: page;
+}
+
+.crn-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+/* Formats de page : A5 portrait (couverture / état civil / visites) & A4 paysage */
+.crn-a5 {
+  width: 148mm;
+  min-height: 210mm;
+  padding: 12mm;
+}
+
+.crn-a4 {
+  width: 297mm;
+  min-height: 210mm;
+  padding: 15mm;
+}
+
+/* Page 1 — couverture rose */
+.crn-cover {
+  background: #f8c8d8;
+  border: 2px solid #8b3a62;
+  display: flex;
+  flex-direction: column;
+}
+
+.crn-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4mm;
+}
+
+.crn-head-left {
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+}
+
+.crn-logo-img {
+  width: 12mm;
+  height: auto;
+}
+
+.crn-ecole {
+  font-size: 9.5pt;
+  font-weight: bold;
+  line-height: 1.25;
+}
+
+.crn-head-right {
+  text-align: right;
+  font-size: 8pt;
+  line-height: 1.4;
+}
+
+.crn-contact {
+  margin-top: 2.5mm;
+  text-align: center;
+  font-size: 8pt;
+  line-height: 1.5;
+}
+
+.crn-titre-couv {
+  margin: 7mm 0;
+  padding: 1.2mm 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15pt;
+  letter-spacing: 1px;
+  border-top: 2px double #000;
+  border-bottom: 2px double #000;
+}
+
+/* Champs soulignés */
+.crn-ligne {
+  margin: 0;
+  line-height: 2.0;
+}
+
+.crn-ligne strong {
+  font-weight: bold;
+}
+
+.crn-fields {
+  font-size: 9.5pt;
+}
+
+.crn-underline {
+  display: inline-block;
+  min-width: 55mm;
+  border-bottom: 1px solid #000;
+}
+
+.crn-underline-sm {
+  min-width: 30mm;
+}
+
+.crn-nb {
+  margin-top: 7mm;
+  padding-top: 3mm;
+  border-top: 1px solid #000;
+  font-size: 8pt;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.crn-slogan {
+  margin-top: auto;
+  padding-top: 5mm;
+  text-align: center;
+  font-weight: bold;
+  font-style: italic;
+  font-size: 9pt;
+  text-transform: uppercase;
+}
+
+/* Titres de section */
+.crn-section {
+  margin-bottom: 4mm;
+  text-align: center;
+  font-size: 14pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.3;
+}
+
+.crn-section small {
+  font-size: 0.75em;
+  font-weight: normal;
+  text-transform: none;
+}
+
+.crn-section-a5 {
+  font-size: 12pt;
+  margin-bottom: 5mm;
+}
+
+/* Pages 3-5 — double page A4 paysage */
+.crn-double {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10mm;
+  min-height: 178mm;
+}
+
+.crn-sub {
+  width: 48%;
+  box-sizing: border-box;
+}
+
+.crn-bordure {
+  border-right: 1px dashed #aaa;
+  padding-right: 10mm;
+}
+
+.crn-date-recrut {
+  margin: 0 0 3mm;
+  font-size: 8.5pt;
+  text-align: left;
+}
+
+/* Tableaux */
+.crn-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2mm 0 4mm;
+}
+
+.crn-table th,
+.crn-table td {
+  border: 1px solid #000;
+  padding: 2mm 1.5mm;
+  text-align: center;
+  font-size: 8pt;
+  vertical-align: middle;
+}
+
+.crn-table th {
+  background: #f2f2f2;
+  font-weight: bold;
+}
+
+.crn-table td.crn-label {
+  text-align: left;
+  padding-left: 2mm;
+}
+
+.crn-table td.crn-label-bold {
+  font-weight: bold;
+}
+
+.crn-table .crn-cell-large {
+  height: 58mm;
+  vertical-align: top;
+}
+
+.crn-table .crn-cell-vm {
+  height: 13mm;
+  vertical-align: top;
+}
+
+.crn-row-chgt {
+  height: 9mm;
+}
+
+.crn-certificat {
+  margin-top: 4mm;
+  font-size: 9pt;
+  line-height: 1.9;
+  text-align: left;
+}
+
+/* Visites médicales (A5, page 6) */
+.crn-col-vm1,
+.crn-col-vm2,
+.crn-col-vm3 {
+  width: 33.33%;
+}
+
+@media print {
+  @page carnet-a5 {
+    size: A5 portrait;
+    margin: 0;
+  }
+
+  @page carnet-a4 {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .crn-page.crn-a5 {
+    page: carnet-a5;
+  }
+
+  .crn-page.crn-a4 {
+    page: carnet-a4;
+  }
+
+  .doc-carnet {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    width: auto !important;
   }
 }

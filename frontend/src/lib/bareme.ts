@@ -11,6 +11,27 @@ export function baremeNiveau(niveau: string): number {
   return ordre >= 1 && ordre <= 6 ? 10 : 20
 }
 
+/** Vrai si le niveau est la 6ème année (classe spéciale). */
+export function estSixieme(niveau: string): boolean {
+  return parseInt(niveau, 10) === 6
+}
+
+/** Vrai si le niveau appartient au 1er cycle (1ère-6ème, barème /10). */
+export function estEf1(niveau: string): boolean {
+  return baremeNiveau(niveau) === 10
+}
+
+/** Les coefficients s'appliquent-ils pour cette période d'un niveau donné ?
+ *
+ * - COMPOSITIONS (1er cycle) : toujours en moyenne simple.
+ * - TRIMESTRES EF2/lycée : moyenne pondérée (/20).
+ * - TRIMESTRES de la 6ème (classe spéciale) : moyenne pondérée mais sur /10.
+ */
+export function utiliseCoefficient(niveau: string, type: string): boolean {
+  if (type === 'COMPOSITION') return false
+  return !estEf1(niveau) || estSixieme(niveau)
+}
+
 export function noteColor(n: number, bareme: number) {
   const pct = n / bareme
   if (pct >= 0.8) return 'success' as const
@@ -21,9 +42,10 @@ export function noteColor(n: number, bareme: number) {
 
 export function appreciation(n: number, bareme: number) {
   const pct = n / bareme
-  if (pct >= 0.8) return 'Excellent'
-  if (pct >= 0.7) return 'Très bien'
-  if (pct >= 0.6) return 'Bien'
+  if (pct >= 0.9) return 'Excellent'
+  if (pct >= 0.8) return 'Très bien'
+  if (pct >= 0.7) return 'Bien'
+  if (pct >= 0.6) return 'Assez bien'
   if (pct >= 0.5) return 'Passable'
   return 'Insuffisant'
 }

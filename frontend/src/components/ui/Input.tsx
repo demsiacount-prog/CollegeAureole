@@ -35,10 +35,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     }, [rest.type, onPaste])
 
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-[5px]">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[var(--color-ink-dim)]">
+          <label htmlFor={inputId} className="text-[12px] font-medium text-[var(--ink-dim)]">
             {label}
+            {rest.required && <span className="ml-[2px] text-[var(--danger)]">*</span>}
           </label>
         )}
         <input
@@ -49,21 +50,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           className={clsx(
-            'h-10 rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)]',
-            'placeholder:text-[var(--color-ink-faint)] transition-colors duration-150',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)] focus-visible:border-[var(--color-halo)]',
-            error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+            'h-[34px] w-full rounded-[var(--radius-md)] border bg-[var(--surface)] px-[11px] text-[13px] text-[var(--ink)]',
+            'placeholder:text-[var(--ink-disabled)] transition-colors duration-100',
+            'focus:outline-none',
+            error
+              ? 'focus:border-[var(--danger)] focus:shadow-[0_0_0_3px_rgba(224,112,127,0.20)]'
+              : 'focus:border-[var(--action)] focus:shadow-[0_0_0_3px_var(--action-ring)]',
+            'disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:opacity-50',
+            error ? 'border-[var(--danger)]' : 'border-[var(--border)]',
             className,
           )}
           {...rest}
         />
         {error && (
-          <p id={`${inputId}-error`} className="text-xs text-[var(--color-danger)]">
+          <p id={`${inputId}-error`} className="text-[11.5px] text-[var(--danger)]">
             {error}
           </p>
         )}
         {!error && hint && (
-          <p id={`${inputId}-hint`} className="text-xs text-[var(--color-ink-faint)]">
+          <p id={`${inputId}-hint`} className="text-[11.5px] text-[var(--ink-faint)]">
             {hint}
           </p>
         )}

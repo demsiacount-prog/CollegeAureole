@@ -64,10 +64,10 @@ export function LoginPage() {
               src={logo}
               nom={nom}
               label
-              className="h-14 w-14 rounded-lg bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
+              className="h-14 w-14 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
             />
             <div>
-              <p className="font-[var(--font-display)] text-xl font-semibold text-[var(--color-halo)]">
+              <p className="font-[var(--font-serif)] text-xl font-semibold text-[var(--color-halo)]">
                 {nom}
                 {sigle}
               </p>
@@ -77,7 +77,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <h1 className="mb-8 max-w-lg font-[var(--font-display)] text-3xl font-semibold leading-tight text-[var(--color-ink)]">
+          <h1 className="mb-8 max-w-lg font-[var(--font-serif)] text-3xl font-semibold leading-tight text-[var(--color-ink)]">
             Accès sécurisé à la gestion pédagogique, administrative et financière.
           </h1>
         </section>
@@ -89,10 +89,10 @@ export function LoginPage() {
             <LogoEtablissement
               src={logo}
               nom={nom}
-              className="h-11 w-11 rounded-lg bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
+              className="h-11 w-11 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] p-1 ring-1 ring-[var(--color-border)]"
             />
             <div>
-              <p className="font-[var(--font-display)] text-base font-semibold text-[var(--color-halo)]">
+              <p className="font-[var(--font-serif)] text-base font-semibold text-[var(--color-halo)]">
                 {nom}
                 {sigle}
               </p>
@@ -103,14 +103,14 @@ export function LoginPage() {
           </div>
 
           {/* Card */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-soft)]">
+          <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]">
             {/* Card header with theme toggle */}
             <div className="mb-6 flex items-start justify-between">
               <div>
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-action)] text-white">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-action)] text-white">
                   <LockKeyhole className="h-5 w-5" />
                 </div>
-                <h2 className="font-[var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                <h2 className="font-[var(--font-serif)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                   Connexion
                 </h2>
                 <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
@@ -120,7 +120,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="rounded-md border border-[var(--color-border)] p-2 text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)] transition-colors"
+                className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-2 text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)] transition-colors"
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
@@ -144,7 +144,7 @@ export function LoginPage() {
 
               {/* Password field with visibility toggle */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--color-ink-dim)]">
+                <label className="text-sm font-medium text-[var(--color-ink)]">
                   Mot de passe
                 </label>
                 <div className="relative">
@@ -159,14 +159,14 @@ export function LoginPage() {
                     placeholder="••••••••"
                     required
                     className={clsx(
-                      'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-halo)] focus-visible:ring-2 focus-visible:ring-[var(--color-halo)]',
+                      'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
                       fieldErrors.mot_de_passe ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
                     )}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPwd((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)] transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] p-1 text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)] transition-colors"
                   >
                     {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

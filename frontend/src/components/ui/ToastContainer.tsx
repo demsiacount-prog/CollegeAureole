@@ -1,86 +1,84 @@
 import { CheckCircle, XCircle, Info, X, TriangleAlert } from 'lucide-react'
 import { useToasts, type ToastTone } from './toast'
 
-const leftBorder: Record<ToastTone, string> = {
-  success: '#a3c05f',
-  error: '#e0707f',
-  info: '#5b9dc4',
-  warning: '#c98a4a',
-}
-const toneIcons: Record<ToastTone, typeof CheckCircle> = {
-  success: CheckCircle,
-  error: XCircle,
-  info: Info,
-  warning: TriangleAlert,
-}
-const toneIconColor: Record<ToastTone, string> = {
-  success: 'text-[var(--color-success)]',
-  error: 'text-[var(--color-danger)]',
-  info: 'text-[var(--color-info)]',
-  warning: 'text-[var(--color-warning)]',
-}
-const progressColor: Record<ToastTone, string> = {
-  success: 'var(--color-success)',
-  error: 'var(--color-danger)',
-  info: 'var(--color-info)',
-  warning: 'var(--color-warning)',
+const toneInfo: Record<ToastTone, { icon: typeof CheckCircle; color: string; bg: string }> = {
+  success: { icon: CheckCircle, color: 'var(--success)', bg: 'rgba(163,192,95,0.10)' },
+  error: { icon: XCircle, color: 'var(--danger)', bg: 'rgba(224,112,127,0.10)' },
+  info: { icon: Info, color: 'var(--action)', bg: 'rgba(45,110,232,0.10)' },
+  warning: { icon: TriangleAlert, color: 'var(--warning)', bg: 'rgba(201,138,74,0.10)' },
 }
 
-/** Design system §14 — Toast & Notifications.
- *  Coin inférieur droit, max 3 visibles, bordure gauche 3px, barre d'auto-dismiss. */
+const progressColor: Record<ToastTone, string> = {
+  success: 'var(--success)',
+  error: 'var(--danger)',
+  info: 'var(--action)',
+  warning: 'var(--warning)',
+}
+
+/** Design system §37 — Toasts & Notifications.
+ *  Coin inférieur droit, stack vertical, disparition automatique (4000 ms),
+ *  barre de progression, fermeture manuelle. */
 export function ToastContainer() {
   const { toasts, dismiss } = useToasts()
   if (toasts.length === 0) return null
 
-  // Empilement vers le haut, maximum 3 visibles (le 4e remplace le 1er via l'auto-dismiss).
+  // Le plus récent en bas de la pile (empilement vertical, chevauchement limité).
   const visible = toasts.slice(-3)
 
   const hasDanger = visible.some((t) => t.tone === 'error')
 
   return (
     <div
-      className="pointer-events-none fixed bottom-6 right-6 z-[70] flex w-[360px] max-w-[calc(100vw-3rem)] flex-col-reverse justify-start gap-3"
+      className="pointer-events-none fixed bottom-5 right-5 z-[300] flex w-[360px] max-w-[calc(100vw-2.5rem)] flex-col-reverse justify-start gap-2"
       role="status"
       aria-live={hasDanger ? 'assertive' : 'polite'}
     >
       {visible.map((t) => {
-        const Icon = toneIcons[t.tone]
+        const info = toneInfo[t.tone]
+        const Icon = info.icon
         return (
           <div
             key={t.id}
-            className="animate-toast-in pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
-            style={{ borderLeft: `3px solid ${leftBorder[t.tone]}` }}
+            className="animate-toast-in pointer-events-auto relative flex items-start gap-2.5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-3 shadow-[var(--shadow-float)]"
+            style={{ minWidth: 280, maxWidth: 380 }}
           >
-            <Icon strokeWidth={1.75} className={`size-[18px] shrink-0 ${toneIconColor[t.tone]}`} />
-            <span className="flex-1 pt-0.5 text-sm font-semibold text-[var(--color-ink)]">{t.message}</span>
-            {t.action && (
-              <button
-                onClick={() => {
-                  t.action?.onClick()
-                  dismiss(t.id)
-                }}
-                className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-2 py-0.5 text-xs font-semibold text-[var(--color-ink-dim)] transition-opacity hover:opacity-80"
+            <span
+              className="mt-px inline-flex size-[18px] shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
+              style={{ backgroundColor: info.bg, color: info.color }}
+            >
+              <Icon className="size-4" strokeWidth={1.75} />
+            </span>
+            <span className="flex-1 pt-[1px]">
+              {t.title && <span className="block text-[13px] font-medium leading-tight text-[var(--ink)]">{t.title}</span>}
+              <span
+                className={t.title ? 'mt-0.5 block text-[12px] leading-tight text-[var(--ink-dim)]' : 'block text-[13px] font-medium leading-tight text-[var(--ink)]'}
               >
-                {t.action.label}
-              </button>
-            )}
+                {t.message}
+              </span>
+              {t.action && (
+                <button
+                  onClick={() => {
+                    t.action?.onClick()
+                    dismiss(t.id)
+                  }}
+                  className="mt-1 shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--ink-dim)] transition-opacity hover:opacity-80"
+                >
+                  {t.action.label}
+                </button>
+              )}
+            </span>
             <button
               onClick={() => dismiss(t.id)}
-              className="shrink-0 rounded p-0.5 text-[var(--color-ink-faint)] opacity-60 transition-opacity hover:opacity-100"
+              className="shrink-0 rounded p-0.5 text-[var(--ink-faint)] opacity-60 transition-opacity hover:opacity-100"
               aria-label="Fermer la notification"
             >
-              <X strokeWidth={1.75} className="size-4" />
+              <X strokeWidth={1.75} className="size-3.5" />
             </button>
             {t.duration > 0 && (
-              <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[var(--color-surface-3)]">
-                <span
-                  className="toast-progress block h-full w-full"
-                  style={{
-                    backgroundColor: progressColor[t.tone],
-                    animationDuration: `${Math.max(t.duration, 100)}ms`,
-                  }}
-                />
-              </span>
+              <span
+                className="toast-progress absolute bottom-0 left-0 block h-[2px] w-full"
+                style={{ backgroundColor: progressColor[t.tone], animationDuration: `${Math.max(t.duration, 100)}ms` }}
+              />
             )}
           </div>
         )

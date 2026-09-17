@@ -27,7 +27,7 @@ export function LogoEtablissement({ src, nom, className, label = false }: LogoEt
   return (
     <span
       className={clsx(
-        'flex items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-ink-faint)]',
+        'flex items-center justify-center overflow-hidden rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-ink-faint)]',
         label && 'flex-col gap-1',
         className,
       )}

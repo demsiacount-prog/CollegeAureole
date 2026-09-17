@@ -109,7 +109,7 @@ export function SplashScreen({
 
         {/* Nom : fondu simple, pas de stagger */}
         <motion.h1
-          className="mt-6 font-[var(--font-display)] text-[32px] font-semibold text-[var(--color-ink)]"
+          className="mt-6 font-[var(--font-serif)] text-[32px] font-semibold text-[var(--color-ink)]"
           initial={reduce ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -119,7 +119,7 @@ export function SplashScreen({
 
         {devise && (
           <motion.p
-            className="mt-1 font-[var(--font-display)] text-[13px] italic text-[var(--color-halo-dim)]"
+            className="mt-1 font-[var(--font-serif)] text-[13px] italic text-[var(--color-halo-dim)]"
             initial={reduce ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.45 }}

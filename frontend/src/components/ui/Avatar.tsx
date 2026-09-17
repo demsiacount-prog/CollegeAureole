@@ -21,7 +21,7 @@ export function Avatar({
 }) {
   const [failed, setFailed] = useState(false)
   const sizeClasses = {
-    sm: 'size-7 text-[11px]',
+    sm: 'size-[26px] text-[10px]',
     md: 'size-9 text-sm',
     lg: 'size-14 text-lg',
   }[size]

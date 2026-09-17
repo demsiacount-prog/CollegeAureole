@@ -96,7 +96,7 @@ export function SearchableSelect({
   return (
     <div className="flex flex-col gap-1.5" ref={rootRef}>
       {label && (
-        <span className="text-sm font-medium text-[var(--color-ink-dim)]">{label}</span>
+        <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       )}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
@@ -121,7 +121,7 @@ export function SearchableSelect({
           className={clsx(
             'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] pl-9 pr-9 text-sm text-[var(--color-ink)]',
             'placeholder:text-[var(--color-ink-faint)] transition-colors duration-150',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-halo)] focus-visible:border-[var(--color-halo)]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)] focus-visible:border-[var(--color-action)]',
             error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
           )}
         />
@@ -141,7 +141,7 @@ export function SearchableSelect({
         <div className="relative z-20">
           <ul
             role="listbox"
-            className="absolute left-0 right-0 max-h-56 overflow-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-soft)]"
+            className="absolute left-0 right-0 max-h-56 overflow-auto rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-float)]"
           >
             {filtered.length === 0 ? (
               <li className="px-3 py-2 text-sm text-[var(--color-ink-faint)]">{emptyMessage}</li>

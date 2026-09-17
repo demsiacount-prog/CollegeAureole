@@ -3,8 +3,8 @@ import { Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'icon'
-type Size = 'icon' | 'sm' | 'md'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'ghost-danger' | 'icon'
+type Size = 'sm' | 'md' | 'lg' | 'icon'
 type Tone = 'neutral' | 'danger' | 'success' | 'warning'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,33 +16,41 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   href?: string
 }
 
+/** Design system §33 — Boutons & Actions.
+ *  Base : 30px de haut, radius-md, Inter 12.5px/500, transition 80ms. */
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-[var(--color-action)] text-white hover:bg-[var(--color-action-dark)] shadow-[0_1px_0_0_rgba(255,255,255,0.15)_inset]',
+    'bg-[var(--halo)] text-[var(--halo-ink)] hover:bg-[var(--halo-bright)] active:bg-[var(--halo-dim)]',
   secondary:
-    'bg-[var(--color-surface-3)] text-[var(--color-ink)] border border-[var(--color-border)] hover:bg-[var(--color-surface-2)]',
-  ghost: 'bg-transparent text-[var(--color-ink-dim)]',
-  danger: 'bg-transparent text-[var(--color-danger)] border border-[var(--color-danger)]/40 hover:bg-[var(--color-danger-wash)]',
-  icon: 'bg-transparent text-[var(--color-ink-faint)]',
+    'bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--border)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-3)]',
+  ghost:
+    'bg-transparent text-[var(--ink-dim)] border border-[var(--border)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] active:bg-[var(--surface-3)]',
+  danger:
+    'bg-[var(--danger)] text-white hover:bg-[#e8848f] active:bg-[#c85e6b]',
+  'ghost-danger':
+    'bg-transparent text-[var(--danger)] border border-[rgba(224,112,127,0.30)] hover:bg-[var(--danger-w)]',
+  icon: 'bg-transparent text-[var(--ink-faint)]',
 }
 
 const hoverTones: Record<Tone, string> = {
-  neutral: 'hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]',
-  danger: 'hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]',
-  success: 'hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]',
-  warning: 'hover:bg-[var(--color-warning-wash)] hover:text-[var(--color-warning)]',
+  neutral: 'hover:bg-[var(--surface-3)] hover:text-[var(--ink)]',
+  danger: 'hover:bg-[var(--danger-w)] hover:text-[var(--danger)]',
+  success: 'hover:bg-[var(--success-w)] hover:text-[var(--success)]',
+  warning: 'hover:bg-[var(--warning-w)] hover:text-[var(--warning)]',
 }
 
 const sizeClasses: Record<Size, string> = {
-  icon: 'size-8',
-  sm: 'h-8 px-3 text-sm gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
+  sm: 'h-[26px] px-[9px] text-[12px]',
+  md: 'h-[30px] px-[11px] text-[12.5px]',
+  lg: 'h-[36px] px-[14px] text-[13.5px]',
+  icon: 'size-[30px] p-0 [&>svg]:size-[15px]',
 }
 
 const baseClasses = (variant: Variant, size: Size, tone: Tone, className?: string) =>
   clsx(
-    'inline-flex items-center justify-center rounded-[var(--radius-sm)] font-medium transition-colors duration-150',
-    'disabled:opacity-50 disabled:cursor-not-allowed',
+    'inline-flex items-center justify-center gap-[5px] rounded-[var(--radius-md)] font-medium leading-none',
+    'whitespace-nowrap select-none transition-[background,color,border-color,opacity] duration-80',
+    'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
     variantClasses[variant],
     (variant === 'ghost' || variant === 'icon') && hoverTones[tone],
     sizeClasses[size],
@@ -60,14 +68,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     )
     if (to) {
       return (
-        <Link {...(rest as ComponentProps<typeof Link>)} to={to} className={classes}>
+        <Link {...(rest as ComponentProps<typeof Link>)} to={to} className={clsx(classes, 'no-underline')}>
           {content}
         </Link>
       )
     }
     if (href) {
       return (
-        <a href={href} className={classes} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
+        <a href={href} className={clsx(classes, 'no-underline')} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
           {content}
         </a>
       )
@@ -80,3 +88,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   },
 )
 Button.displayName = 'Button'
+
+/** Bouton icône seule — §33 `.btn-icon`. Taille par défaut 30×30 (sm = 26×26). */
+export function IconButton({
+  size = 'md',
+  className,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { size?: Size }) {
+  return (
+    <button
+      className={clsx(
+        'inline-flex items-center justify-center rounded-[var(--radius-md)] transition-colors duration-80',
+        'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
+        'text-[var(--ink-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
+        size === 'sm' ? 'size-[26px] [&>svg]:size-3.5' : 'size-[30px] [&>svg]:size-[15px]',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </button>
+  )
+}

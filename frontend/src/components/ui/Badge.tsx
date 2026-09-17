@@ -1,8 +1,9 @@
 import type { HTMLAttributes } from 'react'
 import { clsx } from 'clsx'
-import type { Role } from '@/types'
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
+
+export type BadgeTone = Tone
 
 const toneClasses: Record<Tone, string> = {
   neutral: 'bg-[var(--color-surface-3)] text-[var(--color-ink-dim)]',
@@ -27,15 +28,4 @@ export function Badge({ tone = 'neutral', className, ...rest }: BadgeProps) {
       {...rest}
     />
   )
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrateur',
-  directeur: 'Directeur',
-  comptable: 'Comptable',
-}
-
-export function RoleBadge({ role }: { role: Role }) {
-  const tone: Tone = role === 'admin' ? 'danger' : role === 'directeur' ? 'info' : 'success'
-  return <Badge tone={tone}>{ROLE_LABELS[role] ?? role}</Badge>
 }

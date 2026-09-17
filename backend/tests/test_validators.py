@@ -11,10 +11,9 @@ from validators import (
     assert_unique,
     assert_valid_email,
     assert_valid_phone,
-    assert_user_can_write,
     assert_valid_status,
 )
-from exceptions import NotFoundError, DuplicateError, ValidationError, ForbiddenError
+from exceptions import NotFoundError, DuplicateError, ValidationError
 
 
 class TestAssertFound:
@@ -57,19 +56,6 @@ class TestAssertValidPhone:
         for tel in ("", "12", "abc", "123"):
             with pytest.raises(ValidationError):
                 assert_valid_phone(tel)
-
-
-class TestAssertUserCanWrite:
-    def test_autorise_les_roles_requis(self):
-        class U:
-            role = "admin"
-        assert_user_can_write(U(), ["admin", "directeur"])
-
-    def test_refuse_les_autres(self):
-        class U:
-            role = "comptable"
-        with pytest.raises(ForbiddenError):
-            assert_user_can_write(U(), ["admin", "directeur"])
 
 
 class TestAssertValidStatus:

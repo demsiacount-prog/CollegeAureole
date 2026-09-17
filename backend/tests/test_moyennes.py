@@ -78,9 +78,9 @@ class _Seed:
         db.add(self.francais)
         db.flush()
 
-    def ajouter_note(self, trimestre, cours, note):
+    def ajouter_note(self, trimestre, cours, note, note_classe=None):
         self.db.add(models.Notes(
-            date=trimestre.date_debut, note=note,
+            date=trimestre.date_debut, note=note, note_classe=note_classe,
             matricule_eleve=self.eleve.matricule, id_cours=cours.id,
             id_classe=self.classe.id, matricule_enseignant=self.enseignant.matricule,
             id_trimestre=trimestre.id,
@@ -157,6 +157,23 @@ def test_notes_par_matiere_agrege_la_moyenne(db_session):
     assert par_matiere["Mathématiques"].moyenne == 14.0  # (12+16)/2
     assert par_matiere["Français"].nb_notes == 2
     assert par_matiere["Français"].moyenne == 14.0  # (10+18)/2
+
+
+def test_notes_par_matiere_agrege_60_40_sans_notes_classe(db_session):
+    s = _setup(db_session)
+    # Moyenne matière = 60% comp + 40% classe (fallback comp si classe absente).
+    # Maths : t1 (12, 10) → 11.2 ; t2 (16, 18) → 16.8 → moyenne 14.0
+    # Français : t1 (10, absent) → 10 ; t2 (18, absent) → 18 → moyenne 14.0
+    s.ajouter_note(s.t1, s.maths, 12.0, note_classe=10.0)
+    s.ajouter_note(s.t2, s.maths, 16.0, note_classe=18.0)
+    s.ajouter_note(s.t1, s.francais, 10.0)
+    s.ajouter_note(s.t2, s.francais, 18.0)
+    db_session.commit()
+
+    matieres = calculer_notes_par_matiere(db_session, s.eleve.matricule, s.annee.id)
+    par_matiere = {m.matiere: m for m in matieres}
+    assert par_matiere["Mathématiques"].moyenne == 14.0  # (11.2 + 16.8) / 2
+    assert par_matiere["Français"].moyenne == 14.0       # (10 + 18) / 2, sans note de classe
 
 
 def test_notes_par_matiere_sans_notes_vide(db_session):

@@ -19,7 +19,6 @@ class TestConnexion:
         body = resp.json()
         assert body["access_token"]
         assert body["utilisateur"]["email"] == admin_user.email
-        assert body["utilisateur"]["role"] == "admin"
 
     def test_mauvais_mot_de_passe(self, client, admin_user):
         resp = _connecter(client, admin_user.email, "MauvaisMotDePasse!")
@@ -33,13 +32,12 @@ class TestConnexion:
 class TestCompteDesactive:
     def test_connexion_dun_compte_desactive_refusee(self, client, db_session):
         from models.utilisateurs import Utilisateurs
-        from enums import RoleUtilisateur
 
         user = Utilisateurs(
             nom="Desactive", prenom="Test",
             email="desactive@etablissement.com",
             mot_de_passe=hash_password("Password123!"),
-            role=RoleUtilisateur.ADMIN, actif=False,
+            actif=False,
         )
         db_session.add(user)
         db_session.commit()

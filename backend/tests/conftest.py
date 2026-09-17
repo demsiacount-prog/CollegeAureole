@@ -46,7 +46,6 @@ import models  # noqa: E402
 from database import Base, get_db  # noqa: E402
 from main import app  # noqa: E402
 from hashing import hash_password  # noqa: E402
-from enums import RoleUtilisateur  # noqa: E402
 from security import create_access_token  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -109,7 +108,6 @@ def admin_user(db_session):
         prenom="Test",
         email="admin-test@etablissement.com",
         mot_de_passe=hash_password("Password123!"),
-        role=RoleUtilisateur.ADMIN,
         actif=True,
     )
     db_session.add(user)
@@ -121,7 +119,7 @@ def admin_user(db_session):
 @pytest.fixture()
 def admin_token(admin_user, db_session):
     """JWT valide pour le compte admin de test."""
-    return create_access_token(utilisateur_id=admin_user.id, role=admin_user.role.value)
+    return create_access_token(utilisateur_id=admin_user.id)
 
 
 @pytest.fixture()

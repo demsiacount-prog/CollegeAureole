@@ -3,8 +3,9 @@ import { login } from './helpers'
 
 const HALO = '217, 167, 92' // #d9a75c
 const BRAND = 'rgb(45, 110, 232)' // #2d6ee8
+const ACTION_RING = '45, 110, 232' // rgba(--action-ring)
 
-test.describe('Design system v3 — halo réservé (focus + sidebar + marque), actions primaires en brand', () => {
+test.describe('Design system v5 — halo réservé (marque + sidebar active), actions en brand, focus formulaire en action-ring', () => {
   test('page de connexion : marque en halo, actions/boutons en brand', async ({ page }) => {
     await page.goto('/connexion')
 
@@ -24,17 +25,19 @@ test.describe('Design system v3 — halo réservé (focus + sidebar + marque), a
     expect(cadenasBox, 'carré cadenas = brand').toBe(BRAND)
   })
 
-  test('focus clavier : anneau halo sur les champs (focus réservé au halo)', async ({ page }) => {
+  test('focus clavier sur un champ : anneau action-ring bleu (v5.0 — focus formulaire séparé du halo)', async ({ page }) => {
     await page.goto('/connexion')
     const email = page.getByPlaceholder('prenom.nom@etablissement.com')
     await email.focus()
     await page.waitForTimeout(150)
     const shadow = await email.evaluate((el) => getComputedStyle(el).boxShadow)
-    expect(shadow, `box-shadow du focus = halo. Obtenu : ${shadow}`).toContain(HALO)
+    expect(shadow, `box-shadow du focus = action-ring. Obtenu : ${shadow}`).toContain(ACTION_RING)
+    const border = await email.evaluate((el) => getComputedStyle(el).borderColor)
+    expect(border, `bordure au focus = action. Obtenu : ${border}`).toBe(BRAND)
   })
 
   test('après connexion : item actif de la sidebar en halo, bouton primaire et contenu en brand', async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
     await page.goto('/app/salles')
 
     const actif = page.locator('a[href="/app/salles"]')

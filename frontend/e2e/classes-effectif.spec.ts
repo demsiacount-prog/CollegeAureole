@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { login } from './helpers'
 
 test('les classes affichent leur effectif', async ({ page }) => {
-  await login(page, 'admin')
+  await login(page)
   await page.goto('/app/classes')
   await expect(page.getByRole('heading', { name: 'Classes' })).toBeVisible()
 

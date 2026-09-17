@@ -113,7 +113,7 @@ test.describe('Saisie des notes', () => {
       trimestreId = created.trimestreId
       const { classeId, coursId, classeNom, coursNom } = await creerFixtures(api)
 
-      await login(page, 'admin')
+      await login(page)
       await page.goto('/app/notes')
       await expect(page.getByRole('heading', { name: 'Saisie des notes' })).toBeVisible()
 
@@ -183,7 +183,7 @@ test.describe('Saisie des notes', () => {
       ).json()
       for (const t of trimestres) await api.delete(`/api/trimestres/${t.id}`)
 
-      await login(page, 'admin')
+      await login(page)
       await page.goto('/app/notes')
       await page.getByLabel('Année scolaire').selectOption({ label: `${PREFIX} — Sans période` })
       await page.getByLabel('Classe').selectOption({ label: classeNom })

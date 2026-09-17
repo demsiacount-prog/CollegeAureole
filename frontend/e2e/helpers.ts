@@ -2,17 +2,12 @@ import { request, type APIRequestContext, type Page } from '@playwright/test'
 
 export const API_BASE = 'http://localhost:3001'
 
-export type Role = 'admin' | 'directeur' | 'comptable'
-
-export const CREDENTIALS: Record<Role, { email: string; password: string }> = {
-  admin: { email: 'admin@etablissement.com', password: 'Password123!' },
-  directeur: { email: 'directeur@etablissement.com', password: 'Password123!' },
-  comptable: { email: 'comptable@etablissement.com', password: 'Password123!' },
-}
+/** Compte unique d'administration (rôles supprimés depuis v5). */
+export const ADMIN_CREDENTIALS = { email: 'admin@etablissement.com', password: 'Password123!' }
 
 /** Connexion via le formulaire de connexion réel (workflow utilisateur). */
-export async function login(page: Page, role: Role = 'admin') {
-  const creds = CREDENTIALS[role]
+export async function login(page: Page) {
+  const creds = ADMIN_CREDENTIALS
   await page.goto('/')
   await page.evaluate(() => localStorage.removeItem('aureole_token'))
   await page.goto('/connexion')
@@ -24,8 +19,8 @@ export async function login(page: Page, role: Role = 'admin') {
 }
 
 /** Connexion via l'API — utilitaire quand le formulaire n'est pas l'objet du test. */
-export async function loginViaApi(page: Page, role: Role = 'admin') {
-  const creds = CREDENTIALS[role]
+export async function loginViaApi(page: Page) {
+  const creds = ADMIN_CREDENTIALS
   const ctx = await request.newContext({ baseURL: API_BASE })
   const res = await ctx.post('/api/auth/connexion', {
     data: { email: creds.email, mot_de_passe: creds.password },
@@ -42,8 +37,8 @@ export async function loginViaApi(page: Page, role: Role = 'admin') {
 }
 
 /** Contexte API authentifié (3001) : vérifications et nettoyage. */
-export async function apiContext(role: Role = 'admin'): Promise<APIRequestContext> {
-  const creds = CREDENTIALS[role]
+export async function apiContext(): Promise<APIRequestContext> {
+  const creds = ADMIN_CREDENTIALS
   const auth = await request.newContext({ baseURL: API_BASE })
   const res = await auth.post('/api/auth/connexion', {
     data: { email: creds.email, mot_de_passe: creds.password },
@@ -60,19 +55,20 @@ export async function apiContext(role: Role = 'admin'): Promise<APIRequestContex
 export const ROUTES: { label: string; path: string }[] = [
   { label: 'Tableau de bord', path: '/app' },
   { label: 'Élèves', path: '/app/eleves' },
-  { label: 'Enseignants', path: '/app/enseignants' },
-  { label: 'Tuteurs', path: '/app/tuteurs' },
   { label: 'Classes', path: '/app/classes' },
-  { label: 'Salles', path: '/app/salles' },
   { label: 'Inscriptions', path: '/app/inscriptions' },
-  { label: 'Absences', path: '/app/absences' },
+  { label: 'Tuteurs', path: '/app/tuteurs' },
+  { label: 'Enseignants', path: '/app/enseignants' },
+  { label: 'Cours', path: '/app/cours' },
   { label: 'Notes', path: '/app/notes' },
   { label: 'Bulletins', path: '/app/bulletins' },
   { label: 'Résultats', path: '/app/resultats' },
-  { label: 'Cours', path: '/app/cours' },
-  { label: 'Emploi du temps', path: '/app/seances' },
+  { label: 'Séances', path: '/app/seances' },
+  { label: 'Absences', path: '/app/absences' },
   { label: 'Paiements', path: '/app/paiements' },
   { label: 'Dépenses', path: '/app/depenses' },
+  { label: 'Salles', path: '/app/salles' },
+  { label: 'Documents administratifs', path: '/app/documents' },
   { label: 'Clôture d’année', path: '/app/cloture-annee' },
   { label: 'Paramètres', path: '/app/parametres' },
 ]

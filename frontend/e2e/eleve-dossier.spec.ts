@@ -33,8 +33,8 @@ test.describe('Dossier élève — Inscription', () => {
   }
 
   test('élève non inscrit : inscription via le drawer, bouton masqué ensuite', async ({ page }) => {
-    await login(page, 'admin')
-    const api = await apiContext('admin')
+    await login(page)
+    const api = await apiContext()
     const { classe2e, tuteurId } = await setupFixtures(api)
 
     if (!tuteurId || !classe2e) {
@@ -64,8 +64,8 @@ test.describe('Dossier élève — Inscription', () => {
   })
 
   test('échec d\'inscription : message clair affiché et champs conservés', async ({ page }) => {
-    await login(page, 'admin')
-    const api = await apiContext('admin')
+    await login(page)
+    const api = await apiContext()
     const { anneeActive, classe3e, tuteurId } = await setupFixtures(api)
 
     if (!tuteurId || !classe3e || !anneeActive) {

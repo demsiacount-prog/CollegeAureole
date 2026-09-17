@@ -9,7 +9,7 @@ const API_BASE = 'http://localhost:3001'
 type Auth = { headers: Record<string, string> }
 
 async function authDe(page: import('@playwright/test').Page): Promise<Auth> {
-  await login(page, 'admin')
+  await login(page)
   const token = await page.evaluate(() => localStorage.getItem('aureole_token'))
   return { headers: { Authorization: `Bearer ${token}` } }
 }

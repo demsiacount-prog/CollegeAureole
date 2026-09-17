@@ -29,7 +29,7 @@ async function pickCombobox(page: Page, value: string) {
 
   test.describe('Parcours complet de l\'année scolaire (base unique collegeaureole, 3001)', () => {
   test('création des entités pédagogiques via l\'UI (salle, enseignant, classe, cours)', async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
 
     await page.goto('/app/salles')
     await page.getByRole('button', { name: 'Nouvelle salle' }).click()
@@ -78,7 +78,7 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByRole('button', { name: 'Créer' }).click()
     await expect(page.getByText('Cours créé avec succès')).toBeVisible({ timeout: 10_000 })
 
-    const api = await apiContext('admin')
+    const api = await apiContext()
     const cours = await (await api.get('/api/cours/', { params: { limit: 500 } })).json()
     const monCours = cours.find((c) => c.nom === NOM_COURS)
     expect(monCours).toBeTruthy()
@@ -88,7 +88,7 @@ async function pickCombobox(page: Page, value: string) {
   })
 
   test('inscription complète via l\'assistant puis paiement via l\'UI', async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
 
     await page.goto('/app/inscriptions')
     await page.getByRole('button', { name: 'Nouvelle inscription' }).first().click()
@@ -130,7 +130,7 @@ async function pickCombobox(page: Page, value: string) {
     await expect(row).toBeVisible({ timeout: 15_000 })
     await expect(row).toContainText('Inscrit')
 
-    const api = await apiContext('admin')
+    const api = await apiContext()
     const inscriptions = await (await api.get('/api/inscriptions/', { params: { q: NOM_ELEVE } })).json()
     const insc = inscriptions[0]
     expect(insc).toBeTruthy()
@@ -160,9 +160,9 @@ async function pickCombobox(page: Page, value: string) {
   })
 
   test('saisie de note via l\'UI puis génération et publication du bulletin', async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
 
-    const api = await apiContext('admin')
+    const api = await apiContext()
     const inscriptions = await (await api.get('/api/inscriptions/', { params: { q: NOM_ELEVE } })).json()
     const matricule = inscriptions[0]?.matricule_eleve
     expect(matricule).toBeTruthy()
@@ -183,7 +183,7 @@ async function pickCombobox(page: Page, value: string) {
     const noteInput = page.getByLabel(`Note de ${PRENOM_ELEVE} ${NOM_ELEVE}`)
     await expect(noteInput).toBeVisible({ timeout: 15_000 })
     await noteInput.fill(NOTE)
-    await expect(page.getByText('Excellent')).toBeVisible()
+    await expect(page.getByText('Très bien')).toBeVisible()
 
     await page.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(page.getByText('Notes enregistrées.')).toBeVisible({ timeout: 15_000 })
@@ -208,9 +208,9 @@ async function pickCombobox(page: Page, value: string) {
   })
 
   test('consultation du dossier élève : profil, résultats et bulletin', async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
 
-    const api = await apiContext('admin')
+    const api = await apiContext()
     const inscriptions = await (await api.get('/api/inscriptions/', { params: { q: NOM_ELEVE } })).json()
     const matricule = inscriptions[0]?.matricule_eleve
     expect(matricule).toBeTruthy()
@@ -231,7 +231,7 @@ async function pickCombobox(page: Page, value: string) {
   })
 
   test('nettoyage des données du parcours via l\'API', async () => {
-    const api = await apiContext('admin')
+    const api = await apiContext()
 
     const inscriptions = await (await api.get('/api/inscriptions/', { params: { q: NOM_ELEVE } })).json()
     for (const insc of inscriptions) {

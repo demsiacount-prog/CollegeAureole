@@ -2,7 +2,7 @@ import { test, expect, request } from '@playwright/test'
 import { login } from './helpers'
 
 test('paiements : recherche dans le sélect et création', async ({ page }) => {
-  await login(page, 'admin')
+  await login(page)
 
   const ctx = await request.newContext({ baseURL: 'http://localhost:3001' })
   const authRes = await ctx.post('/api/auth/connexion', {

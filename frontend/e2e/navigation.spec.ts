@@ -3,7 +3,7 @@ import { login, ROUTES } from './helpers'
 
 test.describe('Navigation — chaque page se charge sans crash', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page, 'admin')
+    await login(page)
   })
 
   for (const route of ROUTES) {

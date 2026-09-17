@@ -18,6 +18,16 @@ async function creerApiContexte(): Promise<APIRequestContext> {
   })
 }
 
+test('les onglets Paramètres ne proposent plus « Sécurité »', async ({ page }) => {
+  await login(page)
+  await page.goto('/app/parametres')
+
+  for (const label of ['Fiche établissement', 'Années scolaires', 'Utilisateurs', 'Export des données']) {
+    await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible()
+  }
+  await expect(page.getByRole('button', { name: 'Sécurité', exact: true })).toHaveCount(0)
+})
+
 test('bouton « Générer les périodes par défaut » dans Paramètres', async ({ page }) => {
   const api = await creerApiContexte()
   let anneeId = 0
@@ -33,7 +43,7 @@ test('bouton « Générer les périodes par défaut » dans Paramètres', async 
     ).json()
     for (const t of trimestres) await api.delete(`/api/trimestres/${t.id}`)
 
-    await login(page, 'admin')
+    await login(page)
     await page.goto('/app/parametres')
 
     const ligne = page.getByRole('row').filter({ hasText: PREFIX })

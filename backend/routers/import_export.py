@@ -9,13 +9,12 @@ from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from database import get_db
+from security import get_current_user
 import models
-from security import require_role
-
 router = APIRouter(
     prefix="/api/import-export",
     tags=["Import / Export"],
-    dependencies=[Depends(require_role("admin"))],
+    dependencies=[Depends(get_current_user)],
 )
 
 

@@ -6,7 +6,7 @@ from sqlalchemy import or_, and_, func
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 
 router = APIRouter(prefix="/api/paiements", tags=["Paiements"], dependencies=[Depends(get_current_user)])
 
@@ -76,7 +76,7 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, ob
     return {"paiements_crees": paiements_crees, "echeances_mises_a_jour": echeances_maj, "reste_global": reste_global}
 
 
-@router.post("/", response_model=schemas.PaiementResultResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.post("/", response_model=schemas.PaiementResultResponse, status_code=status.HTTP_201_CREATED)
 def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = Depends(get_db)):
     inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == payload.id_inscription).first()
     if not inscription:
@@ -188,7 +188,7 @@ def _appliquer_filtres_paiements(db, query, id_inscription, matricule_eleve, dat
     return query
 
 
-@router.get("/", response_model=List[schemas.PaiementResponse], dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/", response_model=List[schemas.PaiementResponse])
 def lister_paiements(
     id_inscription: Optional[int] = None,
     matricule_eleve: Optional[str] = None,
@@ -215,7 +215,7 @@ def lister_paiements(
     return results
 
 
-@router.get("/compte", dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/compte")
 def compter_paiements(
     id_inscription: Optional[int] = None,
     matricule_eleve: Optional[str] = None,
@@ -230,7 +230,7 @@ def compter_paiements(
     return {"total": query.count()}
 
 
-@router.get("/relances", response_model=List[schemas.RelanceResponse], dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/relances", response_model=List[schemas.RelanceResponse])
 def get_echeances_en_retard(db: Session = Depends(get_db)):
     """Échéances impayées dont la date est dépassée — base pour les relances
     (email/SMS à brancher séparément). Chaque relance embarque l'élève, sa
@@ -272,7 +272,51 @@ def get_echeances_en_retard(db: Session = Depends(get_db)):
     return resultats
 
 
-@router.get("/{paiement_id}", response_model=schemas.PaiementResponse, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/stats", response_model=schemas.PaiementStatsResponse)
+def get_paiement_stats(db: Session = Depends(get_db)):
+    """Synthèse 'payé / impayé' sur tout l'historique, pour les cartes de la
+    page Paiements :
+      - total_encaisse : somme des règlements réellement encaissés ;
+      - montant_impaye : reste à devoir (montant_du - montant_paye) sur les
+        échéances non soldées. Les échéances REPORTE sources d'un report
+        (id_echeance_origine NULL) sont exclues : leur impayé a été transféré
+        dans une nouvelle échéance REPORTE portée (id_echeance_origine non
+        NULL), incluse, pour éviter de compter deux fois le même impayé."""
+    total_encaisse = (
+        db.query(func.coalesce(func.sum(models.Paiements.montant), 0.0)).scalar() or 0.0
+    )
+
+    impayees = (
+        db.query(models.Echeances)
+        .filter(
+            models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"])
+            | (
+                (models.Echeances.statut == "REPORTE")
+                & (models.Echeances.id_echeance_origine.isnot(None))
+            )
+        )
+        .all()
+    )
+    montant_impaye = round(
+        sum(max(ech.montant_du - ech.montant_paye, 0.0) for ech in impayees), 2
+    )
+
+    nb_echeances_soldees = (
+        db.query(func.count(models.Echeances.id))
+        .filter(models.Echeances.statut == "SOLDE")
+        .scalar()
+        or 0
+    )
+
+    return {
+        "total_encaisse": round(float(total_encaisse), 2),
+        "montant_impaye": montant_impaye,
+        "nb_echeances_soldees": nb_echeances_soldees,
+        "nb_echeances_impayees": len(impayees),
+    }
+
+
+@router.get("/{paiement_id}", response_model=schemas.PaiementResponse)
 def get_paiement(paiement_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
     if not p:
@@ -280,7 +324,7 @@ def get_paiement(paiement_id: int, db: Session = Depends(get_db)):
     return p
 
 
-@router.put("/{paiement_id}", response_model=schemas.PaiementResponse, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.put("/{paiement_id}", response_model=schemas.PaiementResponse)
 def modifier_paiement(paiement_id: int, payload: schemas.PaiementUpdate, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
     if not p:
@@ -307,7 +351,7 @@ def modifier_paiement(paiement_id: int, payload: schemas.PaiementUpdate, db: Ses
     return p
 
 
-@router.delete("/{paiement_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.delete("/{paiement_id}", status_code=status.HTTP_204_NO_CONTENT)
 def supprimer_paiement(paiement_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
     if not p:
@@ -328,7 +372,7 @@ def supprimer_paiement(paiement_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.get("/echeances/{id_inscription}", response_model=List[schemas.EcheanceResponse], dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/echeances/{id_inscription}", response_model=List[schemas.EcheanceResponse])
 def get_echeances(id_inscription: int, db: Session = Depends(get_db)):
     return (
         db.query(models.Echeances)
@@ -360,8 +404,7 @@ def _supprimer_remise(db: Session, echeance: models.Echeances, montant_remise: f
     _mettre_a_jour_statut(echeance)
 
 
-@router.post("/echeances/{id_echeance}/remises", status_code=status.HTTP_201_CREATED,
-             dependencies=[Depends(require_role("admin", "comptable"))])
+@router.post("/echeances/{id_echeance}/remises", status_code=status.HTTP_201_CREATED)
 def appliquer_remise(id_echeance: int, payload: schemas.RemiseCreate,
                      db: Session = Depends(get_db), user=Depends(get_current_user)):
     ech = db.query(models.Echeances).filter(models.Echeances.id == id_echeance).first()
@@ -388,8 +431,7 @@ def appliquer_remise(id_echeance: int, payload: schemas.RemiseCreate,
     return schemas.RemiseResponse(**data)
 
 
-@router.get("/echeances/{id_echeance}/remises", response_model=List[schemas.RemiseResponse],
-            dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/echeances/{id_echeance}/remises", response_model=List[schemas.RemiseResponse])
 def lister_remises(id_echeance: int, db: Session = Depends(get_db)):
     return (
         db.query(models.Remises)
@@ -400,8 +442,7 @@ def lister_remises(id_echeance: int, db: Session = Depends(get_db)):
     )
 
 
-@router.delete("/remises/{remise_id}", status_code=status.HTTP_204_NO_CONTENT,
-               dependencies=[Depends(require_role("admin", "comptable"))])
+@router.delete("/remises/{remise_id}", status_code=status.HTTP_204_NO_CONTENT)
 def supprimer_remise(remise_id: int, db: Session = Depends(get_db)):
     remise = db.query(models.Remises).filter(models.Remises.id == remise_id).first()
     if not remise:
@@ -419,8 +460,7 @@ def supprimer_remise(remise_id: int, db: Session = Depends(get_db)):
 
 # ─── Paiement groupé par tuteur ─────────────────────────────────────────────
 
-@router.post("/groupes", status_code=status.HTTP_201_CREATED,
-             dependencies=[Depends(require_role("admin", "comptable"))])
+@router.post("/groupes", status_code=status.HTTP_201_CREATED)
 def enregistrer_paiement_groupe(payload: schemas.PaiementGroupeCreate,
                                 db: Session = Depends(get_db)):
     """Enregistre un paiement unique réparti équitablement entre les enfants

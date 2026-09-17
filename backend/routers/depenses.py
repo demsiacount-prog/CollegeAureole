@@ -7,12 +7,12 @@ from sqlalchemy import or_, func
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 
 router = APIRouter(prefix="/api/depenses", tags=["Dépenses"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("/", response_model=schemas.DepenseResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.post("/", response_model=schemas.DepenseResponse, status_code=status.HTTP_201_CREATED)
 def creer_depense(payload: schemas.DepenseCreate, db: Session = Depends(get_db)):
     depense = models.Depenses(**payload.model_dump())
     db.add(depense)
@@ -39,7 +39,7 @@ def _appliquer_filtres_depenses(query, date_debut, date_fin, categorie, q):
     return query
 
 
-@router.get("/", response_model=List[schemas.DepenseResponse], dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/", response_model=List[schemas.DepenseResponse])
 def lister_depenses(
     date_debut: Optional[date_type] = None,
     date_fin:   Optional[date_type] = None,
@@ -53,7 +53,7 @@ def lister_depenses(
     return query.order_by(models.Depenses.date.desc()).offset(skip).limit(limit).all()
 
 
-@router.get("/compte", dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/compte")
 def compter_depenses(
     date_debut: Optional[date_type] = None,
     date_fin:   Optional[date_type] = None,
@@ -66,7 +66,7 @@ def compter_depenses(
     return {"total": query.count(), "total_montant": total_montant}
 
 
-@router.get("/{depense_id}", response_model=schemas.DepenseResponse, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.get("/{depense_id}", response_model=schemas.DepenseResponse)
 def get_depense(depense_id: int, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
@@ -74,7 +74,7 @@ def get_depense(depense_id: int, db: Session = Depends(get_db)):
     return dep
 
 
-@router.put("/{depense_id}", response_model=schemas.DepenseResponse, dependencies=[Depends(require_role("admin", "comptable"))])
+@router.put("/{depense_id}", response_model=schemas.DepenseResponse)
 def modifier_depense(depense_id: int, payload: schemas.DepenseUpdate, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
@@ -86,7 +86,7 @@ def modifier_depense(depense_id: int, payload: schemas.DepenseUpdate, db: Sessio
     return dep
 
 
-@router.delete("/{depense_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{depense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def supprimer_depense(depense_id: int, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:

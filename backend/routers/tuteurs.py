@@ -6,12 +6,12 @@ from typing import List, Optional
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from services.protections import verifier_tuteur
 
 router = APIRouter(prefix="/api/tuteurs", tags=["Tuteurs"], dependencies=[Depends(get_current_user)])
 
-@router.post("/", response_model=schemas.TuteurResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.TuteurResponse, status_code=status.HTTP_201_CREATED)
 def create_tuteur(tuteur: schemas.TuteurCreate, db: Session = Depends(get_db)):
     nouveau_tuteur = models.Tuteurs(**tuteur.model_dump())
     db.add(nouveau_tuteur)
@@ -59,7 +59,7 @@ def get_tuteur(tuteur_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tuteur introuvable")
     return db_tuteur
 
-@router.put("/{tuteur_id}", response_model=schemas.TuteurResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{tuteur_id}", response_model=schemas.TuteurResponse)
 def update_tuteur(tuteur_id: int, tuteur_update: schemas.TuteurCreate, db: Session = Depends(get_db)):
     db_tuteur = db.query(models.Tuteurs).filter(models.Tuteurs.id == tuteur_id).first()
     if not db_tuteur:
@@ -70,7 +70,7 @@ def update_tuteur(tuteur_id: int, tuteur_update: schemas.TuteurCreate, db: Sessi
     db.refresh(db_tuteur)
     return db_tuteur
 
-@router.delete("/{tuteur_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{tuteur_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tuteur(tuteur_id: int, db: Session = Depends(get_db)):
     db_tuteur = db.query(models.Tuteurs).filter(models.Tuteurs.id == tuteur_id).first()
     if not db_tuteur:

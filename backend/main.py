@@ -19,7 +19,7 @@ from routers import (
     notes,
     annees_scolaires,
     trimestres,
-    bulletins, utilisateurs, absences, dashboard,
+    bulletins, absences, dashboard,
     inscriptions,
     paiements,
     seances,
@@ -28,9 +28,11 @@ from routers import (
     resultats,
     cloture,
     documents,
+    rapports,
     setup,
     etablissement,
     import_export,
+    utilisateurs,
 )
 from database import SessionLocal
 from exceptions import AureoleException
@@ -131,7 +133,6 @@ app.include_router(enseignants.router)
 app.include_router(tuteurs.router)
 app.include_router(notes.router)
 app.include_router(bulletins.router)
-app.include_router(utilisateurs.router)
 app.include_router(absences.router)
 app.include_router(dashboard.router)
 app.include_router(inscriptions.router)
@@ -142,9 +143,11 @@ app.include_router(depenses.router)
 app.include_router(resultats.router)
 app.include_router(cloture.router)
 app.include_router(documents.router)
+app.include_router(rapports.router)
 app.include_router(setup.router)
 app.include_router(etablissement.router)
 app.include_router(import_export.router)
+app.include_router(utilisateurs.router)
 
 
 # Fichiers téléversés (logos, …) servis en statique depuis le même serveur.

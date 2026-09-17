@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from bareme import bareme_niveau, seuil_passage, niveau_ordre
 from services.moyennes import calculer_moyenne_annuelle
 
@@ -71,7 +71,7 @@ def _determiner_statut_passage(moyenne: float, seuil: float, est_fin_cycle: bool
     return "RECALE", False
 
 
-@router.get("/{id_classe}", response_model=ResultatsClasseResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.get("/{id_classe}", response_model=ResultatsClasseResponse)
 def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
@@ -107,7 +107,7 @@ def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/{id_classe}/calcul-auto", response_model=RapportAutoResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/{id_classe}/calcul-auto", response_model=RapportAutoResponse)
 def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
@@ -193,7 +193,7 @@ class StatutPassageRequest(BaseModel):
     statut: Literal["EN_ATTENTE", "ADMIS", "RECALE", "EXCLU"]
 
 
-@router.put("/statut/{inscription_id}", response_model=schemas.InscriptionResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/statut/{inscription_id}", response_model=schemas.InscriptionResponse)
 def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, db: Session = Depends(get_db)):
     insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:

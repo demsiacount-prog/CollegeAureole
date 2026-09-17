@@ -4,8 +4,8 @@ from typing import List
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
-from bareme import bareme_niveau
+from security import get_current_user
+from bareme import bareme_niveau, est_6eme
 from services.protections import verifier_cours
 
 router = APIRouter(prefix="/api/cours", tags=["Cours"], dependencies=[Depends(get_current_user)])
@@ -24,11 +24,13 @@ def _appliquer_affectations(db: Session, cours: models.Cours, affectations: list
     if len(classes_existantes) != len(ids_classes):
         raise HTTPException(status_code=404, detail="Classe introuvable")
 
-    # Règle métier : les coefficients ne s'appliquent qu'au second cycle.
-    # En EF1 (notes /10, moyenne simple) le coefficient doit rester à 1.
+    # Règle métier : les coefficients ne s'appliquent pas au 1er cycle, sauf
+    # pour la 6ème (classe spéciale) dont les TRIMESTRES sont coefficientés,
+    # même si les notes restent notées sur 10. Les autres classes d'EF1 (1ère
+    # à 5ème, notes /10, moyenne simple) doivent rester à coefficient 1.
     for a in affectations:
         classe = next(c for c in classes_existantes if c.id == a.id_classe)
-        if bareme_niveau(classe.niveau) == 10 and float(a.coefficient) != 1.0:
+        if bareme_niveau(classe.niveau) == 10 and not est_6eme(classe.niveau) and float(a.coefficient) != 1.0:
             raise HTTPException(
                 status_code=422,
                 detail=f"Le coefficient ne s'applique pas aux classes du premier cycle (EF1) : {classe.niveau} {classe.nom} est notée sur 10 avec une moyenne simple.",
@@ -40,7 +42,7 @@ def _appliquer_affectations(db: Session, cours: models.Cours, affectations: list
         db.add(models.AffectationCoursClasse(id_classe=a.id_classe, id_cours=cours.id, coefficient=a.coefficient))
 
 
-@router.post("/", response_model=schemas.CoursResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.CoursResponse, status_code=status.HTTP_201_CREATED)
 def create_cours(cours: schemas.CoursCreate, db: Session = Depends(get_db)):
     if cours.matricule_enseignant:
         if not db.query(models.Enseignants).filter(models.Enseignants.matricule == cours.matricule_enseignant).first():
@@ -70,7 +72,7 @@ def get_cours(cours_id: int, db: Session = Depends(get_db)):
     return db_cours
 
 
-@router.put("/{cours_id}", response_model=schemas.CoursResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{cours_id}", response_model=schemas.CoursResponse)
 def update_cours(cours_id: int, cours_update: schemas.CoursCreate, db: Session = Depends(get_db)):
     db_cours = db.query(models.Cours).filter(models.Cours.id == cours_id).first()
     if not db_cours:
@@ -90,7 +92,7 @@ def update_cours(cours_id: int, cours_update: schemas.CoursCreate, db: Session =
     return db_cours
 
 
-@router.delete("/{cours_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{cours_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_cours(cours_id: int, db: Session = Depends(get_db)):
     db_cours = db.query(models.Cours).filter(models.Cours.id == cours_id).first()
     if not db_cours:

@@ -4,7 +4,7 @@ from typing import List, Optional
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 
 router = APIRouter(prefix="/api/seances", tags=["Séances"], dependencies=[Depends(get_current_user)])
 
@@ -57,7 +57,7 @@ def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = N
         raise HTTPException(status_code=409, detail=" | ".join(sorted(set(conflits))))
 
 
-@router.post("/", response_model=schemas.SeanceResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.SeanceResponse, status_code=status.HTTP_201_CREATED)
 def create_seance(payload: schemas.SeanceCreate, db: Session = Depends(get_db)):
     _verifier_conflits(db, payload)
     seance = models.Seances(**payload.model_dump())
@@ -102,7 +102,7 @@ def get_seances_enseignant(matricule: str, id_annee_scolaire: int, db: Session =
     ).all()
 
 
-@router.put("/{seance_id}", response_model=schemas.SeanceResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{seance_id}", response_model=schemas.SeanceResponse)
 def update_seance(seance_id: int, payload: schemas.SeanceUpdate, db: Session = Depends(get_db)):
     seance = db.query(models.Seances).filter(models.Seances.id == seance_id).first()
     if not seance:
@@ -115,7 +115,7 @@ def update_seance(seance_id: int, payload: schemas.SeanceUpdate, db: Session = D
     return seance
 
 
-@router.delete("/{seance_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{seance_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_seance(seance_id: int, db: Session = Depends(get_db)):
     seance = db.query(models.Seances).filter(models.Seances.id == seance_id).first()
     if not seance:

@@ -9,7 +9,7 @@ from database import get_db, SessionLocal, engine, Base
 from exceptions import ConflictError
 from migrations import migrer_schema
 from routers.etablissement import enregistrer_logo
-from security import require_role
+from security import get_current_user
 from services import initialisation
 import models
 
@@ -174,7 +174,11 @@ class ResetInput(BaseModel):
 
 
 @router.post("/reset")
-def reset_database(payload: ResetInput, db: Session = Depends(get_db)):
+def reset_database(
+    payload: ResetInput,
+    _user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Vide toute la base et recrée le schéma : retour à la configuration initiale.
 
     Dangereux par nature (supprime toutes les données), accessible uniquement
@@ -196,8 +200,8 @@ class PurgeInput(BaseModel):
 
 
 # Valeur d'en-tête obligatoire pour toute réinitialisation de données.
-# En plus du rôle admin et du `confirm: true` du corps, la requête doit
-# transmettre ce header : une exécution accidentelle (ou un CSRF, les CORS
+# En plus du compte administrateur et du `confirm: true` du corps, la requête
+# doit transmettre ce header : une exécution accidentelle (ou un CSRF, les CORS
 # n'étant pas une protection) devient beaucoup moins probable.
 PURGE_HEADER = "x-confirm"
 PURGE_TOKEN = "PURGE-DONNEES"
@@ -207,7 +211,7 @@ PURGE_TOKEN = "PURGE-DONNEES"
 def purge_donnees(
     payload: PurgeInput,
     x_confirm: str | None = Header(default=None, alias="X-Confirm"),
-    utilisateur_courant: models.Utilisateurs = Depends(require_role("admin")),
+    utilisateur_courant: models.Utilisateurs = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Vide entièrement la base de données et ne conserve que le compte de
@@ -225,7 +229,6 @@ def purge_donnees(
         "prenom": utilisateur_courant.prenom,
         "email": utilisateur_courant.email,
         "mot_de_passe": utilisateur_courant.mot_de_passe,
-        "role": utilisateur_courant.role,
         "actif": utilisateur_courant.actif,
         "tentatives_echouees": 0,
         "verrouille_jusqua": None,

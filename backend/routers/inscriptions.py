@@ -8,7 +8,7 @@ from database import get_db
 import models
 import schemas
 from models.echeances import MOIS_ANNEE_SCOLAIRE
-from security import get_current_user, require_role
+from security import get_current_user
 
 router = APIRouter(prefix="/api/inscriptions", tags=["Inscriptions"], dependencies=[Depends(get_current_user)])
 
@@ -118,7 +118,7 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
     ancienne.credit_disponible = credit
 
 
-@router.post("/", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED)
 def creer_inscription(payload: schemas.InscriptionCreate, db: Session = Depends(get_db)):
     _verifier_existence(db, payload.matricule_eleve, payload.id_annee_scolaire, payload.id_classe)
 
@@ -137,7 +137,7 @@ def creer_inscription(payload: schemas.InscriptionCreate, db: Session = Depends(
     return inscription
 
 
-@router.post("/dossier-complet", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/dossier-complet", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED)
 def creer_dossier_complet(payload: schemas.DossierCompletCreate, db: Session = Depends(get_db)):
     """Crée tuteur (optionnel) + élève + inscription dans UNE SEULE transaction :
     si une étape échoue, le rollback annule l'ensemble (aucun orphelin)."""
@@ -304,7 +304,7 @@ def get_inscription(inscription_id: int, db: Session = Depends(get_db)):
     return _construire_inscription_enrichie(db, insc)
 
 
-@router.put("/{inscription_id}", response_model=schemas.InscriptionResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{inscription_id}", response_model=schemas.InscriptionResponse)
 def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate, db: Session = Depends(get_db)):
     inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not inscription:
@@ -344,7 +344,7 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
     return inscription
 
 
-@router.delete("/{inscription_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{inscription_id}", status_code=status.HTTP_204_NO_CONTENT)
 def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
     insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
@@ -354,7 +354,7 @@ def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.post("/passage-annee", response_model=schemas.PassageAnneeResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
+@router.post("/passage-annee", response_model=schemas.PassageAnneeResponse, status_code=status.HTTP_201_CREATED)
 def passage_annee(payload: schemas.PassageAnneeRequest, db: Session = Depends(get_db)):
     if not db.query(models.Classes).filter(models.Classes.id == payload.id_classe_origine).first():
         raise HTTPException(status_code=404, detail="Classe introuvable")
@@ -374,9 +374,18 @@ def passage_annee(payload: schemas.PassageAnneeRequest, db: Session = Depends(ge
         statut = "Redoublant" if est_redoublant else "Inscrit"
         id_classe_cible = payload.id_classe_origine if est_redoublant else payload.id_classe_destination
 
+        nb_redoublements = 0
+        if est_redoublant:
+            precedente = db.query(models.Inscriptions).filter(
+                models.Inscriptions.matricule_eleve == eleve.matricule,
+                models.Inscriptions.id_annee_scolaire == payload.id_annee_scolaire_origine,
+            ).first()
+            nb_redoublements = (precedente.nb_redoublements if precedente and precedente.nb_redoublements else 0) + 1
+
         nouvelle_inscription = models.Inscriptions(
             matricule_eleve=eleve.matricule, id_classe=id_classe_cible,
             id_annee_scolaire=payload.id_annee_scolaire_destination, statut=statut,
+            nb_redoublements=nb_redoublements,
         )
         db.add(nouvelle_inscription)
         try:

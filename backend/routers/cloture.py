@@ -5,18 +5,35 @@ from sqlalchemy.exc import IntegrityError
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
-from bareme import niveau_ordre
+from security import get_current_user
+from bareme import niveau_ordre, est_jardin, jardin_suivant
 
 logger = logging.getLogger("college_aureole")
 
 router = APIRouter(prefix="/api/cloture", tags=["Clôture d'année"], dependencies=[Depends(get_current_user)])
 
 
+def _passage_jardin_automatique(insc: models.Inscriptions) -> bool:
+    """Règle maternelle : chaque année, les élèves du jardin d'enfants passent
+    automatiquement à la section supérieure (petite → moyenne → grande → 1ère
+    année), sans décision de conseil. Seule une exclusion explicite l'emporte."""
+    return insc.classe is not None and est_jardin(insc.classe.niveau) and insc.statut_passage != "EXCLU"
+
+
 def _classe_suivante(db: Session, classe_origine) -> models.Classes | None:
-    """Classe du niveau suivant (même division si elle existe), sinon None."""
+    """Classe du niveau suivant (même division si elle existe), sinon None.
+
+    Règle jardin : l'enfant passe à la section de jardin suivante
+    (Petite → Moyenne → Grande → 1ère Année).
+    """
     if classe_origine is None:
         return None
+    if est_jardin(classe_origine.niveau):
+        niveau_suivant = jardin_suivant(classe_origine.niveau)
+        if niveau_suivant is None:
+            return None
+        candidates = [c for c in db.query(models.Classes).all() if c.niveau == niveau_suivant]
+        return candidates[0] if candidates else None
     ordre = niveau_ordre(classe_origine.niveau)
     if ordre is None:
         return None
@@ -27,7 +44,11 @@ def _classe_suivante(db: Session, classe_origine) -> models.Classes | None:
     return (meme_division or candidates)[0]
 
 
-def _action_prevue(insc: models.Inscriptions, classe_dest=None) -> str:
+def _action_prevue(insc: models.Inscriptions, classe_dest=None, auto_jardin=False) -> str:
+    if auto_jardin:
+        if classe_dest is not None:
+            return f"Admis – passage en {classe_dest.niveau} {classe_dest.nom}"
+        return "Admis – passage (classe suivante non créée)"
     sp = insc.statut_passage
     if sp == "ADMIS":
         if insc.diplome:
@@ -42,7 +63,7 @@ def _action_prevue(insc: models.Inscriptions, classe_dest=None) -> str:
     return "En attente – non encore décidé"
 
 
-@router.get("/preview", response_model=schemas.CloturePreviewResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.get("/preview", response_model=schemas.CloturePreviewResponse)
 def preview_cloture(db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
     if not annee:
@@ -65,16 +86,19 @@ def preview_cloture(db: Session = Depends(get_db)):
         eleve = insc.eleve
         classe = insc.classe
         sp = insc.statut_passage
+        auto_jardin = _passage_jardin_automatique(insc)
 
-        if sp == "ADMIS":
+        if sp == "EXCLU":
+            compteurs.EXCLU += 1
+        elif auto_jardin:
+            compteurs.ADMIS_PASSAGE += 1
+        elif sp == "ADMIS":
             if insc.diplome:
                 compteurs.ADMIS_DIPLOME += 1
             else:
                 compteurs.ADMIS_PASSAGE += 1
         elif sp == "RECALE":
             compteurs.RECALE_REDOUBLEMENT += 1
-        elif sp == "EXCLU":
-            compteurs.EXCLU += 1
         else:
             compteurs.EN_ATTENTE += 1
 
@@ -85,9 +109,9 @@ def preview_cloture(db: Session = Depends(get_db)):
             classe_id=classe.id if classe else None,
             classe_nom=classe.nom if classe else None,
             niveau=classe.niveau if classe else None,
-            statut_passage=sp,
+            statut_passage="ADMIS" if auto_jardin else sp,
             diplome=insc.diplome,
-            action_prevue=_action_prevue(insc, _classe_suivante(db, classe)),
+            action_prevue=_action_prevue(insc, _classe_suivante(db, classe), auto_jardin),
             inscription_id=insc.id,
         ))
 
@@ -101,7 +125,7 @@ def preview_cloture(db: Session = Depends(get_db)):
     )
 
 
-@router.post("/executer", response_model=schemas.ClotureExecuterResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/executer", response_model=schemas.ClotureExecuterResponse, status_code=status.HTTP_200_OK)
 def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depends(get_db)):
     try:
         annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
@@ -121,7 +145,7 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
         if not inscriptions:
             raise HTTPException(status_code=400, detail="Aucune inscription")
 
-        en_attente = [i for i in inscriptions if i.statut_passage == "EN_ATTENTE"]
+        en_attente = [i for i in inscriptions if i.statut_passage == "EN_ATTENTE" and not _passage_jardin_automatique(i)]
         if en_attente:
             raise HTTPException(status_code=409, detail="Élèves en attente")
 
@@ -149,7 +173,13 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
             sp = insc.statut_passage
             eleve = insc.eleve
 
-            if sp == "ADMIS":
+            if _passage_jardin_automatique(insc):
+                statut_insc = "Inscrit"
+                classe_dest = _classe_suivante(db, insc.classe)
+                id_classe_dest = classe_dest.id if classe_dest is not None else insc.id_classe
+                rapport.admis_passage += 1
+
+            elif sp == "ADMIS":
                 if insc.diplome:
                     rapport.admis_diplome += 1
                     continue
@@ -179,6 +209,7 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
                 id_classe=id_classe_dest,
                 id_annee_scolaire=nouvelle_annee.id,
                 statut=statut_insc,
+                nb_redoublements=(insc.nb_redoublements or 0) + 1 if statut_insc == "Redoublant" else 0,
                 date_inscription=nouvelle_annee.date_debut,
             )
             db.add(nouvelle_inscription)

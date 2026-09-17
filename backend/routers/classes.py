@@ -4,7 +4,7 @@ from typing import List, Optional
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from services.protections import verifier_classe
 
 router = APIRouter(prefix="/api/classes", tags=["Classes"], dependencies=[Depends(get_current_user)])
@@ -28,7 +28,7 @@ def _verifier_salle_disponible(db: Session, id_salle: Optional[int], classe_excl
         )
 
 
-@router.post("/", response_model=schemas.ClasseResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.ClasseResponse, status_code=status.HTTP_201_CREATED)
 def create_classe(classe: schemas.ClasseCreate, db: Session = Depends(get_db)):
     _verifier_salle_disponible(db, classe.id_salle)
     nouveau_classe = models.Classes(**classe.model_dump())
@@ -48,7 +48,7 @@ def get_classe_detail(classe_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Classe introuvable")
     return classe
 
-@router.put("/{classe_id}", response_model=schemas.ClasseResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{classe_id}", response_model=schemas.ClasseResponse)
 def update_classe(classe_id: int, classe_update: schemas.ClasseCreate, db: Session = Depends(get_db)):
     db_classe = db.query(models.Classes).filter(models.Classes.id == classe_id).first()
     if not db_classe:
@@ -60,7 +60,7 @@ def update_classe(classe_id: int, classe_update: schemas.ClasseCreate, db: Sessi
     db.refresh(db_classe)
     return db_classe
 
-@router.delete("/{classe_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{classe_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_classe(classe_id: int, db: Session = Depends(get_db)):
     db_classe = db.query(models.Classes).filter(models.Classes.id == classe_id).first()
     if not db_classe:

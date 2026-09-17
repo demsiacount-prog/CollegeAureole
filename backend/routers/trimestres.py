@@ -4,14 +4,14 @@ from typing import List
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from periodes import generer_periodes_par_defaut
 from services.protections import verifier_trimestre
 
 router = APIRouter(prefix="/api/trimestres", tags=["Trimestres"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("/generer", response_model=schemas.TrimestresGenererResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("/generer", response_model=schemas.TrimestresGenererResponse)
 def generer_periodes_par_defaut_pour_annee(payload: schemas.TrimestresGenererRequest, db: Session = Depends(get_db)):
     """Crée le jeu de périodes par défaut (trimestres + compositions) d'une année.
 
@@ -27,7 +27,7 @@ def generer_periodes_par_defaut_pour_annee(payload: schemas.TrimestresGenererReq
     return {"cree": cree, "annee_scolaire_id": annee.id}
 
 
-@router.post("/", response_model=schemas.TrimestreResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=schemas.TrimestreResponse, status_code=status.HTTP_201_CREATED)
 def create_trimestre(payload: schemas.TrimestreCreate, db: Session = Depends(get_db)):
     if not db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == payload.annee_scolaire_id).first():
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
@@ -54,7 +54,7 @@ def get_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     return trimestre
 
 
-@router.put("/{trimestre_id}/verrouiller", response_model=schemas.TrimestreResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{trimestre_id}/verrouiller", response_model=schemas.TrimestreResponse)
 def verrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     """Bloque toute nouvelle saisie/modification de notes pour ce trimestre
     (typiquement une fois les bulletins publiés)."""
@@ -67,7 +67,7 @@ def verrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     return trimestre
 
 
-@router.put("/{trimestre_id}/deverrouiller", response_model=schemas.TrimestreResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{trimestre_id}/deverrouiller", response_model=schemas.TrimestreResponse)
 def deverrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
     if not trimestre:
@@ -78,7 +78,7 @@ def deverrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     return trimestre
 
 
-@router.delete("/{trimestre_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{trimestre_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
     if not trimestre:

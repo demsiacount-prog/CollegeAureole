@@ -5,14 +5,14 @@ from typing import List, Optional
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from services.protections import verifier_enseignant
 
 router = APIRouter(prefix="/api/enseignants", tags=["Enseignants"], dependencies=[Depends(get_current_user)])
 
 
 # ─── CRUD de base ─────────────────────────────────────────────────────────────
-@router.post("/", response_model=schemas.EnseignantResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.EnseignantResponse, status_code=status.HTTP_201_CREATED)
 def create_enseignant(enseignant: schemas.EnseignantCreate, db: Session = Depends(get_db)):
     if db.query(models.Enseignants).filter(models.Enseignants.email == enseignant.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
@@ -61,7 +61,7 @@ def get_enseignant(matricule: str, db: Session = Depends(get_db)):
     return db_ens
 
 
-@router.put("/{matricule}", response_model=schemas.EnseignantResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{matricule}", response_model=schemas.EnseignantResponse)
 def update_enseignant(matricule: str, enseignant_update: schemas.EnseignantCreate, db: Session = Depends(get_db)):
     db_ens = db.query(models.Enseignants).filter(models.Enseignants.matricule == matricule).first()
     if not db_ens:
@@ -79,7 +79,7 @@ def update_enseignant(matricule: str, enseignant_update: schemas.EnseignantCreat
     return db_ens
 
 
-@router.delete("/{matricule}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{matricule}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_enseignant(matricule: str, db: Session = Depends(get_db)):
     db_ens = db.query(models.Enseignants).filter(models.Enseignants.matricule == matricule).first()
     if not db_ens:

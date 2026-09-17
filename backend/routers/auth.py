@@ -57,7 +57,7 @@ def connexion(payload: schemas.UtilisateurConnexion, db: Session = Depends(get_d
     utilisateur.verrouille_jusqua = None
     db.commit()
 
-    token = create_access_token(utilisateur_id=utilisateur.id, role=utilisateur.role.value)
+    token = create_access_token(utilisateur_id=utilisateur.id)
     return schemas.TokenResponse(access_token=token, utilisateur=utilisateur)
 
 
@@ -74,8 +74,8 @@ def changer_mot_de_passe(
     db: Session = Depends(get_db),
     utilisateur_courant: models.Utilisateurs = Depends(get_current_user),
 ):
-    # Seul le titulaire du compte ou un admin peut changer ce mot de passe.
-    if utilisateur_courant.id != utilisateur_id and utilisateur_courant.role.value != "admin":
+    # Seul le titulaire du compte peut changer ce mot de passe.
+    if utilisateur_courant.id != utilisateur_id:
         raise ForbiddenError("Accès refusé")
 
     utilisateur = assert_found(

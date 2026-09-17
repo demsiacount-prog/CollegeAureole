@@ -6,10 +6,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
+from security import get_current_user
 import models
 import schemas
-from security import require_role
-
 router = APIRouter(prefix="/api/etablissement", tags=["Établissement"])
 
 _UPLOADS_BASE = os.environ.get("AUREOLE_UPLOADS_DIR") or os.path.normpath(
@@ -43,8 +42,12 @@ def get_etablissement(db: Session = Depends(get_db)):
     return _fiche_ou_404(db)
 
 
-@router.put("", response_model=schemas.EtablissementResponse, dependencies=[Depends(require_role("admin"))])
-def update_etablissement(payload: schemas.EtablissementUpdate, db: Session = Depends(get_db)):
+@router.put("", response_model=schemas.EtablissementResponse)
+def update_etablissement(
+    payload: schemas.EtablissementUpdate,
+    _user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     fiche = _fiche_ou_404(db)
     for key, value in payload.model_dump().items():
         # academie/cap sont NOT NULL en base : une valeur vide devient ''.
@@ -82,8 +85,11 @@ def enregistrer_logo(file: UploadFile) -> str:
     return f"/uploads/logos/{filename}"
 
 
-@router.post("/logo", dependencies=[Depends(require_role("admin"))])
-def upload_logo(file: UploadFile = File(...)):
+@router.post("/logo")
+def upload_logo(
+    file: UploadFile = File(...),
+    _user: models.Utilisateurs = Depends(get_current_user),
+):
     """Enregistre l'image du logo et retourne son chemin public (la fiche n'est
     modifiée qu'au prochain PUT de l'établissement)."""
     return {"logo": enregistrer_logo(file)}

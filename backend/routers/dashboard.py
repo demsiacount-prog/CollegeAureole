@@ -1,30 +1,16 @@
-from datetime import date, timedelta
-from fastapi import APIRouter, Depends
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
-from bareme import bareme_niveau
+from security import get_current_user
+from bareme import bareme_niveau, est_jardin
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"], dependencies=[Depends(get_current_user)])
 
 MOIS_ABBR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
-
-
-def _derniers_mois(n: int = 6):
-    """Retourne les n derniers mois sous forme [(annee, mois, label), ...]"""
-    aujourdhui = date.today()
-    mois = []
-    annee, m = aujourdhui.year, aujourdhui.month
-    for _ in range(n):
-        mois.append((annee, m, MOIS_ABBR[m - 1]))
-        m -= 1
-        if m == 0:
-            m = 12
-            annee -= 1
-    return list(reversed(mois))
 
 
 def est_modifie(created_at, updated_at) -> bool:
@@ -41,7 +27,41 @@ def est_modifie(created_at, updated_at) -> bool:
 
 
 
-def _stats_direction(db: Session, include_finance: bool = True) -> dict:
+def _mois_scolaires(annee_debut: date, annee_fin: date):
+    """Retourne les mois scolaires (Octobre…Juin) couverts par l'année scolaire.
+
+    Chaque entrée : (annee_civile, mois, label). On part de l'année civile de
+    l'échéancier scolaire (généralement le `date_debut` de l'année active) et
+    on liste les 9 mois d'Octobre à Juin, bornés par la date de fin.
+    """
+    premier = annee_debut.month
+    liste = []
+    for offset in range(9):
+        mois = premier + offset
+        annee = annee_debut.year + (mois - 1) // 12
+        mois = (mois - 1) % 12 + 1
+        if date(annee, mois, 1) > annee_fin:
+            break
+        liste.append((annee, mois, MOIS_ABBR[mois - 1]))
+    return liste
+
+
+def _stats_direction(db: Session) -> dict:
+
+    # ── 0. ANNÉE SCOLAIRE ACTIVE : toutes les fenêtres temporelles du tableau
+    # de bord portent sur elle (et non sur le calendrier civil, qui peut être
+    # totalement décalé de la scolarité), faute de quoi les cartes financières
+    # et d'absences restent vides malgré des données réelles. ────────────────
+    annee_active = (
+        db.query(models.AnneesScolaires)
+        .filter(models.AnneesScolaires.active.is_(True))
+        .first()
+    )
+    if annee_active is None:
+        raise HTTPException(status_code=409, detail="Aucune année scolaire active.")
+
+    date_debut_annee = annee_active.date_debut
+    date_fin_annee = annee_active.date_fin
 
     # ── 1. COMPTEURS SIMPLES (COUNT côté SQL, pas de chargement de lignes) ──
     nb_eleves = db.query(func.count(models.Eleves.matricule)).scalar() or 0
@@ -49,16 +69,23 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
     nb_classes = db.query(func.count(models.Classes.id)).scalar() or 0
 
     # ── 2. MOYENNE PAR CLASSE (GROUP BY + AVG en SQL) ──────────────────────
+    # On agrège les moyennes générales des bulletins, déjà conformes au système
+    # malien (moyenne simple /10 en EF1, pondérée /20 en EF2, 6ème gérée), et
+    # non les notes brutes qui mélangent périodes/niveaux et ignorent les
+    # coefficients.
     moyennes_brutes = (
-        db.query(models.Classes.niveau, models.Classes.nom, func.avg(models.Notes.note))
-        .outerjoin(models.Notes, models.Notes.id_classe == models.Classes.id)
+        db.query(models.Classes.niveau, models.Classes.nom, func.avg(models.Bulletins.moyenne_generale))
+        .outerjoin(models.Bulletins, models.Bulletins.id_classe == models.Classes.id)
         .group_by(models.Classes.id, models.Classes.niveau, models.Classes.nom)
         .order_by(models.Classes.niveau, models.Classes.nom)
         .all()
     )
+    # Les sections du jardin ne sont pas évaluées sur chiffres : exclues du
+    # graphique compareur de moyennes.
     moyennes_par_classe = [
         {"classe": f"{niveau} {nom}", "moy": round(float(moy), 1) if moy is not None else 0, "bareme": bareme_niveau(niveau)}
         for niveau, nom, moy in moyennes_brutes
+        if not est_jardin(niveau)
     ]
 
     # ── 3. RÉPARTITION PAR NIVEAU (GROUP BY + COUNT en SQL) ────────────────
@@ -69,12 +96,12 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
         .all()
     )
     repartition_niveaux = [
-        {"name": niveau if str(niveau).startswith("Niveau") else f"Niveau {niveau}", "value": count}
+        {"name": niveau if str(niveau).startswith("Niveau") or est_jardin(niveau) else f"Niveau {niveau}", "value": count}
         for niveau, count in repartition_brute
     ]
 
-    # ── 4. ABSENCES SUR LES 6 DERNIERS MOIS ────────────────────────────────
-    mois_range = _derniers_mois(6)
+    # ── 4. ABSENCES PAR MOIS SCOLAIRE (9 mois de l'année active) ──────────
+    mois_range = _mois_scolaires(date_debut_annee, date_fin_annee)
     annee_min, mois_min, _ = mois_range[0]
     date_min = date(annee_min, mois_min, 1)
 
@@ -97,11 +124,10 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
         for a, m, label in mois_range
     ]
 
-    # ── 5. TAUX D'ABSENCE DU MOIS EN COURS ─────────────────────────────────
-    aujourdhui = date.today()
-    absences_mois_actuel = compteur_par_mois.get((aujourdhui.year, aujourdhui.month), 0)
+    # ── 5. TAUX D'ABSENCE DE L'ANNÉE SCOLAIRE ACTIVE ─────────────────────
+    absences_totales = sum(compteur_par_mois.values())
     taux_absence = (
-        round((absences_mois_actuel / nb_eleves) * 100, 1) if nb_eleves > 0 else 0
+        round((absences_totales / nb_eleves) * 100, 1) if nb_eleves > 0 else 0
     )
 
     # ── 6. ACTIVITÉ RÉCENTE (créations de toutes natures, triées en SQL) ────
@@ -284,24 +310,20 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
             break
         dernieres_activites.append(a)
     dernieres_activites.sort(key=lambda a: a["date"], reverse=True)
-    if not include_finance:
-        dernieres_activites = [a for a in dernieres_activites if a["type"] not in ("paiement", "depense")]
 
-    # ── 7. ABSENCES SUR LES 7 DERNIERS JOURS (carte "Absences (7 derniers jours)") ──
-    date_7j = aujourdhui - timedelta(days=6)  # fenêtre glissante de 7 jours, bornes incluses
-    absences_7_jours = (
+    # ── 7. ABSENCES DE L'ANNÉE SCOLAIRE ACTIVE (carte "Absences (année en cours)") ──
+    absences_annee = (
         db.query(func.count(models.Absences.id))
-        .filter(models.Absences.date_absence >= date_7j)
-        .filter(models.Absences.date_absence <= aujourdhui)
+        .filter(models.Absences.date_absence >= date_debut_annee)
+        .filter(models.Absences.date_absence <= date_fin_annee)
         .scalar() or 0
     )
 
-    # ── 8. TOTAL DES PAIEMENTS DU MOIS EN COURS (carte "Paiements du mois") ──
-    debut_mois = date(aujourdhui.year, aujourdhui.month, 1)
-    paiements_mois = (
+    # ── 8. TOTAL DES PAIEMENTS DE L'ANNÉE SCOLAIRE ACTIVE (carte "Paiements de l'année") ──
+    paiements_annee = (
         db.query(func.coalesce(func.sum(models.Paiements.montant), 0.0))
-        .filter(models.Paiements.date >= debut_mois)
-        .filter(models.Paiements.date <= aujourdhui)
+        .filter(models.Paiements.date >= date_debut_annee)
+        .filter(models.Paiements.date <= date_fin_annee)
         .scalar() or 0.0
     )
 
@@ -310,8 +332,8 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
         "nb_enseignants": nb_enseignants,
         "nb_classes": nb_classes,
         "taux_absence": taux_absence,
-        "absences_7_jours": absences_7_jours,
-        "paiements_mois": round(float(paiements_mois), 2),
+        "absences_annee": absences_annee,
+        "paiements_annee": round(float(paiements_annee), 2),
         "moyennes_par_classe": moyennes_par_classe,
         "repartition_niveaux": repartition_niveaux,
         "absences_par_mois": absences_par_mois,
@@ -319,132 +341,7 @@ def _stats_direction(db: Session, include_finance: bool = True) -> dict:
     }
 
 
-def _stats_finances(db: Session) -> dict:
-    """Tableau de bord du comptable : flux financiers uniquement."""
-    aujourdhui = date.today()
-    debut_mois = date(aujourdhui.year, aujourdhui.month, 1)
-
-    # ── 1. FLUX DU MOIS EN COURS ─────────────────────────────────────────────
-    paiements_mois = (
-        db.query(func.coalesce(func.sum(models.Paiements.montant), 0.0))
-        .filter(models.Paiements.date >= debut_mois, models.Paiements.date <= aujourdhui)
-        .scalar() or 0.0
-    )
-    depenses_mois = (
-        db.query(func.coalesce(func.sum(models.Depenses.montant), 0.0))
-        .filter(models.Depenses.date >= debut_mois, models.Depenses.date <= aujourdhui)
-        .scalar() or 0.0
-    )
-    solde_mois = paiements_mois - depenses_mois
-
-    # ── 2. ÉCHÉANCES EN RETARD (relances) ────────────────────────────────────
-    echeances_retard = (
-        db.query(models.Echeances)
-        .filter(
-            models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
-            models.Echeances.date_echeance < aujourdhui,
-        )
-        .all()
-    )
-    montant_en_retard = sum(max(e.montant_du - e.montant_paye, 0.0) for e in echeances_retard)
-
-    # ── 3. ÉVOLUTION MENSUELLE (6 derniers mois) ─────────────────────────────
-    mois_range = _derniers_mois(6)
-    annee_min, mois_min, _ = mois_range[0]
-    date_min = date(annee_min, mois_min, 1)
-    paiements_par_mois = {
-        (int(p.annee), int(p.mois)): float(p.total)
-        for p in db.query(
-            func.extract("year", models.Paiements.date).label("annee"),
-            func.extract("month", models.Paiements.date).label("mois"),
-            func.coalesce(func.sum(models.Paiements.montant), 0.0).label("total"),
-        )
-        .filter(models.Paiements.date >= date_min)
-        .group_by(func.extract("year", models.Paiements.date), func.extract("month", models.Paiements.date))
-        .all()
-    }
-    depenses_par_mois = {
-        (int(d.annee), int(d.mois)): float(d.total)
-        for d in db.query(
-            func.extract("year", models.Depenses.date).label("annee"),
-            func.extract("month", models.Depenses.date).label("mois"),
-            func.coalesce(func.sum(models.Depenses.montant), 0.0).label("total"),
-        )
-        .filter(models.Depenses.date >= date_min)
-        .group_by(func.extract("year", models.Depenses.date), func.extract("month", models.Depenses.date))
-        .all()
-    }
-    evolution_mensuelle = [
-        {
-            "mois": label,
-            "paiements": round(float(paiements_par_mois.get((a, m), 0.0)), 2),
-            "depenses": round(float(depenses_par_mois.get((a, m), 0.0)), 2),
-        }
-        for a, m, label in mois_range
-    ]
-
-    # ── 4. ACTIVITÉ FINANCIÈRE RÉCENTE (paiements + dépenses) ────────────────
-    activites: list[dict] = []
-    derniers_paiements = (
-        db.query(models.Paiements, models.Inscriptions, models.Eleves)
-        .outerjoin(models.Inscriptions, models.Inscriptions.id == models.Paiements.id_inscription)
-        .outerjoin(models.Eleves, models.Eleves.matricule == models.Inscriptions.matricule_eleve)
-        .order_by(models.Paiements.updated_at.desc())
-        .limit(8)
-        .all()
-    )
-    for paiement, _inscription, eleve in derniers_paiements:
-        nom_eleve = f"{eleve.nom} {eleve.prenom}".strip() if eleve else "un élève"
-        if est_modifie(paiement.created_at, paiement.updated_at):
-            texte = f"Paiement de {paiement.montant:,.0f} FCFA modifié pour {nom_eleve}."
-        else:
-            texte = f"Paiement de {paiement.montant:,.0f} FCFA reçu pour {nom_eleve}."
-        activites.append({
-            "type": "paiement",
-            "texte": texte,
-            "date": str(paiement.updated_at),
-        })
-    dernieres_depenses = (
-        db.query(models.Depenses)
-        .order_by(models.Depenses.updated_at.desc())
-        .limit(8)
-        .all()
-    )
-    for depense in dernieres_depenses:
-        if est_modifie(depense.created_at, depense.updated_at):
-            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA modifiée."
-        else:
-            texte = f"Dépense « {depense.libelle} » de {depense.montant:,.0f} FCFA enregistrée."
-        activites.append({
-            "type": "depense",
-            "texte": texte,
-            "date": str(depense.updated_at),
-        })
-    activites.sort(key=lambda a: a["date"], reverse=True)
-    activites = activites[:12]
-
-    return {
-        "paiements_mois": round(float(paiements_mois), 2),
-        "depenses_mois": round(float(depenses_mois), 2),
-        "solde_mois": round(float(solde_mois), 2),
-        "echeances_en_retard": len(echeances_retard),
-        "montant_en_retard": round(float(montant_en_retard), 2),
-        "evolution_mensuelle": evolution_mensuelle,
-        "dernieres_activites": activites,
-    }
-
-
-@router.get("/stats", response_model=schemas.DashboardStatsResponse, dependencies=[Depends(require_role("admin", "directeur"))])
-def get_dashboard_stats(
-    utilisateur: models.Utilisateurs = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Tableau de bord pédagogique (admin/directeur). Le directeur ne voit pas
-    les flux financiers (paiements, dépenses)."""
-    return _stats_direction(db, include_finance=utilisateur.role.value == "admin")
-
-
-@router.get("/finances", response_model=schemas.DashboardFinanceResponse, dependencies=[Depends(require_role("admin", "comptable"))])
-def get_dashboard_finances(db: Session = Depends(get_db)):
-    """Tableau de bord du comptable : flux financiers uniquement."""
-    return _stats_finances(db)
+@router.get("/stats", response_model=schemas.DashboardStatsResponse)
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Tableau de bord unique de l'administration incluant les flux financiers."""
+    return _stats_direction(db)

@@ -7,8 +7,8 @@ from timeutils import now_utc
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
-from bareme import appreciation_for_moyenne, bareme_niveau
+from security import get_current_user
+from bareme import appreciation_for_moyenne, bareme_niveau, est_jardin, utilise_coefficient
 from services import pdf as pdf_service
 
 router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[Depends(get_current_user)])
@@ -40,6 +40,13 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
             detail="Classe introuvable",
         )
 
+    classe_jardin = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
+    if classe_jardin and est_jardin(classe_jardin.niveau):
+        raise HTTPException(
+            status_code=400,
+            detail="Le jardin d'enfants n'utilise pas de notes : appréciation manuelle de l'enseignant.",
+        )
+
     # Cours attendus pour cette classe (avec leur coefficient)
     affectations_classe = (
         db.query(models.AffectationCoursClasse)
@@ -48,8 +55,15 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     )
     coefficients_par_cours = {a.id_cours: a.coefficient for a in affectations_classe}
 
+    # Moyenne matière de la période = 60% note de composition + 40% note de
+    # classe (facultative : si absente, la note de composition fait foi).
+    # Le repli s'applique ligne par ligne via coalesce avant la moyenne.
     moyennes_par_cours = (
-        db.query(models.Notes.id_cours, func.avg(models.Notes.note).label("moyenne"))
+        db.query(
+            models.Notes.id_cours,
+            func.avg(models.Notes.note).label("moyenne_comp"),
+            func.avg(func.coalesce(models.Notes.note_classe, models.Notes.note)).label("moyenne_classe"),
+        )
         .filter(
             models.Notes.matricule_eleve == matricule_eleve,
             models.Notes.id_trimestre == id_trimestre,
@@ -65,7 +79,7 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
         )
 
     # Blocage si un cours de la classe n'a aucune note saisie pour cet élève
-    cours_notes = {id_cours for id_cours, _ in moyennes_par_cours}
+    cours_notes = {id_cours for id_cours, _, _ in moyennes_par_cours}
     cours_manquants = [
         id_cours for id_cours in coefficients_par_cours if id_cours not in cours_notes
     ]
@@ -93,30 +107,36 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     total_simple = 0.0
     nb_matieres = 0
 
-    # EF1 (barème /10) : aucune pondération, moyenne simple des matières.
-    est_ef1 = bareme == 10
+    # Conditions de pondération par le coefficient (même règle partagée que le
+    # PDF et le frontend, voir bareme.utilise_coefficient) :
+    # - EF1 (1ère-5ème, barème /10) : moyenne SIMPLE, aucun coefficient.
+    # - 6ème (classe spéciale) : les TRIMESTRES sont coefficientés (moyenne
+    #   pondérée, toujours sur /10), les COMPOSITIONS restent en moyenne simple.
+    # - EF2/lycée (barème /20) : moyenne pondérée par le coefficient.
+    utilise_coeff = utilise_coefficient(classe.niveau if classe else None, trimestre.type)
 
-    for id_cours, moyenne in moyennes_par_cours:
+    for id_cours, moyenne_comp, moyenne_classe_eff in moyennes_par_cours:
         coefficient = coefficients_par_cours.get(id_cours)
         if coefficient is None:
             # Cours noté mais non affecté à la classe actuelle (ex: changement de classe en cours d'année) : ignoré
             continue
-        if est_ef1:
+        if not utilise_coeff:
             coefficient = 1.0
+        moyenne = round(0.6 * float(moyenne_comp) + 0.4 * float(moyenne_classe_eff), 2)
         details.append({
             "id_cours": id_cours,
-            "moyenne": round(float(moyenne), 2),
+            "moyenne": moyenne,
             "coefficient": coefficient,
         })
-        total_pondere += round(float(moyenne), 2) * coefficient
+        total_pondere += moyenne * coefficient
         total_coefficients += coefficient
-        total_simple += float(moyenne)
+        total_simple += moyenne
         nb_matieres += 1
 
-    if est_ef1:
-        moyenne_generale = round(total_simple / nb_matieres, 2) if nb_matieres else 0.0
-    else:
+    if utilise_coeff:
         moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else 0.0
+    else:
+        moyenne_generale = round(total_simple / nb_matieres, 2) if nb_matieres else 0.0
 
     return {
         "matricule_eleve": matricule_eleve,
@@ -194,7 +214,7 @@ def _calculer_rangs_classe(db: Session, id_classe: int, id_trimestre: int) -> No
         bulletin.rang = index
 
 
-@router.post("/generer", response_model=schemas.BulletinResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/generer", response_model=schemas.BulletinResponse, status_code=status.HTTP_201_CREATED)
 def generer_bulletin(payload: schemas.BulletinGenerateRequest, db: Session = Depends(get_db)):
     calcul = _calculer_bulletin(db, payload.matricule_eleve, payload.id_trimestre)
     bulletin = _upsert_bulletin(db, calcul)
@@ -204,13 +224,18 @@ def generer_bulletin(payload: schemas.BulletinGenerateRequest, db: Session = Dep
     return bulletin
 
 
-@router.post("/generer-classe", response_model=List[schemas.BulletinResponse], status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/generer-classe", response_model=List[schemas.BulletinResponse], status_code=status.HTTP_201_CREATED)
 def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first()
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
     if not db.query(models.Trimestres).filter(models.Trimestres.id == payload.id_trimestre).first():
         raise HTTPException(status_code=404, detail="Trimestre introuvable")
+    if est_jardin(classe.niveau):
+        raise HTTPException(
+            status_code=400,
+            detail="Le jardin d'enfants n'utilise pas de bulletins chiffrés : appréciation manuelle de l'enseignant.",
+        )
 
     eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe).all()
 
@@ -233,7 +258,7 @@ def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db:
     return bulletins_generes
 
 
-@router.post("/publier", response_model=List[schemas.BulletinResponse], dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/publier", response_model=List[schemas.BulletinResponse])
 def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Session = Depends(get_db)):
     """Verrouille les bulletins d'une classe/trimestre : ils deviennent visibles
     et ne peuvent plus être régénérés sans dépublication explicite."""
@@ -255,7 +280,7 @@ def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sessio
     return bulletins
 
 
-@router.post("/depublier", response_model=List[schemas.BulletinResponse], dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/depublier", response_model=List[schemas.BulletinResponse])
 def depublier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Session = Depends(get_db)):
     bulletins = (
         db.query(models.Bulletins)
@@ -378,6 +403,72 @@ def bulletins_pdf_classe(id_classe: int, id_trimestre: int, db: Session = Depend
     )
 
 
+@router.get("/annuel/classe/{id_classe}/pdf", response_class=Response)
+def bulletins_annuels_classe_pdf(id_classe: int, annee_id: int, db: Session = Depends(get_db)):
+    """PDF regroupant les bulletins annuels de tous les élèves d'une classe."""
+    from services.bulletins_annuels import bulletin_annuel
+
+    eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == id_classe).all()
+    etab = _contexte_etablissement(db)
+    annees = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
+
+    payloads = []
+    for eleve in eleves:
+        try:
+            data = bulletin_annuel(db, eleve.matricule, annee_id)
+        except ValueError:
+            continue
+        if data.get("statut") == "OK" and data.get("trimestres"):
+            payloads.append(data)
+
+    if not payloads:
+        raise HTTPException(status_code=404, detail="Aucun bulletin annuel disponible pour cette classe")
+
+    fichier = pdf_service.nom_fichier_annuel_classe(payloads)
+    contenu = pdf_service.bulletins_annuels_classe_pdf(
+        payloads, etab, annees.libelle if annees else None
+    )
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fichier}"'},
+    )
+
+
+@router.get("/annuel/{matricule_eleve}", response_model=schemas.BulletinAnnuelResponse)
+def get_bulletin_annuel(matricule_eleve: str, annee_id: int, db: Session = Depends(get_db)):
+    from services.bulletins_annuels import bulletin_annuel
+
+    try:
+        return bulletin_annuel(db, matricule_eleve, annee_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/annuel/{matricule_eleve}/pdf", response_class=Response)
+def bulletins_annuel_pdf(matricule_eleve: str, annee_id: int, db: Session = Depends(get_db)):
+    from services.bulletins_annuels import bulletin_annuel
+
+    etab = _contexte_etablissement(db)
+    annees = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
+    try:
+        data = bulletin_annuel(db, matricule_eleve, annee_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if data.get("statut") != "OK" or not data.get("trimestres"):
+        raise HTTPException(status_code=404, detail="Aucun bulletin annuel disponible pour cet élève")
+
+    nom = pdf_service.nom_fichier_bulletin_annuel(data)
+    contenu = pdf_service.bulletin_annuel_pdf(
+        data, etab, annees.libelle if annees else None
+    )
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nom}"'},
+    )
+
+
 @router.get("/{bulletin_id}", response_model=schemas.BulletinDetailFullResponse)
 def get_bulletin(bulletin_id: int, db: Session = Depends(get_db)):
     bulletin = (
@@ -396,7 +487,7 @@ def get_bulletin(bulletin_id: int, db: Session = Depends(get_db)):
     return bulletin
 
 
-@router.delete("/{bulletin_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{bulletin_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_bulletin(bulletin_id: int, db: Session = Depends(get_db)):
     bulletin = db.query(models.Bulletins).filter(models.Bulletins.id == bulletin_id).first()
     if not bulletin:

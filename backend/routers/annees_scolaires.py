@@ -4,14 +4,14 @@ from typing import List
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 from periodes import generer_periodes_par_defaut
 from services.protections import verifier_annee_scolaire
 
 router = APIRouter(prefix="/api/anneesScolaires", tags=["Années Scolaires"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("/", response_model=schemas.AnneeScolaireResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=schemas.AnneeScolaireResponse, status_code=status.HTTP_201_CREATED)
 def create_annee_scolaire(payload: schemas.AnneeScolaireCreate, db: Session = Depends(get_db)):
     if db.query(models.AnneesScolaires).filter(models.AnneesScolaires.libelle == payload.libelle).first():
         raise HTTPException(status_code=400, detail="Année scolaire déjà existante")
@@ -47,7 +47,7 @@ def get_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     return annee
 
 
-@router.put("/{annee_id}", response_model=schemas.AnneeScolaireResponse, dependencies=[Depends(require_role("admin"))])
+@router.put("/{annee_id}", response_model=schemas.AnneeScolaireResponse)
 def update_annee_scolaire(annee_id: int, payload: schemas.AnneeScolaireCreate, db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:
@@ -69,7 +69,7 @@ def update_annee_scolaire(annee_id: int, payload: schemas.AnneeScolaireCreate, d
     return annee
 
 
-@router.put("/{annee_id}/activer", response_model=schemas.AnneeScolaireResponse, dependencies=[Depends(require_role("admin"))])
+@router.put("/{annee_id}/activer", response_model=schemas.AnneeScolaireResponse)
 def activer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:
@@ -83,7 +83,7 @@ def activer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     return annee
 
 
-@router.put("/{annee_id}/cloturer", response_model=schemas.AnneeScolaireResponse, dependencies=[Depends(require_role("admin"))])
+@router.put("/{annee_id}/cloturer", response_model=schemas.AnneeScolaireResponse)
 def cloturer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     """Verrouille définitivement l'année : plus aucune note, absence ou
     inscription ne pourra y être rattachée. À appeler après le passage de classe."""
@@ -99,7 +99,7 @@ def cloturer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     return annee
 
 
-@router.delete("/{annee_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{annee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:

@@ -7,12 +7,12 @@ from typing import List, Optional
 from database import get_db
 import models
 import schemas
-from security import get_current_user, require_role
+from security import get_current_user
 
 router = APIRouter(prefix="/api/absences", tags=["Absences"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("/", response_model=schemas.AbsenceResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.post("/", response_model=schemas.AbsenceResponse, status_code=status.HTTP_201_CREATED)
 def creer_absence(payload: schemas.AbsenceCreate, db: Session = Depends(get_db)):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == payload.matricule_eleve).first():
         raise HTTPException(status_code=404, detail="Élève introuvable")
@@ -120,7 +120,7 @@ def get_absence(absence_id: int, db: Session = Depends(get_db)):
     return absence
 
 
-@router.put("/{absence_id}", response_model=schemas.AbsenceResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.put("/{absence_id}", response_model=schemas.AbsenceResponse)
 def update_absence(absence_id: int, payload: schemas.AbsenceCreate, db: Session = Depends(get_db)):
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:
@@ -132,7 +132,7 @@ def update_absence(absence_id: int, payload: schemas.AbsenceCreate, db: Session 
     return absence
 
 
-@router.patch("/{absence_id}/justifier", response_model=schemas.AbsenceResponse, dependencies=[Depends(require_role("admin", "directeur"))])
+@router.patch("/{absence_id}/justifier", response_model=schemas.AbsenceResponse)
 def justifier_absence(absence_id: int, payload: schemas.AbsenceJustifierRequest, db: Session = Depends(get_db)):
     """Workflow dédié et tracé de justification (qui, quand), séparé de la
     modification générique pour garder un historique fiable."""
@@ -150,7 +150,7 @@ def justifier_absence(absence_id: int, payload: schemas.AbsenceJustifierRequest,
     return absence
 
 
-@router.delete("/{absence_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role("admin"))])
+@router.delete("/{absence_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_absence(absence_id: int, db: Session = Depends(get_db)):
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:

@@ -94,6 +94,15 @@ class EleveProposition(BaseModel):
     matricule: str
     nom: str
     prenom: str
+    sexe: str
+    date_naissance: Optional[date] = None
+    lieu_naissance: Optional[str] = None
+    prenom_pere: Optional[str] = None
+    nom_pere: Optional[str] = None
+    prenom_mere: Optional[str] = None
+    nom_mere: Optional[str] = None
+    annee_recrutement: Optional[int] = None
+    annees_passees_classe: int = 0
     moyenne_annuelle: Optional[float]
     statut_actuel: str
     proposition: str

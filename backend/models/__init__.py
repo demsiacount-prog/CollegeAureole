@@ -20,10 +20,12 @@ from models.seances import Seances
 from models.depenses import Depenses
 from models.documents import Documents
 from models.etablissement import Etablissement
+from models.infrastructures import EtablissementInfrastructures
 __all__ = [
     "Tuteurs", "Enseignants", "Utilisateurs",
     "AnneesScolaires", "Trimestres", "Classes", "AffectationCoursClasse", "Cours",
     "Eleves", "Notes", "Bulletins", "BulletinDetails",
     "Absences", "Inscriptions", "Echeances", "Paiements", "Remises",
+    "EtablissementInfrastructures",
     "Salles", "Seances", "Depenses", "Documents", "Etablissement",
 ]

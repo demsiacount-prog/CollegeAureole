@@ -267,6 +267,14 @@ function TableElevesPropositions({ eleves }: { eleves: ClasseProposition['eleves
             <TableHead>Matricule</TableHead>
             <TableHead>Nom</TableHead>
             <TableHead>Prénom</TableHead>
+            <TableHead>Sexe</TableHead>
+            <TableHead>Date de Naissance</TableHead>
+            <TableHead>Lieu de Naissance</TableHead>
+            <TableHead>Prénom du Père</TableHead>
+            <TableHead>Nom du Père</TableHead>
+            <TableHead>Prénom de la Mère</TableHead>
+            <TableHead>Nom de la Mère</TableHead>
+            <TableHead>Année de Recrutement</TableHead>
             <TableHead className="text-right">Moyenne</TableHead>
             <TableHead>Proposition</TableHead>
           </TableRow>
@@ -277,6 +285,14 @@ function TableElevesPropositions({ eleves }: { eleves: ClasseProposition['eleves
               <TableCell>{e.matricule}</TableCell>
               <TableCell>{e.nom}</TableCell>
               <TableCell>{e.prenom}</TableCell>
+              <TableCell>{e.sexe ?? '—'}</TableCell>
+              <TableCell>{e.date_naissance ?? '—'}</TableCell>
+              <TableCell>{e.lieu_naissance ?? '—'}</TableCell>
+              <TableCell>{e.prenom_pere ?? '—'}</TableCell>
+              <TableCell>{e.nom_pere ?? '—'}</TableCell>
+              <TableCell>{e.prenom_mere ?? '—'}</TableCell>
+              <TableCell>{e.nom_mere ?? '—'}</TableCell>
+              <TableCell>{e.annee_recrutement ?? '—'}</TableCell>
               <TableCell className="text-right">{note(e.moyenne_annuelle)}</TableCell>
               <TableCell>{statutBadge(e.proposition)}</TableCell>
             </TableRow>
@@ -312,7 +328,7 @@ function ClassementData({ classes }: { classes: ClassementClasse[] }) {
                     <TableHead>Nom</TableHead>
                     <TableHead>Prénom</TableHead>
                     <TableHead className="text-right">Moyenne</TableHead>
-                    <TableHead>Observation</TableHead>
+                    <TableHead>Observations</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -437,18 +453,18 @@ function RenseignementsPremierCycleData({ fiche }: { fiche: import('./types').Fi
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>{fiche.ecole}</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <p className="text-sm text-[var(--color-ink-dim)]">
-            Village/Quartier : {fiche.village_quartier ?? '—'} · Commune : {fiche.commune ?? '—'} · CAP :{' '}
-            {fiche.cap ?? '—'} · Dirigé par : {fiche.dirige_par ?? '—'} · Tél : {fiche.telephone ?? '—'}
-          </p>
-        </CardBody>
-      </Card>
-      <EnTeteTable titre="Effectifs par année" />
-      <BlocEffectifs lignes={fiche.effectifs} />
+      <CardHeader>
+        <CardTitle>{fiche.ecole}</CardTitle>
+      </CardHeader>
+      <CardBody>
+        <p className="text-sm text-[var(--color-ink-dim)]">
+          Village/Quartier : {fiche.village_quartier ?? '—'} · Commune : {fiche.commune ?? '—'} · CAP :{' '}
+          {fiche.cap ?? '—'} · Dirigé par : {fiche.dirige_par ?? '—'} · Tél : {fiche.telephone ?? '—'}
+        </p>
+      </CardBody>
+    </Card>
+    <EnTeteTable titre="Effectifs par année" />
+    <BlocEffectifs lignes={fiche.effectifs} />
       {fiche.personnel_admin.length > 0 && <EnTeteTable titre="Personnel administratif" />}
       {fiche.personnel_admin.length > 0 && (
         <TablePersonnel list={fiche.personnel_admin} colonnes={['prénom', 'nom', 'mle', 'fonction', 'diplôme']} />
@@ -457,7 +473,58 @@ function RenseignementsPremierCycleData({ fiche }: { fiche: import('./types').Fi
       {fiche.personnel_enseignant.length > 0 && (
         <TablePersonnel list={fiche.personnel_enseignant} colonnes={['prénom', 'nom', 'mle', 'grade', 'classe tenue']} />
       )}
+          {fiche.infrastructures && <BlocInfrastructuresMobiliers infra={fiche.infrastructures} />}
     </div>
+  )
+}
+
+function BlocInfrastructuresMobiliers({ infra }: { infra: import('./types').FicheRensPCInfrastructures }) {
+  const grille = [
+    { titre: 'Salles construites', paires: [['en dur', infra.salles_dur], ['semi-dur', infra.salles_semi_dur], ['en banco', infra.salles_banco], ['autres', infra.salles_autres]] },
+    { titre: 'Directions', paires: [['en dur', infra.direction_dur], ['en banco', infra.direction_banco], ['autres', infra.direction_autres], ['logement', infra.logement_direction]] },
+    { titre: 'Mobiliers', paires: [['tables-bancs', infra.tables_bancs], ['chaises', infra.chaises], ['armoires', infra.armoires], ['tableaux', infra.tableaux], ['divers', infra.mobilier_divers]] },
+  ]
+  return (
+    <EnTeteTable titre="Infrastructures et mobiliers" />
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {grille.map((g) => (
+        <div key={g.titre} className="rounded-md border p-3">
+          <p className="mb-2 font-medium">{g.titre}</p>
+          {g.paires.map(([l, v]) => (
+            <p key={l} className="flex justify-between text-sm">
+              <span>{l}</span>
+              <span>{v ?? '—'}</span>
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BlocInfrastructuresMobiliers({ infra }: { infra: import('./types').FicheRensPCInfrastructures }) {
+  const grille = [
+    { t: 'Salles construites', p: [['en dur', infra.salles_dur], ['semi-dur', infra.salles_semi_dur], ['en banco', infra.salles_banco], ['autres', infra.salles_autres]] },
+    { t: 'Directions', p: [['en dur', infra.direction_dur], ['en banco', infra.direction_banco], ['autres', infra.direction_autres], ['logement direction', infra.logement_direction]] },
+    { t: 'Mobiliers', p: [['tables-bancs', infra.tables_bancs], ['chaises', infra.chaises], ['armoires', infra.armoires], ['tableaux', infra.tableaux], ['divers', infra.mobilier_divers]] },
+  ]
+  return (
+    <>
+      <EnTeteTable titre="Infrastructures et mobiliers" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {grille.map((b) => (
+          <div key={b.t} className="rounded-md border p-3">
+            <p className="mb-2 font-medium">{b.t}</p>
+            {b.p.map(([l, v]) => (
+              <p key={l} className="flex justify-between text-sm">
+                <span>{l}</span>
+                <span>{v ?? '—'}</span>
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 

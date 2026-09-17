@@ -45,12 +45,24 @@ export interface NouvelleAnneeInput {
   date_fin: string
 }
 
+export interface EleveCloture {
+  matricule: string
+  nom: string
+  prenom: string
+  classe_nom: string | null
+  niveau: string | null
+}
+
 export interface RapportCloture {
   admis_passage: number
   admis_diplome: number
   recale_redoublement: number
   exclus: number
   total_traites: number
+  eleves_admis_passage: EleveCloture[]
+  eleves_diplomes: EleveCloture[]
+  eleves_redoublants: EleveCloture[]
+  eleves_exclus: EleveCloture[]
 }
 
 export interface ClotureExecuterResponse {

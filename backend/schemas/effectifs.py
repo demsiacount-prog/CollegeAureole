@@ -167,6 +167,22 @@ class FicheRensPCPersonnel(BaseModel):
     diplome: Optional[str] = None
 
 
+class FicheRensPCInfrastructures(BaseModel):
+    salles_dur: Optional[int] = None
+    salles_semi_dur: Optional[int] = None
+    salles_banco: Optional[int] = None
+    salles_autres: Optional[int] = None
+    direction_dur: Optional[int] = None
+    direction_banco: Optional[int] = None
+    direction_autres: Optional[int] = None
+    logement_direction: Optional[int] = None
+    tables_bancs: Optional[int] = None
+    chaises: Optional[int] = None
+    armoires: Optional[int] = None
+    tableaux: Optional[int] = None
+    mobilier_divers: Optional[int] = None
+
+
 class FicheRenseignementsPremierCycleResponse(BaseModel):
     annee_label: str
     cap: Optional[str] = None
@@ -178,6 +194,7 @@ class FicheRenseignementsPremierCycleResponse(BaseModel):
     effectifs: List[FicheRensPCLigne]
     personnel_admin: List[FicheRensPCPersonnel]
     personnel_enseignant: List[FicheRensPCPersonnel]
+    infrastructures: Optional[FicheRensPCInfrastructures] = None
 
 
 # ─── Fiche de notes de composition, 1er cycle (doc7) ──────────────────────────

@@ -553,11 +553,23 @@ def proposition_passage(
         n_ordre = niveau_ordre(classe.niveau)
         est_fin = n_ordre == 9
 
+        # Année de recrutement = PLUS ANCIENNE inscription de l'élève (toutes années)
+        annee_recrutement_par_eleve: dict = {}
+        for i in inscriptions:
+            el = i.eleve
+            if el is None or not el.matricule:
+                continue
+            a = i.annee_scolaire.libelle if i.annee_scolaire else None
+            if a is None:
+                continue
+            if el.matricule not in annee_recrutement_par_eleve or a < annee_recrutement_par_eleve[el.matricule]:
+                annee_recrutement_par_eleve[el.matricule] = a
+
         eleves_out: List[schemas.EleveProposition] = []
         admis = recales = en_attente = exclus = 0
         for insc in inscriptions:
             el = insc.eleve
-            if not el:
+            if el is None:
                 continue
             statistique = insc.statut_passage
             m = None if est_j else calculer_moyenne_annuelle(db, el.matricule, annee.id)
@@ -585,6 +597,14 @@ def proposition_passage(
                     matricule=el.matricule,
                     nom=el.nom,
                     prenom=el.prenom,
+                    sexe=el.sexe,
+                    date_naissance=el.date_naissance,
+                    lieu_naissance=el.lieu_naissance,
+                    prenom_pere=el.prenom_pere,
+                    nom_pere=el.nom_pere,
+                    prenom_mere=el.prenom_mere,
+                    nom_mere=el.nom_mere,
+                    annee_recrutement=annee_recrutement_par_eleve.get(el.matricule),
                     moyenne_annuelle=m,
                     statut_actuel=statistique,
                     proposition=proposition,
@@ -611,6 +631,7 @@ def proposition_passage(
                 eleves=eleves_out,
             )
         )
+    return schemas.PropositionPassageResponse(annee_label=annee.libelle, classes=classes_out)
     return schemas.PropositionPassageResponse(annee_label=annee.libelle, classes=classes_out)
 
 

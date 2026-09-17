@@ -48,12 +48,24 @@ class ClotureExecuterPayload(BaseModel):
     nouvelle_annee: NouvelleAnneePayload
 
 
+class EleveCloture(BaseModel):
+    matricule: str
+    nom: str
+    prenom: str
+    classe_nom: Optional[str] = None
+    niveau: Optional[str] = None
+
+
 class RapportCloture(BaseModel):
     admis_passage: int = 0
     admis_diplome: int = 0
     recale_redoublement: int = 0
     exclus: int = 0
     total_traites: int = 0
+    eleves_admis_passage: List[EleveCloture] = []
+    eleves_diplomes: List[EleveCloture] = []
+    eleves_redoublants: List[EleveCloture] = []
+    eleves_exclus: List[EleveCloture] = []
 
 
 class ClotureExecuterResponse(BaseModel):

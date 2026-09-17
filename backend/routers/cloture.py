@@ -169,6 +169,17 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
 
         rapport = schemas.RapportCloture()
 
+        def _eleve_cloture(insc: models.Inscriptions) -> schemas.EleveCloture:
+            eleve = insc.eleve
+            classe = insc.classe
+            return schemas.EleveCloture(
+                matricule=eleve.matricule if eleve else insc.matricule_eleve,
+                nom=eleve.nom if eleve else "",
+                prenom=eleve.prenom if eleve else "",
+                classe_nom=classe.nom if classe else None,
+                niveau=classe.niveau if classe else None,
+            )
+
         for insc in inscriptions:
             sp = insc.statut_passage
             eleve = insc.eleve
@@ -178,27 +189,32 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
                 classe_dest = _classe_suivante(db, insc.classe)
                 id_classe_dest = classe_dest.id if classe_dest is not None else insc.id_classe
                 rapport.admis_passage += 1
+                rapport.eleves_admis_passage.append(_eleve_cloture(insc))
 
             elif sp == "ADMIS":
                 if insc.diplome:
                     rapport.admis_diplome += 1
+                    rapport.eleves_diplomes.append(_eleve_cloture(insc))
                     continue
 
                 statut_insc = "Inscrit"
                 classe_dest = _classe_suivante(db, insc.classe)
                 id_classe_dest = classe_dest.id if classe_dest is not None else insc.id_classe
                 rapport.admis_passage += 1
+                rapport.eleves_admis_passage.append(_eleve_cloture(insc))
 
             elif sp == "RECALE":
                 statut_insc = "Redoublant"
                 id_classe_dest = insc.id_classe
                 rapport.recale_redoublement += 1
+                rapport.eleves_redoublants.append(_eleve_cloture(insc))
 
             elif sp == "EXCLU":
                 if eleve:
                     eleve.statut = "exclu"
                     eleve.classe_id = None
                 rapport.exclus += 1
+                rapport.eleves_exclus.append(_eleve_cloture(insc))
                 continue
 
             else:

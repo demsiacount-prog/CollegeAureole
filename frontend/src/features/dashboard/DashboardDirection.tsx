@@ -161,12 +161,12 @@ export default function DashboardDirection() {
         <>
           {/* Grille de graphiques — 2fr + 1fr */}
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-            <Card className="xl:col-span-2">
+            <Card className="min-w-0 xl:col-span-2">
               <div className="flex items-center gap-2 px-5 pt-4">
                 <BookOpen className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
                 <h3 className="text-[15px] font-medium text-[var(--ink)]">Moyennes par classe</h3>
               </div>
-              <div className="h-96 px-2 pb-5 pt-2">
+              <div className="h-96 max-w-full overflow-x-auto px-2 pb-5 pt-2">
                 {stats.moyennes_par_classe.length > 0 ? (
                   <div style={{ minWidth: `${Math.max(stats.moyennes_par_classe.length * 80, 500)}px`, height: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">

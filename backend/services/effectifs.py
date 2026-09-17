@@ -473,6 +473,11 @@ def fiche_renseignements_premier_cycle(
         else:
             personnels_enseignants.append(_encode_personnel_pc(ens))
 
+    infra = (
+        db.query(models.EtablissementInfrastructures)
+        .filter(models.EtablissementInfrastructures.id_annee_scolaire == annee.id)
+        .first()
+    )
     return schemas.FicheRenseignementsPremierCycleResponse(
         annee_label=annee.libelle,
         cap=etab.cap if etab else None,
@@ -484,6 +489,21 @@ def fiche_renseignements_premier_cycle(
         effectifs=effectifs,
         personnel_admin=personnels_admin,
         personnel_enseignant=personnels_enseignants,
+        infrastructures=(None if infra is None else schemas.FicheRensPCInfrastructures(
+            salles_dur=infra.salles_dur,
+            salles_semi_dur=infra.salles_semi_dur,
+            salles_banco=infra.salles_banco,
+            salles_autres=infra.salles_autres,
+            direction_dur=infra.direction_dur,
+            direction_banco=infra.direction_banco,
+            direction_autres=infra.direction_autres,
+            logement_direction=infra.logement_direction,
+            tables_bancs=infra.tables_bancs,
+            chaises=infra.chaises,
+            armoires=infra.armoires,
+            tableaux=infra.tableaux,
+            mobilier_divers=infra.mobilier_divers,
+        )),
     )
 
 

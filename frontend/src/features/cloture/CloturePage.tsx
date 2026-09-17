@@ -10,11 +10,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
+import { Tabs } from '@/components/ui/Tabs'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { executerCloture, fetchCloturePreview } from './api'
-import type { ClotureExecuterResponse } from './types'
+import type { ClotureExecuterResponse, EleveCloture } from './types'
 
 const COMPTEUR_CARDS: { key: keyof import('./types').CompteursPreview; label: string; icon: typeof CheckCircle2 }[] = [
   { key: 'ADMIS_PASSAGE', label: 'Admis — passage', icon: ArrowRight },
@@ -82,6 +83,51 @@ export default function CloturePage() {
   }
 
   if (rapport) {
+    const rapportTabs = [
+      {
+        key: 'admis',
+        label: 'Admis (passage)',
+        icon: ArrowRight,
+        count: rapport.rapport.admis_passage,
+        content: (
+          <ElevesClotureTable
+            eleves={rapport.rapport.eleves_admis_passage}
+            vide="Aucun élève admis au passage."
+          />
+        ),
+      },
+      {
+        key: 'diplomes',
+        label: 'Diplômés',
+        icon: GraduationCap,
+        count: rapport.rapport.admis_diplome,
+        content: (
+          <ElevesClotureTable eleves={rapport.rapport.eleves_diplomes} vide="Aucun élève diplômé." />
+        ),
+      },
+      {
+        key: 'redoublants',
+        label: 'Redoublants',
+        icon: Repeat,
+        count: rapport.rapport.recale_redoublement,
+        content: (
+          <ElevesClotureTable
+            eleves={rapport.rapport.eleves_redoublants}
+            vide="Aucun élève recalé en redoublement."
+          />
+        ),
+      },
+      {
+        key: 'exclus',
+        label: 'Exclus',
+        icon: Ban,
+        count: rapport.rapport.exclus,
+        content: (
+          <ElevesClotureTable eleves={rapport.rapport.eleves_exclus} vide="Aucun élève exclu." />
+        ),
+      },
+    ]
+
     return (
       <div className="flex flex-col gap-5">
         <PageHeader
@@ -98,13 +144,9 @@ export default function CloturePage() {
         <p className="mt-1.5 text-sm text-[var(--color-ink-dim)]">
           {rapport.ancienne_annee.libelle} est clôturée. {rapport.nouvelle_annee.libelle} est maintenant l'année active.
         </p>
-        <div className="mt-6 grid grid-cols-2 gap-3 text-left">
-          <Stat label="Admis (passage)" value={rapport.rapport.admis_passage} />
-          <Stat label="Diplômés" value={rapport.rapport.admis_diplome} />
-          <Stat label="Redoublants" value={rapport.rapport.recale_redoublement} />
-          <Stat label="Exclus" value={rapport.rapport.exclus} />
-        </div>
         </Card>
+
+        <Tabs tabs={rapportTabs} defaultKey="admis" />
       </div>
     )
   }
@@ -221,11 +263,43 @@ export default function CloturePage() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function ElevesClotureTable({ eleves, vide }: { eleves: EleveCloture[]; vide: string }) {
+  if (eleves.length === 0) {
+    return <EmptyState message={vide} />
+  }
   return (
-    <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] px-3 py-2">
-      <p className="text-xs text-[var(--color-ink-faint)]">{label}</p>
-      <p className="mt-0.5 text-lg font-medium text-[var(--color-ink)]">{value}</p>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Élèves ({eleves.length})</CardTitle>
+      </CardHeader>
+      <TableContainer className="rounded-none border-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Élève</TableHead>
+              <TableHead>Classe</TableHead>
+              <TableHead>Niveau</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {eleves.map((e) => (
+              <TableRow key={e.matricule}>
+                <TableCell className="font-medium text-[var(--color-ink)]">
+                  <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--color-action-bright)]">
+                    {e.prenom} {e.nom}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-[var(--color-ink-dim)]">
+                  {e.classe_nom ?? '—'}
+                </TableCell>
+                <TableCell className="text-[var(--color-ink-dim)]">
+                  {e.niveau ?? '—'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
   )
 }

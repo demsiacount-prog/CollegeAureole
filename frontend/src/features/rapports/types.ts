@@ -33,6 +33,14 @@ export interface EleveProposition {
   moyenne_annuelle: number | null
   statut_actuel: string
   proposition: string
+  sexe: string | null
+  date_naissance: string | null
+  lieu_naissance: string | null
+  prenom_pere: string | null
+  nom_pere: string | null
+  prenom_mere: string | null
+  nom_mere: string | null
+  annee_recrutement: number | null
 }
 
 export interface ClasseProposition {
@@ -282,6 +290,22 @@ export interface FicheRensPCPersonnel {
   diplome: string | null
 }
 
+export interface FicheRensPCInfrastructures {
+  salles_dur: number | null
+  salles_semi_dur: number | null
+  salles_banco: number | null
+  salles_autres: number | null
+  direction_dur: number | null
+  direction_banco: number | null
+  direction_autres: number | null
+  logement_direction: number | null
+  tables_bancs: number | null
+  chaises: number | null
+  armoires: number | null
+  tableaux: number | null
+  mobilier_divers: number | null
+}
+
 export interface FicheRenseignementsPremierCycleResponse {
   annee_label: string
   cap: string | null
@@ -293,6 +317,7 @@ export interface FicheRenseignementsPremierCycleResponse {
   effectifs: FicheRensPCLigne[]
   personnel_admin: FicheRensPCPersonnel[]
   personnel_enseignant: FicheRensPCPersonnel[]
+  infrastructures: FicheRensPCInfrastructures | null
 }
 
 // ─── Fiche de notes mensuelle / de composition, élève (doc7 + doc3) ──────────

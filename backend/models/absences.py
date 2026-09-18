@@ -7,6 +7,8 @@ from database import Base
 
 
 class Absences(Base):
+    """Absences des élèves (avec suivi de justification par un utilisateur)."""
+
     __tablename__ = "absences"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -24,4 +26,4 @@ class Absences(Base):
 
     eleve = relationship("Eleves", back_populates="absences")
     cours = relationship("Cours")
-    justifiee_par = relationship("Utilisateurs")
+    justifiee_par = relationship("Utilisateurs", back_populates="absences_justifiees")

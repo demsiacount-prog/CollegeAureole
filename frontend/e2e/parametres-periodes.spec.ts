@@ -1,5 +1,5 @@
 import { test, expect, request, type APIRequestContext } from '@playwright/test'
-import { login } from './helpers'
+import { login, ADMIN_CREDENTIALS } from './helpers'
 
 const BASE_URL = 'http://localhost:3001'
 const PREFIX = `PERIODES E2E ${Date.now()}`
@@ -7,7 +7,7 @@ const PREFIX = `PERIODES E2E ${Date.now()}`
 async function creerApiContexte(): Promise<APIRequestContext> {
   const auth = await request.newContext({ baseURL: BASE_URL })
   const res = await auth.post('/api/auth/connexion', {
-    data: { email: 'admin@etablissement.com', mot_de_passe: 'Password123!' },
+    data: { email: ADMIN_CREDENTIALS.email, mot_de_passe: ADMIN_CREDENTIALS.password },
   })
   if (res.status() !== 200) throw new Error(`Login API échoué (${res.status()})`)
   const { access_token } = await res.json()

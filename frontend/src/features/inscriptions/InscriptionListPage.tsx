@@ -19,6 +19,7 @@ import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate } from '@/lib/format'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { fetchInscriptions, fetchInscriptionsTotal, deleteInscription, createInscription } from './api'
 import InscriptionWizard from './InscriptionWizard'
 import InscriptionFormDrawer from './InscriptionFormDrawer'
@@ -36,8 +37,9 @@ const statutTone = (s: string): 'success' | 'warning' | 'danger' | 'neutral' => 
 const PAGE_SIZE = 50
 
 export default function InscriptionListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
   const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
 

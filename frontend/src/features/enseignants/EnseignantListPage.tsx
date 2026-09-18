@@ -17,12 +17,14 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchEnseignants, fetchEnseignantsTotal, deleteEnseignant } from './api'
 import EnseignantFormDrawer from './EnseignantFormDrawer'
 import type { Enseignant } from './types'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 const PAGE_SIZE = 50
 
 export default function EnseignantListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')

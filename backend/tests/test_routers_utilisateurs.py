@@ -5,13 +5,15 @@ du mot de passe et la suppression.
 """
 import pytest
 
+from credentials import ADMIN_PASSWORD
+
 
 def _creer(client, auth_headers, **overrides):
     payload = {
         "nom": "Traoré",
         "prenom": "Aminata",
         "email": "aminata@ecole.ml",
-        "mot_de_passe": "Password123!",
+        "mot_de_passe": ADMIN_PASSWORD,
         **overrides,
     }
     return client.post("/api/utilisateurs/", json=payload, headers=auth_headers)

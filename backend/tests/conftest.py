@@ -42,6 +42,7 @@ os.environ["ENVIRONMENT"] = "test"
 
 import pytest  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
+from credentials import ADMIN_EMAIL, ADMIN_PASSWORD  # noqa: E402
 import models  # noqa: E402
 from database import Base, get_db  # noqa: E402
 from main import app  # noqa: E402
@@ -106,8 +107,8 @@ def admin_user(db_session):
     user = Utilisateurs(
         nom="Admin",
         prenom="Test",
-        email="admin-test@etablissement.com",
-        mot_de_passe=hash_password("Password123!"),
+        email=ADMIN_EMAIL,
+        mot_de_passe=hash_password(ADMIN_PASSWORD),
         actif=True,
     )
     db_session.add(user)

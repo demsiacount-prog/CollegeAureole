@@ -15,10 +15,12 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchCours, createCours, updateCours, deleteCours } from './api'
 import CoursFormDrawer from './CoursFormDrawer'
 import type { Cours, CoursCreateInput } from './types'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 export default function CoursListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
   const { data: cours = [], isLoading, isError } = useQuery({ queryKey: ['cours'], queryFn: fetchCours })
 

@@ -10,7 +10,6 @@ from fastapi import HTTPException
 
 import models
 from routers.bulletins import _calculer_bulletin
-from services import pdf as pdf_service
 from services.bulletins_annuels import bulletin_annuel
 
 
@@ -311,38 +310,3 @@ def test_bulletin_annuel_non_officiel_ef1(db_session):
     noms = {l["cours_nom"] for l in payload["trimestres"][0]["lignes"]}
     assert noms == {"Rédaction", "Mathématique", "Physique – Chimie"}
 
-
-def test_bulletin_officiel_pdf_portrait(db_session):
-    """Le bulletin officiel (doc4) tient sur une page A4 portrait."""
-    annee = models.AnneesScolaires(
-        libelle="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 6, 30), active=True
-    )
-    db_session.add(annee)
-    db_session.flush()
-    t1 = models.Trimestres(
-        nom="1er Trimestre", type="TRIMESTRE",
-        date_debut=date(2025, 9, 1), date_fin=date(2025, 12, 20),
-        annee_scolaire_id=annee.id,
-    )
-    db_session.add(t1)
-    db_session.flush()
-
-    s = _Seed(db_session, "7ème", t1)
-    s.ajouter_note(s.cours[0][0], 16.0, note_classe=10.0)
-    db_session.add(models.Bulletins(
-        matricule_eleve=s.eleve.matricule, id_trimestre=t1.id, id_classe=s.classe.id,
-        moyenne_generale=11.45, rang=1, statut="PUBLIE",
-    ))
-    db_session.commit()
-
-    payload = bulletin_annuel(db_session, s.eleve.matricule, annee.id)
-    assert payload["officiel"] is True
-    contenu = pdf_service.bulletin_annuel_pdf(payload, None, "2025-2026")
-    assert contenu.startswith(b"%PDF")
-    # A4 portrait : largeur < hauteur
-    import re
-    medias = re.findall(rb"/MediaBox \[\s*0 0 ([\d.]+) ([\d.]+)\s*\]", contenu)
-    assert medias, "MediaBox introuvable"
-    largeur, hauteur = (float(v) for v in medias[0])
-    assert hauteur > largeur
-    assert round(largeur, 1) == 595.3  # largeur A4 portrait

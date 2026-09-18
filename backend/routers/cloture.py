@@ -119,7 +119,8 @@ def preview_cloture(db: Session = Depends(get_db)):
         annee_active=schemas.AnneeInfo(id=annee.id, libelle=annee.libelle),
         total_eleves=len(inscriptions),
         blocants=compteurs.EN_ATTENTE,
-        peut_executer=compteurs.EN_ATTENTE == 0 and len(inscriptions) > 0,
+        peut_executer=False if annee.cloturee else (compteurs.EN_ATTENTE == 0 and len(inscriptions) > 0),
+        cloturee=annee.cloturee,
         compteurs=compteurs,
         eleves=eleves_preview,
     )
@@ -131,6 +132,11 @@ def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depe
         annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
         if not annee_active:
             raise HTTPException(status_code=404, detail="Aucune année scolaire active")
+        if annee_active.cloturee:
+            raise HTTPException(
+                status_code=409,
+                detail="L'année scolaire active est déjà clôturée : aucune nouvelle clôture possible.",
+            )
 
         inscriptions = (
             db.query(models.Inscriptions)

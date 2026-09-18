@@ -71,11 +71,15 @@ def update_annee_scolaire(annee_id: int, payload: schemas.AnneeScolaireCreate, d
 
 @router.put("/{annee_id}/activer", response_model=schemas.AnneeScolaireResponse)
 def activer_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
+    """Sélectionne l'année à consulter.
+
+    Une année clôturée peut être (re)activée pour être **consultée en lecture
+    seule** : toutes les écritures restent bloquées par leur garde `cloturee`,
+    mais on peut y revenir après sa clôture pour consulter les données.
+    """
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
-    if annee.cloturee:
-        raise HTTPException(status_code=409, detail="Année scolaire clôturée")
     db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
     annee.active = True
     db.commit()

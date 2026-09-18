@@ -23,13 +23,15 @@ import { useDocuments } from '@/features/documents/hooks'
 import type { DossierEleve, InscriptionDetail, AbsenceEleve, BulletinEleve } from './types'
 import { niveauOrdre } from '@/lib/niveaux'
 import { FicheSuiviSection } from '@/features/rapports/FicheSuiviSection'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { FicheMensuelleSection } from '@/features/rapports/FicheMensuelleSection'
 import { PiecesClesDossier } from './PiecesClesDossier'
 
 export default function EleveDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const canWrite = true
-  const canImportDocs = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canImportDocs = !lectureSeule
   const [editOpen, setEditOpen] = useState(false)
   const [inscriptionOpen, setInscriptionOpen] = useState(false)
 

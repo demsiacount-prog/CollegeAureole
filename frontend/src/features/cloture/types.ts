@@ -35,6 +35,7 @@ export interface CloturePreview {
   total_eleves: number
   blocants: number
   peut_executer: boolean
+  cloturee: boolean
   compteurs: CompteursPreview
   eleves: ElevePreview[]
 }

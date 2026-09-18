@@ -1,9 +1,9 @@
 """Tests d'intégration du routeur Rapports & Documents.
 
-Couvre le carnet scolaire (bilan annuel), l'acte de naissance, la fiche de
-suivi au second cycle (7è/8è/9è), le rapport des moyennes annuelles, la
-proposition de passage et les générations PDF. Les classes de jardin
-d'enfants n'ont pas de notes chiffrées ni de passage.
+Couvre l'acte de naissance, la fiche de suivi au second cycle (7è/8è/9è), le
+rapport des moyennes annuelles, la proposition de passage et le seul PDF
+conservé côté rapports : le relevé de notes (fiche de notes/compositions).
+Les classes de jardin d'enfants n'ont pas de notes chiffrées ni de passage.
 """
 from datetime import date
 
@@ -177,43 +177,6 @@ class _Seed:
         ))
 
 
-class TestCarnetScolaire:
-    def test_carnet_fondamental_bilan_annuel(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-
-        resp = client.get(f"/api/rapports/eleves/{s.mat_a}/carnet", headers=auth_headers)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["est_jardin"] is False
-        assert data["classe"] == "7ème Année EF2-A"
-        assert data["annee_label"] == "2025-2026"
-        assert data["moyenne_annuelle"] == 15.0
-        assert data["rang"] == 1
-        assert data["effectif"] == 2
-        assert data["mention"] == "Bien"  # 15/20 → ≥ 70 %
-        assert len(data["periodes"]) == 2
-        assert {p["moyenne"] for p in data["periodes"]} == {15.0}
-        assert len(data["matieres"]) == 1
-        matiere = data["matieres"][0]
-        assert matiere["matiere"] == "Mathématiques"
-        assert matiere["moyennes_par_periode"] == [15.0, 15.0]
-        assert matiere["moyenne_annuelle"] == 15.0
-
-    def test_carnet_jardin_sans_notes(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-
-        resp = client.get(f"/api/rapports/eleves/{s.mat_j}/carnet", headers=auth_headers)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["est_jardin"] is True
-        assert data["cycle"] == "jardin"
-        assert data["matieres"] == []
-        assert data["moyenne_annuelle"] is None
-        assert data["observation"]  # appréciation manuelle
-
-
 class TestFicheSuivi:
     def test_fiche_9eme_transfert_vrai(self, client, auth_headers, db_session):
         s = _Seed(db_session)
@@ -309,28 +272,12 @@ class TestFicheSuivi:
         assert data["colonnes"][-1]["effectue"] is False
         assert all(v is None for v in data["lignes"][4]["valeurs"][16:])
 
-    def test_fiche_pdf_9eme(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-
-        resp = client.get(f"/api/rapports/eleves/{s.mat_9}/fiche-suivi/pdf", headers=auth_headers)
-        assert resp.status_code == 200
-        assert resp.headers["content-type"] == "application/pdf"
-        assert resp.content.startswith(b"%PDF")
-
     def test_fiche_refusee_hors_second_cycle(self, client, auth_headers, db_session):
         s = _Seed(db_session)
         db_session.commit()
 
         # Élève du jardin d'enfants : pas de fiche.
         resp = client.get(f"/api/rapports/eleves/{s.mat_j}/fiche-suivi", headers=auth_headers)
-        assert resp.status_code == 403
-
-    def test_fiche_pdf_refusee_hors_second_cycle(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-
-        resp = client.get(f"/api/rapports/eleves/{s.mat_j}/fiche-suivi/pdf", headers=auth_headers)
         assert resp.status_code == 403
 
 
@@ -402,6 +349,20 @@ class TestPropositionPassage:
         assert propositions[s.mat_b] == "ADMIS"  # 13 ≥ 10
         nine = next(c for c in data["classes"] if c["niveau"] == "9ème Année")
         assert nine["est_fin_cycle"] is True
+
+    def test_annees_passees_classe_depuis_historique(self, client, auth_headers, db_session):
+        """Le nombre d'années dans la classe vient de l'historique des inscriptions."""
+        s = _Seed(db_session)
+        db_session.commit()
+
+        resp = client.get("/api/rapports/proposition-passage", headers=auth_headers)
+        assert resp.status_code == 200
+        ef2 = next(c for c in resp.json()["classes"] if c["niveau"] == "7ème Année")
+        annees = {e["matricule"]: e["annees_passees_classe"] for e in ef2["eleves"]}
+        # Élève A : même classe en 2024-2025 puis 2025-2026 → 2 ans.
+        assert annees[s.mat_a] == 2
+        # Élève B : première année dans la classe → 1 an.
+        assert annees[s.mat_b] == 1
 
     def test_recale_conserve_son_statut(self, client, auth_headers, db_session):
         s = _Seed(db_session)
@@ -653,6 +614,8 @@ class TestFicheRenseignementsPremierCycle:
 
 
 class TestPDF:
+    """Seul document PDF des rapports conservé : le relevé de notes (doc7)."""
+
     def _assert_pdf(self, path, client, auth_headers):
         resp = client.get(path, headers=auth_headers)
         assert resp.status_code == 200
@@ -660,52 +623,16 @@ class TestPDF:
         assert resp.content.startswith(b"%PDF")
         assert "attachment; filename=" in resp.headers["content-disposition"]
 
-    def test_pdf_classement(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf("/api/rapports/classement/pdf", client, auth_headers)
-
-    def test_pdf_fiche_renseignements(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf("/api/rapports/fiche-renseignements/pdf", client, auth_headers)
-
-    def test_pdf_fiche_renseignements_premier_cycle(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf("/api/rapports/fiche-renseignements-premier-cycle/pdf", client, auth_headers)
-
     def test_pdf_fiche_notes_compositions(self, client, auth_headers, db_session):
         s = _Seed(db_session)
         db_session.add(models.AffectationCoursClasse(id_classe=s.classe_ef2.id, id_cours=s.maths.id, coefficient=1.0))
         db_session.commit()
         self._assert_pdf(f"/api/rapports/eleves/{s.mat_a}/fiche-notes-compositions/pdf", client, auth_headers)
 
-    def test_pdf_carnet(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf(f"/api/rapports/eleves/{s.mat_a}/carnet/pdf", client, auth_headers)
-
-    def test_pdf_fiche(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf(f"/api/rapports/eleves/{s.mat_9}/fiche-suivi/pdf", client, auth_headers)
-
-    def test_pdf_moyennes(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf("/api/rapports/moyennes-annuelles/pdf", client, auth_headers)
-
-    def test_pdf_proposition(self, client, auth_headers, db_session):
-        s = _Seed(db_session)
-        db_session.commit()
-        self._assert_pdf("/api/rapports/proposition-passage/pdf", client, auth_headers)
-
 
 class TestAuthRequis:
     def test_rapports_sans_token_401(self, client):
         assert client.get("/api/rapports/moyennes-annuelles").status_code == 401
-        assert client.get("/api/rapports/eleves/XL000000/carnet").status_code == 401
         assert client.get("/api/rapports/classement").status_code == 401
         assert client.get("/api/rapports/fiche-renseignements").status_code == 401
         assert client.get("/api/rapports/fiche-renseignements-premier-cycle").status_code == 401

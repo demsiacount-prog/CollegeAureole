@@ -17,9 +17,11 @@ import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import type { Classe } from '@/features/shared/types'
 import { formatDate } from '@/lib/format'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 export default function ClasseListPage() {
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const qc = useQueryClient()
 
   const { data: classes = [], isLoading, isError } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })

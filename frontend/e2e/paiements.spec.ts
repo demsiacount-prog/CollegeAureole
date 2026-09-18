@@ -1,12 +1,12 @@
 import { test, expect, request } from '@playwright/test'
-import { login } from './helpers'
+import { login, ADMIN_CREDENTIALS } from './helpers'
 
 test('paiements : recherche dans le sélect et création', async ({ page }) => {
   await login(page)
 
   const ctx = await request.newContext({ baseURL: 'http://localhost:3001' })
   const authRes = await ctx.post('/api/auth/connexion', {
-    data: { email: 'admin@etablissement.com', mot_de_passe: 'Password123!' },
+    data: { email: ADMIN_CREDENTIALS.email, mot_de_passe: ADMIN_CREDENTIALS.password },
   })
   const { access_token } = await authRes.json()
   const auth = { headers: { Authorization: `Bearer ${access_token}` } }

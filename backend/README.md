@@ -55,13 +55,13 @@ structurellement petites (années scolaires, trimestres, salles) n'ont pas été
 modifiées : leur volume ne justifie pas la pagination.
 
 ### 6. Dépendances
-- `requirement.txt` → renommé `requirements.txt` (convention standard), et **toutes
-  les versions sont désormais épinglées** (`~=`) pour des installations reproductibles.
+- `requirement.txt` → renommé `requirements.txt` (convention standard), et les
+  versions de production y sont épinglées (`~=`) pour des installations
+  reproductibles (les dépendances de dev, `requirements-dev.txt`, restent souples).
 - `python-jose` retiré : le code utilise en réalité `PyJWT` (`import jwt`) dans
   `security.py`, `python-jose` n'était jamais importé nulle part — dépendance morte.
-- `faker` dans `requirements.txt` : requis par `seed.py`, appelé par
-  l'assistant de première configuration (`POST /api/setup/run`).
-- `alembic` ajouté pour les migrations de schéma (voir section dédiée plus bas).
+- `alembic` ajouté pour les migrations de schéma (voir section dédiée plus bas), ainsi
+  que `openpyxl` (import/export Excel) et `reportlab` (Génération de PDF).
 
 ### 7. CORS
 Les origines autorisées viennent maintenant de la variable d'environnement
@@ -111,9 +111,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Configurez votre .env (déjà présent, à adapter) :
-# DATABASE_URL, JWT_SECRET_KEY, CORS_ORIGINS
-# Par défaut la base est SQLite (sqlite:///./collegeaureole.db) ; pour
-# PostgreSQL, posez DATABASE_URL="postgresql://<utilisateur>:<mot_de_passe>@localhost:5432/collegeaureole".
+# DATABASE_URL (obligatoire — PostgreSQL recommandé), JWT_SECRET_KEY, CORS_ORIGINS
+# Exemple PostgreSQL : DATABASE_URL="postgresql://<utilisateur>:<mot_de_passe>@localhost:5432/collegeaureole".
 
 # Peupler la base avec des données de démonstration (⚠️ supprime tout) :
 python3 seed.py
@@ -150,11 +149,10 @@ redirige `/api` et `/uploads` vers le backend via la proxy Vite).
 
 ## Sauvegardes (optionnel)
 
-La base est un simple fichier SQLite (`backend/collegeaureole.db`, créé au
-premier démarrage). Une sauvegarde consiste à copier ce fichier (idéalement
-avec `VACUUM INTO` pour une copie cohérente). En multi-poste hors réseau, la
-synchronisation par classeurs Excel (`/api/sync/...`) reste le moyen de
-converger les données entre postes.
+La base vit dans PostgreSQL (`DATABASE_URL`). Une sauvegarde cohérente se fait via
+`pg_dump` (ou `VACUUM INTO` si la base est déplacée en SQLite). En multi-poste
+hors réseau, la synchronisation par classeurs Excel (`/api/import-export/...`)
+reste le moyen de converger les données entre postes.
 
 **Sécurité avant mise en service** : changer la `JWT_SECRET_KEY` du `.env` et
 le mot de passe du compte admin à la première connexion.
@@ -187,8 +185,6 @@ le mot de passe du compte admin à la première connexion.
 
 
 ## Prochaines étapes suggérées
-- Ajouter une suite de tests (pytest + base de test dédiée, ex. SQLite en mémoire ou
-  conteneur Postgres jetable) — aucun test automatisé n'existe pour l'instant.
-- Générer un PDF de bulletin à partir de `BulletinDetailFullResponse`.
+- Générer un PDF de bulletin de meilleure qualité à partir de `BulletinDetailFullResponse`.
 - Envisager un refresh token / une rotation de clé JWT si la durée de session
   (8h actuellement) doit être raccourcie pour les rôles sensibles.

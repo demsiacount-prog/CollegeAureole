@@ -17,6 +17,7 @@ import { formatDate, formatMontant } from '@/lib/format'
 import { fetchDepenses, fetchDepensesCompte, deleteDepense } from './api'
 import { CATEGORIES, CATEGORIE_LABELS, type Depense } from './types'
 import DepenseFormDrawer from './DepenseFormDrawer'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 const CATEGORIE_COLORS: Record<string, string> = {
   SALAIRES: 'info',
@@ -32,8 +33,9 @@ const CATEGORIE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function DepenseListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')

@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -93,3 +94,68 @@ def upload_logo(
     """Enregistre l'image du logo et retourne son chemin public (la fiche n'est
     modifiée qu'au prochain PUT de l'établissement)."""
     return {"logo": enregistrer_logo(file)}
+
+
+# ─── Infrastructures et mobiliers (fiche renseignements 1er cycle) ────────────
+
+def _infrastructures_4o404(db: Session, annee_id: Optional[int]) -> models.EtablissementInfrastructures:
+    """Retourne l'enregistrement d'infrastructures de l'année demandée (ou de
+    l'année active), ou 404 s'il n'a pas encore été saisi."""
+    if annee_id is None:
+        annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
+        if not annee:
+            raise HTTPException(status_code=404, detail="Aucune année scolaire active")
+        annee_id = annee.id
+    infra = (
+        db.query(models.EtablissementInfrastructures)
+        .filter(models.EtablissementInfrastructures.id_annee_scolaire == annee_id)
+        .first()
+    )
+    if not infra:
+        raise HTTPException(status_code=404, detail="Infrastructures non renseignées pour cette année scolaire")
+    return infra
+
+
+@router.get("/infrastructures", response_model=schemas.EtablissementInfrastructuresResponse)
+def get_infrastructures(
+    annee_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    _user: models.Utilisateurs = Depends(get_current_user),
+):
+    return _infrastructures_4o404(db, annee_id)
+
+
+@router.put("/infrastructures", response_model=schemas.EtablissementInfrastructuresResponse)
+def put_infrastructures(
+    payload: schemas.EtablissementInfrastructuresPayload,
+    _user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Crée ou met à jour les infrastructures/mobiliers de l'année scolaire
+    demandée (par défaut l'année active)."""
+    annee_id = payload.id_annee_scolaire
+    if annee_id is None:
+        annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
+        if not annee:
+            raise HTTPException(status_code=400, detail="Aucune année scolaire active")
+        annee_id = annee.id
+    else:
+        annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
+        if not annee:
+            raise HTTPException(status_code=404, detail="Année scolaire introuvable")
+
+    infra = (
+        db.query(models.EtablissementInfrastructures)
+        .filter(models.EtablissementInfrastructures.id_annee_scolaire == annee_id)
+        .first()
+    )
+    if infra is None:
+        infra = models.EtablissementInfrastructures(id_annee_scolaire=annee_id)
+        db.add(infra)
+    for cle, valeur in payload.model_dump().items():
+        if cle == "id_annee_scolaire":
+            continue
+        setattr(infra, cle, valeur)
+    db.commit()
+    db.refresh(infra)
+    return infra

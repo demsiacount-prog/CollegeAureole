@@ -5,13 +5,19 @@ from database import Base
 
 
 class Documents(Base):
+    """Pièces jointes attachées à une entité (élève, enseignant, tuteur).
+
+    Une seule des trois colonnes d'attachement est renseignée selon l'entité.
+    Les documents d'enseignant/tuteur sont rattachés par vraie clé étrangère ;
+    la suppression de l'entité met la colonne à NULL (historique conservé).
+    """
+
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    # Une seule des trois colonnes d'attachement est renseignée selon l'entité.
     matricule_eleve = Column(String, ForeignKey("eleves.matricule", ondelete="CASCADE"), nullable=True, index=True)
-    matricule_enseignant = Column(String, nullable=True, index=True)
-    code_tuteur = Column(String, nullable=True, index=True)
+    matricule_enseignant = Column(String, ForeignKey("enseignants.matricule", ondelete="SET NULL"), nullable=True, index=True)
+    code_tuteur = Column(String, ForeignKey("tuteurs.code_tuteur", ondelete="SET NULL"), nullable=True, index=True)
     # Catégorie de regroupement (§ Type K) : identite / photo / naissance /
     # scolaire / medical / administratif / autre. Remplace le type_document
     # dans les nouveaux flux d'upload ; les anciennes pièces gardent leur
@@ -29,3 +35,5 @@ class Documents(Base):
     uploaded_at = Column(DateTime, nullable=False, default=now_utc)
 
     eleve = relationship("Eleves", back_populates="documents")
+    enseignant = relationship("Enseignants", back_populates="documents")
+    tuteur = relationship("Tuteurs", back_populates="documents")

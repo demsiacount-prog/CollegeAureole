@@ -6,7 +6,7 @@ par les tests d'intégration.
 """
 from datetime import date, timedelta
 
-from periodes import _decouper_plage, N_TRIMESTRES, N_COMPOSITIONS
+from periodes import _decouper_plage, _mois_composition, N_TRIMESTRES, N_COMPOSITIONS
 
 
 def test_decoupe_1_plage_couvre_la_plage():
@@ -48,3 +48,30 @@ def test_decoupe_plus_de_plages_que_de_jours_se_replie():
     assert len(plages) == 5
     assert plages[0][0] == date(2025, 1, 1)
     assert plages[-1][1] == date(2025, 1, 2)
+
+
+def test_mois_composition_retient_le_mois_median():
+    assert _mois_composition(date(2025, 9, 1), date(2025, 10, 3)) == "Septembre"
+    assert _mois_composition(date(2024, 10, 7), date(2024, 11, 4)) == "Octobre"
+    assert _mois_composition(date(2025, 1, 31), date(2025, 2, 28)) == "Février"
+    assert _mois_composition(date(2025, 5, 27), date(2025, 6, 24)) == "Juin"
+
+
+def test_compositions_annee_octobre_noms_par_mois_uniques():
+    """Année débutant en octobre (ex. Mali) : chaque composition porte un
+    mois distinct (« Octobre », « Novembre », …, « Juin »)."""
+    debut, fin = date(2024, 10, 7), date(2025, 6, 27)
+    plages = _decouper_plage(debut, fin, N_COMPOSITIONS)
+    noms = [_mois_composition(d, f) for d, f in plages]
+    assert len(noms) == N_COMPOSITIONS
+    assert len(set(noms)) == N_COMPOSITIONS
+    assert noms[0] == "Octobre"
+    assert noms[-1] == "Juin"
+
+
+def test_compositions_annee_septembre_noms_par_mois_uniques():
+    debut, fin = date(2025, 9, 1), date(2026, 6, 30)
+    plages = _decouper_plage(debut, fin, N_COMPOSITIONS)
+    noms = [_mois_composition(d, f) for d, f in plages]
+    assert len(noms) == N_COMPOSITIONS
+    assert len(set(noms)) == N_COMPOSITIONS

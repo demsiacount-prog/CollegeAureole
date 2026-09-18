@@ -1,7 +1,6 @@
 """Schémas des documents de rentrée et de notes (doc1, doc5, doc6, doc7).
 
-Ces modèles alimentent à la fois les endpoints JSON et les générateurs PDF
-(services.rapports_pdf et services.effectifs).
+Ces modèles alimentent les endpoints JSON construits par services.effectifs.
 """
 from datetime import date
 from typing import List, Optional
@@ -107,6 +106,9 @@ class FicheRenseignementsPersonnel(BaseModel):
     genre: Optional[str] = None
     nina: Optional[str] = None
     date_naissance: Optional[date] = None
+    lieu_de_naissance: Optional[str] = None
+    nationalite: Optional[str] = None
+    situation_matrimoniale: Optional[str] = None
     categorie: Optional[str] = None
     classe: Optional[str] = None
     echelon: Optional[str] = None
@@ -153,6 +155,9 @@ class FicheRensPCPersonnel(BaseModel):
     nom: str
     numero_mle: Optional[str] = None
     date_naissance: Optional[date] = None
+    lieu_de_naissance: Optional[str] = None
+    nationalite: Optional[str] = None
+    situation_matrimoniale: Optional[str] = None
     grade: Optional[str] = None
     sf: Optional[str] = None
     nbre_enfants: Optional[str] = None

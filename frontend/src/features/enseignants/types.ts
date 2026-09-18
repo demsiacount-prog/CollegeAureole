@@ -12,11 +12,16 @@ export interface EnseignantCreateInput {
   genre?: string
   nina?: string
   date_naissance?: string
+  lieu_de_naissance?: string
+  nationalite?: string
+  situation_matrimoniale?: string
   categorie?: string
   echelon?: string
   fonction?: string
   sf_nombre_enfants?: string
   date_contrat?: string
+  date_titularisation?: string
+  date_dernier_avancement?: string
   classe_tenue?: string
   dernier_poste?: string
   date_arrivee_cap?: string

@@ -224,7 +224,7 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByRole('button', { name: /Résultats/ }).click()
     await expect(page.getByText('Moy. annuelle 8.00 /10')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('1 période')).toBeVisible()
-    await expect(page.getByText('Composition 1')).toBeVisible()
+    await expect(page.getByText('Composition Octobre')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Note /10' })).toBeVisible()
     await expect(page.locator('tbody tr', { hasText: NOM_COURS })).toContainText('8.00')
     await expect(page.getByText('Enseignant E2E').first()).toBeVisible()

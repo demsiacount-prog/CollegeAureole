@@ -170,6 +170,27 @@ def _cycle_enseignant(enseignant) -> Optional[int]:
     return None
 
 
+def _nom_directeur(db: Session) -> Optional[str]:
+    """Prénom Nom de l'utilisateur portant le rôle DIRECTEUR (actif).
+
+    Alimente l'en-tête « Dirigée par / Dirigé par » des fiches de
+    renseignements. On retient le premier compte actif de rôle DIRECTEUR,
+    trié par id (le plus ancien compte directeur).
+    """
+    directeur = (
+        db.query(models.Utilisateurs)
+        .filter(
+            models.Utilisateurs.role.in_(["DIRECTEUR", "directeur"]),
+            models.Utilisateurs.actif == True,  # noqa: E712
+        )
+        .order_by(models.Utilisateurs.id.asc())
+        .first()
+    )
+    if directeur is None:
+        return None
+    return f"{directeur.prenom} {directeur.nom}".strip() or None
+
+
 def _compteurs_enseignants(db: Session) -> list:
     resultats: list = [{"cycle": 0, "fe": 0, "fc": 0, "ce": 0, "cc": 0, "autres": 0, "em": 0},
                        {"cycle": 1, "fe": 0, "fc": 0, "ce": 0, "cc": 0, "autres": 0, "em": 0}]
@@ -338,6 +359,9 @@ def fiche_renseignements(db: Session, annee: models.AnneesScolaires, etab: model
                 genre=ens.genre,
                 nina=ens.nina,
                 date_naissance=ens.date_naissance,
+                lieu_de_naissance=ens.lieu_de_naissance,
+                nationalite=ens.nationalite,
+                situation_matrimoniale=ens.situation_matrimoniale,
                 categorie=ens.categorie,
                 classe=ens.classe_tenue,
                 echelon=ens.echelon,
@@ -358,7 +382,7 @@ def fiche_renseignements(db: Session, annee: models.AnneesScolaires, etab: model
         cap=etab.cap if etab else None,
         ecole=(etab.nom or "Collège Auréole") if etab else "Collège Auréole",
         telephone=etab.telephone if etab else None,
-        dirigee_par=None,
+        dirigee_par=_nom_directeur(db),
         effectifs=effectifs,
         personnel=personnel,
     )
@@ -434,13 +458,16 @@ def _encode_personnel_pc(ens) -> schemas.FicheRensPCPersonnel:
         nom=ens.nom,
         numero_mle=ens.nina or ens.matricule,
         date_naissance=ens.date_naissance,
+        lieu_de_naissance=ens.lieu_de_naissance,
+        nationalite=ens.nationalite,
+        situation_matrimoniale=ens.situation_matrimoniale,
         grade=ens.categorie,
         sf=ens.sf_nombre_enfants,
         nbre_enfants=ens.sf_nombre_enfants,
         fonction=ens.fonction,
         date_recrutement=ens.date_contrat,
-        date_titularisation=None,
-        date_dernier_avancement=None,
+        date_titularisation=ens.date_titularisation,
+        date_dernier_avancement=ens.date_dernier_avancement,
         dernier_poste=ens.dernier_poste,
         date_arrivee_cap=ens.date_arrivee_cap,
         classe_tenue=ens.classe_tenue,
@@ -484,7 +511,7 @@ def fiche_renseignements_premier_cycle(
         commune=etab.commune if etab else None,
         ecole=(etab.nom or "Collège Auréole") if etab else "Collège Auréole",
         village_quartier=etab.village_quartier if etab else None,
-        dirige_par=None,
+        dirige_par=_nom_directeur(db),
         telephone=etab.telephone if etab else None,
         effectifs=effectifs,
         personnel_admin=personnels_admin,

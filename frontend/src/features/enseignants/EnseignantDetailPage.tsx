@@ -14,10 +14,12 @@ import { useDocuments } from '@/features/documents/hooks'
 import { formatDate } from '@/lib/format'
 import { fetchEnseignantDossier } from './api'
 import EnseignantFormDrawer from './EnseignantFormDrawer'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 export default function EnseignantDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: dossier, isLoading, isError, refetch } = useQuery({
@@ -99,11 +101,30 @@ export default function EnseignantDetailPage() {
               <div className="gap-5 grid grid-cols-2">
                 <InfoSection title="Informations personnelles">
                   <InfoField label="Spécialité" value={e.specialite} />
+                  <InfoField label="Genre" value={e.genre === 'M' ? 'Masculin' : e.genre === 'F' ? 'Féminin' : e.genre} />
+                  <InfoField label="Date de naissance" value={formatDate(e.date_naissance)} />
                   <InfoField label="Email" value={e.email} />
-                  <InfoField label="Téléphone" value={e.telephone} />
+                  <InfoField label="Téléphone" value={e.telephone} mono />
                   <InfoField label="Adresse" value={e.adresse} />
                   <InfoField label="Matricule" value={e.matricule} mono />
                   <InfoField label="Inscrit le" value={formatDate(e.created_at)} />
+                </InfoSection>
+                <InfoSection title="Renseignements administratifs">
+                  <InfoField label="NINA" value={e.nina} mono />
+                  <InfoField label="Catégorie" value={e.categorie} />
+                  <InfoField label="Échelon" value={e.echelon} />
+                  <InfoField label="Fonction" value={e.fonction} />
+                  <InfoField label="Nbre d'enfants (SF)" value={e.sf_nombre_enfants} />
+                  <InfoField label="Date de contrat" value={formatDate(e.date_contrat)} />
+                  <InfoField label="Date de titularisation" value={formatDate(e.date_titularisation)} />
+                  <InfoField label="Dernier avancement" value={formatDate(e.date_dernier_avancement)} />
+                  <InfoField label="Classe tenue" value={e.classe_tenue} />
+                  <InfoField label="Dernier poste occupé" value={e.dernier_poste} />
+                  <InfoField label="Arrivée au CAP" value={formatDate(e.date_arrivee_cap)} />
+                  <InfoField label="Diplôme" value={e.diplome} />
+                  <div className="col-span-full">
+                    <InfoField label="Observations" value={e.observations} />
+                  </div>
                 </InfoSection>
               </div>
             ),

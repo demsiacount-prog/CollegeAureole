@@ -18,13 +18,15 @@ import { fetchClasses } from '@/features/classes/api'
 import { createInscription } from '@/features/inscriptions/api'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
 import InscriptionWizard from '@/features/inscriptions/InscriptionWizard'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import type { Eleve } from './types'
 
 const PAGE_SIZE = 50
 
 export default function EleveListPage() {
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')

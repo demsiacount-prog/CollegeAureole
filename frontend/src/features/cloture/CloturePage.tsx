@@ -158,7 +158,14 @@ export default function CloturePage() {
         subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">{preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}</p>}
       />
 
-      {preview.total_eleves === 0 ? (
+      {preview.cloturee ? (
+        <div className="py-16">
+          <EmptyState
+            title="Année déjà clôturée"
+            message={`${preview.annee_active?.libelle ?? "L'année active"} est clôturée et verrouillée. Sélectionnez une autre année (non clôturée) dans le sélecteur d'année pour pouvoir clôturer.`}
+          />
+        </div>
+      ) : preview.total_eleves === 0 ? (
         <div className="py-16">
           <EmptyState message="Aucune inscription pour l'année active — rien à clôturer." />
         </div>

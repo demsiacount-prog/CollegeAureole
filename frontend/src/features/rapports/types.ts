@@ -41,6 +41,7 @@ export interface EleveProposition {
   prenom_mere: string | null
   nom_mere: string | null
   annee_recrutement: number | null
+  annees_passees_classe: number
 }
 
 export interface ClasseProposition {

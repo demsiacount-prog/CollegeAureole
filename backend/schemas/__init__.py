@@ -49,7 +49,7 @@ from schemas.depenses import DepenseCreate, DepenseUpdate, DepenseResponse
 from schemas.cloture import (
     CloturePreviewResponse, NouvelleAnneePayload,
     ClotureExecuterPayload, ClotureExecuterResponse,
-    CompteursPreview,ElevePreview,AnneeInfo,RapportCloture
+    CompteursPreview,ElevePreview,AnneeInfo,RapportCloture,EleveCloture
 )
 from schemas.documents import DocumentResponse, DocumentRead, DocumentUpdate, DocumentListeResponse
 from schemas.rapports import (
@@ -58,7 +58,10 @@ from schemas.rapports import (
     EleveMoyenne, ClasseMoyennes, RapportMoyennesResponse,
     EleveProposition, ClasseProposition, PropositionPassageResponse,
 )
-from schemas.etablissement import EtablissementUpdate, EtablissementResponse
+from schemas.etablissement import (
+    EtablissementUpdate, EtablissementResponse,
+    EtablissementInfrastructuresPayload, EtablissementInfrastructuresResponse,
+)
 from schemas.effectifs import (
     ClassementEleve, ClassementClasseResponse, ClassementResponse,
     RapportRentreeClasse, RapportRentreeCycle, RapportRentreeResponse,

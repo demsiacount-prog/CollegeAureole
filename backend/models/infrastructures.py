@@ -3,7 +3,9 @@
 Une ligne par année scolaire : blocs « Salles construites », « Directions » et
 « Mobiliers » de la Fiche de renseignements (document 4, collège 1er cycle).
 """
-from sqlalchemy import Column, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy.orm import relationship
+from timeutils import now_utc
 from database import Base
 
 
@@ -36,3 +38,8 @@ class EtablissementInfrastructures(Base):
     armoires = Column(Integer, nullable=True)
     tableaux = Column(Integer, nullable=True)
     mobilier_divers = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=now_utc)
+    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+
+    annee_scolaire = relationship("AnneesScolaires")

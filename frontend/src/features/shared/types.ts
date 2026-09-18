@@ -100,11 +100,16 @@ export interface Enseignant {
   genre: string | null
   nina: string | null
   date_naissance: string | null
+  lieu_de_naissance: string | null
+  nationalite: string | null
+  situation_matrimoniale: string | null
   categorie: string | null
   echelon: string | null
   fonction: string | null
   sf_nombre_enfants: string | null
   date_contrat: string | null
+  date_titularisation: string | null
+  date_dernier_avancement: string | null
   classe_tenue: string | null
   dernier_poste: string | null
   date_arrivee_cap: string | null

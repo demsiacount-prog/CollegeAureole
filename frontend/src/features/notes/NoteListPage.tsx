@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, patchNote, deleteNote, saveNotesBulk, fetchRegistrePdf, downloadRegistrePdf } from './api'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, patchNote, deleteNote, saveNotesBulk } from './api'
 import type { Note, NoteBulkItem } from './api'
-import { PdfViewerModal } from '@/components/pdf/PdfViewerModal'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -14,10 +14,9 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/ui/Avatar'
-import { Tooltip } from '@/components/ui/Tooltip'
 import { extractErrorMessage } from '@/lib/api'
 import { toast } from '@/components/ui/toast'
-import { Save, BookOpen, Loader2 } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
 
@@ -91,7 +90,8 @@ interface StudentRow {
 }
 
 export default function NoteListPage() {
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const queryClient = useQueryClient()
 
   const [classeId, setClasseId] = useState<number | null>(null)
@@ -99,8 +99,6 @@ export default function NoteListPage() {
   const [coursId, setCoursId] = useState<number | null>(null)
   const [rows, setRows] = useState<StudentRow[]>([])
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [registreLoading, setRegistreLoading] = useState(false)
-  const [registrePdf, setRegistrePdf] = useState<{ data: ArrayBuffer } | null>(null)
   const [search, setSearch] = useState('')
   const [afficherEcartsType, setAfficherEcartsType] = useState(false)
   const inputRefs = useRef(new Map<string, HTMLInputElement>())
@@ -143,38 +141,6 @@ export default function NoteListPage() {
       filterInit.current = true
     }
   }, [annees])
-
-  const registrePrerequis = filterAnnee !== '' && classeId != null && coursId != null
-
-  const ouvrirRegistre = () => {
-    if (!registrePrerequis || registreLoading) return
-    setRegistreLoading(true)
-    fetchRegistrePdf({
-      classe_id: classeId!,
-      cours_id: coursId!,
-      annee_id: Number(filterAnnee),
-    })
-      .then((data) => setRegistrePdf({ data }))
-      .catch((e) => toast(extractErrorMessage(e, 'Impossible de charger le registre.'), 'error'))
-      .finally(() => setRegistreLoading(false))
-  }
-
-  const telechargerRegistre = async () => {
-    if (!classeId || !coursId || !filterAnnee) return
-    setRegistreLoading(true)
-    try {
-      await downloadRegistrePdf({
-        classe_id: classeId,
-        cours_id: coursId,
-        annee_id: Number(filterAnnee),
-      })
-      toast('Registre de notes téléchargé.')
-    } catch (e) {
-      toast(extractErrorMessage(e, 'Impossible de télécharger le registre.'), 'error')
-    } finally {
-      setRegistreLoading(false)
-    }
-  }
 
   const { data: trimestres = EMPTY_ARRAY } = useQuery({
     queryKey: ['trimestres', filterAnnee],
@@ -523,21 +489,6 @@ export default function NoteListPage() {
               <p className="mt-1 truncate text-sm text-[var(--color-ink-dim)]">{headerSubtitle}</p>
             }
           />
-          {registrePrerequis && !estJardin && (
-            <Tooltip content="Registre de notes de cette matière pour l'année (toutes périodes)">
-              <Button
-                variant="secondary"
-                onClick={ouvrirRegistre}
-              >
-                {registreLoading ? (
-                  <Loader2 size={14} strokeWidth={1.75} className="mr-1.5 animate-spin" />
-                ) : (
-                  <BookOpen size={14} strokeWidth={1.75} className="mr-1.5" />
-                )}
-                Registre
-              </Button>
-            </Tooltip>
-          )}
           {canWrite && ready && rows.length > 0 && !estJardin && (
             <Button
               variant="primary"
@@ -830,16 +781,6 @@ export default function NoteListPage() {
           </>
         )}
       </div>
-
-      {registrePdf && (
-        <PdfViewerModal
-          data={registrePdf.data}
-          filename="Registre de notes"
-          initialScroll="horizontal"
-          onClose={() => setRegistrePdf(null)}
-          onDownload={telechargerRegistre}
-        />
-      )}
     </div>
   )
 }

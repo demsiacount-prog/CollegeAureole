@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, Power, Lock, CalendarOff,
-  Sparkles, Building2, Download, Users,
+  Sparkles, Building2, Download, Users, Warehouse,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -27,15 +27,17 @@ import {
 import AnneeScolaireFormDrawer from '@/features/annees_scolaires/AnneeScolaireFormDrawer'
 import { genererPeriodesParDefaut } from '@/features/trimestres/api'
 import FicheEtablissementTab from '@/features/etablissement/FicheEtablissementTab'
+import InfrastructuresTab from '@/features/etablissement/InfrastructuresTab'
 import ExportTab from '@/features/parametres/ExportTab'
 import UtilisateursTab from '@/features/parametres/UtilisateursTab'
 import type { AnneeScolaire, AnneeScolaireCreateInput } from '@/features/annees_scolaires/types'
 
-type Tab = 'fiche' | 'annees' | 'utilisateurs' | 'export'
+type Tab = 'fiche' | 'annees' | 'infrastructures' | 'utilisateurs' | 'export'
 
 const tabs: { id: Tab; label: string; icon: typeof Lock }[] = [
   { id: 'fiche', label: "Fiche établissement", icon: Building2 },
   { id: 'annees', label: 'Années scolaires', icon: CalendarOff },
+  { id: 'infrastructures', label: 'Infrastructures', icon: Warehouse },
   { id: 'utilisateurs', label: 'Utilisateurs', icon: Users },
   { id: 'export', label: 'Export des données', icon: Download },
 ]
@@ -81,6 +83,7 @@ export default function ParametresPage() {
           <div className="flex-1 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
             {activeTab === 'fiche' && <FicheEtablissementTab />}
             {activeTab === 'annees' && <AnneesTab />}
+            {activeTab === 'infrastructures' && <InfrastructuresTab />}
             {activeTab === 'utilisateurs' && <UtilisateursTab />}
             {activeTab === 'export' && <ExportTab />}
             

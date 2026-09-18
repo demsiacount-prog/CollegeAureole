@@ -1,6 +1,5 @@
 from timeutils import now_utc
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from database import get_db
@@ -120,6 +119,16 @@ def _modifier_note(note_id: int, note: schemas.NoteCreate, db: Session):
 
 @router.post("/", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
 def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
+    if note.id_trimestre is not None:
+        tr = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
+        if tr is not None and tr.annee_scolaire is not None and tr.annee_scolaire.cloturee:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=(
+                    "Année scolaire clôturée : toute saisie de note est bloquée. "
+                    "Rouvrez l'année pour pouvoir enregistrer."
+                ),
+            )
     return _creer_note(note, db)
 
 
@@ -159,34 +168,6 @@ def get_registre_notes(
         return registre_notes(db, classe_id, cours_id, annee_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-
-
-@router.get("/registre/pdf")
-def registre_pdf(
-    classe_id: int = Query(...),
-    cours_id: int = Query(...),
-    annee_id: int = Query(...),
-    db: Session = Depends(get_db),
-):
-    """PDF du registre de notes d'une matière (une page par période)."""
-    from services.registre_notes import registre_notes
-    from services import pdf as pdf_service
-
-    try:
-        payload = registre_notes(db, classe_id, cours_id, annee_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    if not payload["eleves"]:
-        raise HTTPException(status_code=404, detail="Aucun élève dans cette classe")
-
-    etab = db.query(models.Etablissement).first()
-    nom = pdf_service.nom_fichier_registre(payload)
-    contenu = pdf_service.registre_pdf(payload, etab)
-    return Response(
-        content=contenu,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{nom}"'},
-    )
 
 
 @router.get("/{note_id}", response_model=schemas.NoteResponse)

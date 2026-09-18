@@ -1,0 +1,2 @@
+2026-09-18T10:49:53.972Z INFO  minidb query-store opening  dir=/home/demsi/.kimi-code/cache/query-store shardCount=16
+2026-09-18T10:49:54.175Z INFO  session index generation published  generation=1 sessions=0

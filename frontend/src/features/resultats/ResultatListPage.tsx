@@ -18,6 +18,7 @@ import { formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
 import { fetchClasses } from '@/features/classes/api'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { calculerAutomatiquement, fetchResultatsClasse, modifierStatutPassage } from './api'
 import type { RapportAuto, StatutPassage } from './types'
 
@@ -31,7 +32,8 @@ const STATUT_INFO: Record<StatutPassage, { label: string; tone: 'neutral' | 'suc
 const STATUT_OPTIONS: StatutPassage[] = ['EN_ATTENTE', 'ADMIS', 'RECALE', 'EXCLU']
 
 export default function ResultatListPage() {
-  const canDecide = true
+  const { lectureSeule } = useLectureSeule()
+  const canDecide = !lectureSeule
   const qc = useQueryClient()
 
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })

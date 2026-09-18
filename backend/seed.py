@@ -140,6 +140,29 @@ def adresse_bamako(quartier: str = None) -> str:
     return f"Quartier {q}, Bamako, Mali"
 
 
+def nina_mali(rng=None) -> str:
+    """Numéro d'identification nationale malien (13 chiffres) fictif."""
+    rng = rng or random
+    return "".join(str(rng.randint(0, 9)) for _ in range(13))
+
+
+CATEGORIES_ENSEIGNANT = [
+    "Instituteur", "Instituteur adjoint", "Maitre", "Professeur contractuel",
+]
+
+ECHELONS_ENSEIGNANT = ["Échelon 1", "Échelon 2", "Échelon 3", "Échelon 4"]
+
+SITUATIONS_MATRIMONIALES = ["Célibataire", "Marié(e)", "Divorcé(e)", "Veuf(ve)"]
+
+DIPLOMES_PROF = ["DEF", "BAC", "CAP", "Licence", "Maîtrise", "Master"]
+
+DERNIERS_POSTES = [
+    "Collège Badalabougou", "Groupe scolaire Hamdallaye",
+    "École publique Magnambougou", "Collège Lafiabougou",
+    "Lycée Niamakoro", "Collège Notre Dame du Mali",
+]
+
+
 def date_naissance_eleve(niveau: str) -> date:
     """
     Âge cohérent par rapport au niveau scolaire malien.
@@ -318,28 +341,100 @@ def seed():
         # ─────────────────────────────────────────────────────────────────────
         print("▶  Enseignants…")
         ens_data = [
-            ("Kouyaté", "Sékou",     "Mathématiques"),
-            ("Diabaté", "Mariam",    "Français"),
-            ("Sissoko", "Hamidou",   "Sciences de la Vie et de la Terre"),
-            ("Dembélé", "Fatoumata", "Histoire-Géographie"),
-            ("Touré",   "Abdoulaye", "Physique-Chimie"),
-            ("Camara",  "Aminata",   "Anglais"),
-            ("Diarra",  "Modibo",    "Arabe"),
-            ("Sanogo",  "Boubacar",  "Éducation Physique et Sportive"),
-            ("Konaté",  "Sira",      "Sciences d'Éveil"),
-            ("Bah",     "Lassana",   "Éducation Civique et Morale"),
+            # (nom, prénom, spécialité, genre, classe tenue)
+            ("Kouyaté", "Sékou",     "Mathématiques",                       "M", "7ème A"),
+            ("Diabaté", "Mariam",    "Français",                            "F", "5ème A"),
+            ("Sissoko", "Hamidou",   "Sciences de la Vie et de la Terre",   "M", "8ème A"),
+            ("Dembélé", "Fatoumata", "Histoire-Géographie",                 "F", "8ème A"),
+            ("Touré",   "Abdoulaye", "Physique-Chimie",                     "M", "9ème A"),
+            ("Camara",  "Aminata",   "Anglais",                             "F", "7ème A"),
+            ("Diarra",  "Modibo",    "Arabe",                               "M", "6ème A"),
+            ("Sanogo",  "Boubacar",  "Éducation Physique et Sportive",      "M", "3ème A"),
+            ("Konaté",  "Sira",      "Sciences d'Éveil",                    "F", "1ère A"),
+            ("Bah",     "Lassana",   "Éducation Civique et Morale",         "M", "4ème A"),
         ]
+        # Flux aléatoire dédié : les champs administratifs ne consomment pas le
+        # générateur global, pour préserver la reproductibilité du reste du seed.
+        rng_prof = random.Random(777)
         enseignants = []
-        for nom, prenom, spec in ens_data:
+        for nom, prenom, spec, genre, classe_tenue in ens_data:
+            date_contrat = date(
+                rng_prof.randint(2000, 2023), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+            )
+            date_titularisation = date_contrat + timedelta(days=rng_prof.randint(180, 2190))
+            date_dernier_avancement = date_titularisation + timedelta(days=rng_prof.randint(180, 1095))
             e = models.Enseignants(
                 nom=nom, prenom=prenom,
                 email=email_unique(prenom, nom, "collegeaureole.ml"),
                 telephone=telephone_mali(),
                 adresse=adresse_bamako(),
                 specialite=spec,
+                genre=genre,
+                nina=nina_mali(rng_prof),
+                date_naissance=date(
+                    rng_prof.randint(1965, 1995), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+                ),
+                lieu_de_naissance=rng_prof.choice(VILLES_MALI),
+                nationalite="Malienne",
+                situation_matrimoniale=rng_prof.choice(SITUATIONS_MATRIMONIALES),
+                categorie=rng_prof.choice(CATEGORIES_ENSEIGNANT),
+                echelon=rng_prof.choice(ECHELONS_ENSEIGNANT),
+                fonction=f"Professeur de {spec}",
+                sf_nombre_enfants=str(rng_prof.randint(0, 5)),
+                date_contrat=date_contrat,
+                date_titularisation=date_titularisation,
+                date_dernier_avancement=date_dernier_avancement,
+                classe_tenue=classe_tenue,
+                dernier_poste=rng_prof.choice(DERNIERS_POSTES),
+                date_arrivee_cap=date(
+                    rng_prof.randint(2005, 2023), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+                ),
+                diplome=rng_prof.choice(DIPLOMES_PROF),
             )
             session.add(e)
             enseignants.append(e)
+        session.flush()
+
+        # Personnel administratif (directeur, secrétaire) — alimente la section
+        # « Personnel administratif » des fiches de renseignements.
+        admin_data = [
+            ("Abdoulaye", "Traoré",    "Directeur",   "M", "Direction de l'établissement"),
+            ("Safiatou",  "Coulibaly", "Secrétaire",  "F", "Secrétariat de direction"),
+            ("Moussa",    "Koné",      "Intendant",   "M", "Gestion comptable"),
+        ]
+        for prenom, nom, fonction, genre, dernier_poste in admin_data:
+            date_contrat = date(
+                rng_prof.randint(1998, 2020), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+            )
+            date_titularisation = date_contrat + timedelta(days=rng_prof.randint(180, 2190))
+            date_dernier_avancement = date_titularisation + timedelta(days=rng_prof.randint(180, 1095))
+            session.add(models.Enseignants(
+                nom=nom, prenom=prenom,
+                email=email_unique(prenom, nom, "collegeaureole.ml"),
+                telephone=telephone_mali(),
+                adresse=adresse_bamako(),
+                specialite="Administration",
+                genre=genre,
+                nina=nina_mali(rng_prof),
+                date_naissance=date(
+                    rng_prof.randint(1960, 1985), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+                ),
+                lieu_de_naissance=rng_prof.choice(VILLES_MALI),
+                nationalite="Malienne",
+                situation_matrimoniale=rng_prof.choice(SITUATIONS_MATRIMONIALES),
+                categorie="Personnel administratif",
+                echelon=rng_prof.choice(ECHELONS_ENSEIGNANT),
+                fonction=fonction,
+                sf_nombre_enfants=str(rng_prof.randint(0, 5)),
+                date_contrat=date_contrat,
+                date_titularisation=date_titularisation,
+                date_dernier_avancement=date_dernier_avancement,
+                dernier_poste=dernier_poste,
+                date_arrivee_cap=date(
+                    rng_prof.randint(1998, 2023), rng_prof.randint(1, 12), rng_prof.randint(1, 28)
+                ),
+                diplome=rng_prof.choice(["BAC", "Licence", "Maîtrise"]),
+            ))
         session.flush()
 
         e_math, e_fr, e_svt, e_hg, e_pc, e_ang, e_ar, e_eps, e_se, e_ecm = enseignants
@@ -702,94 +797,6 @@ def seed():
         session.flush()
 
         # ─────────────────────────────────────────────────────────────────────
-        # 12b. DOCUMENTS (actes de naissance, carnets de santé)
-        #      Simule des fichiers uploadés pour alimenter les vues Documents.
-        #      Les PDF sont générés avec reportlab → réellement lisibles dans
-        #      l'aperçu (même mécanisme que le dossier élève).
-        # ─────────────────────────────────────────────────────────────────────
-        print("▶  Documents…")
-
-        def _document_pdf(titre: str, cho: models.Eleves) -> bytes:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.units import mm
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.pdfgen.canvas import Canvas
-            from io import BytesIO
-
-            buf = BytesIO()
-            can = Canvas(buf, pagesize=A4)
-            marg = 20 * mm
-            w, h = A4
-            y = h - marg
-            styles = getSampleStyleSheet()
-            titre_style = ParagraphStyle("t", parent=styles["Title"], spaceAfter=20)
-            from reportlab.platypus import Paragraph
-            can.setTitle(titre)
-            p = Paragraph(_assainir(titre), titre_style)
-            p.wrapOn(can, w - 2 * marg, h)
-            p.drawOn(can, marg, y - p.height)
-            y -= 30 * mm
-            can.setFont("Helvetica", 10)
-            for ligne, texte in enumerate([
-                "Collège Auréole — Bamako, Mali",
-                f"Élève : {cho.prenom} {cho.nom}",
-                f"Matricule : {cho.matricule}",
-                f"Né(e) le : {cho.date_de_naissance.strftime('%d/%m/%Y')} à {cho.lieu_de_naissance}",
-                " ",
-                "Document officiel généré à titre de démonstration.",
-            ]):
-                can.drawString(marg, y, texte)
-                y -= 6 * mm
-                if y < marg:
-                    can.showPage()
-                    can.setFont("Helvetica", 10)
-                    y = h - marg
-            can.showPage()
-            can.save()
-            return buf.getvalue()
-
-        from services.pdf import _assainir
-        docs_crees = 0
-        for eleve, cl, _insc, _mats, _periodes in tous_eleves:
-            eleve: models.Eleves
-            if eleve.acte_naissance:
-                pdf = _document_pdf(
-                    f"Acte de naissance — {eleve.prenom} {eleve.nom}",
-                    eleve,
-                )
-                session.add(models.Documents(
-                    matricule_eleve=eleve.matricule,
-                    categorie="naissance",
-                    type_document="acte_naissance",
-                    filename=f"acte_naissance_{eleve.nom}_{eleve.prenom}.pdf",
-                    nom_fichier_original=f"acte_naissance_{eleve.nom}_{eleve.prenom}.pdf",
-                    filepath=f"acte_naissance_{eleve.nom}_{eleve.prenom}.pdf",
-                    contenu=pdf,
-                    taille=len(pdf),
-                    mime_type="application/pdf",
-                ))
-                docs_crees += 1
-            if random.random() < 0.80:
-                pdf = _document_pdf(
-                    f"Carnet de santé — {eleve.prenom} {eleve.nom}",
-                    eleve,
-                )
-                session.add(models.Documents(
-                    matricule_eleve=eleve.matricule,
-                    categorie="medical",
-                    type_document="carnet_sante",
-                    filename=f"carnet_sante_{eleve.nom}_{eleve.prenom}.pdf",
-                    nom_fichier_original=f"carnet_sante_{eleve.nom}_{eleve.prenom}.pdf",
-                    filepath=f"carnet_sante_{eleve.nom}_{eleve.prenom}.pdf",
-                    contenu=pdf,
-                    taille=len(pdf),
-                    mime_type="application/pdf",
-                ))
-                docs_crees += 1
-        session.flush()
-        print(f"    → {docs_crees} documents créés")
-
-        # ─────────────────────────────────────────────────────────────────────
         # 13. NOTES
         #     Chaque élève a un « profil de niveau » fixe
         #     qui lui assure une certaine cohérence d'une matière à l'autre.
@@ -989,7 +996,6 @@ def seed():
         print(f"    Bulletins      : {len(classes_1er) * N_PAR_CLASSE + len(classes_2nd) * N_PAR_CLASSE}  "
               f"(1ère période, publiés avec rangs — pas de bulletins en jardin)")
         print(f"    Dépenses       : {len(depenses_data)}")
-        print(f"    Documents      : {docs_crees}")
         print(f"    Utilisateurs   : 1  (admin)")
 
 

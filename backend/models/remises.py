@@ -6,6 +6,8 @@ from database import Base
 
 
 class Remises(Base):
+    """Remises/ristournes accordées sur les échéances (traçage utilisateur)."""
+
     __tablename__ = "remises"
 
     id = Column(Integer, primary_key=True)
@@ -18,4 +20,4 @@ class Remises(Base):
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
     echeance = relationship("Echeances", back_populates="remises")
-    utilisateur = relationship("Utilisateurs")
+    utilisateur = relationship("Utilisateurs", back_populates="remises")

@@ -18,6 +18,7 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate, formatMontant } from '@/lib/format'
 import { fetchPaiements, fetchPaiementsTotal, fetchPaiementStats, deletePaiement } from './api'
 import PaiementFormDrawer from './PaiementFormDrawer'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import type { Paiement } from './types'
 
 const MODE_COLORS: Record<string, string> = {
@@ -30,8 +31,9 @@ const MODE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function PaiementListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')

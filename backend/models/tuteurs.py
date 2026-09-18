@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 class Tuteurs(Base):
+    """Tuteurs légaux des élèves (contact + lien de parenté)."""
+
     __tablename__ = "tuteurs"
     id = Column(Integer, primary_key=True)
     code_tuteur = Column(String, nullable=True, unique=True, index=True)
@@ -17,8 +19,9 @@ class Tuteurs(Base):
     lien_parente = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
-    
+
     eleves = relationship("Eleves", back_populates="tuteur")
+    documents = relationship("Documents", back_populates="tuteur")
 
 
 @event.listens_for(Tuteurs, "before_insert")

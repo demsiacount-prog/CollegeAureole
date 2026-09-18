@@ -82,31 +82,3 @@ export async function fetchBulletinAnnuel(matricule: string, anneeId: number): P
   })
   return res.data
 }
-
-export async function fetchBulletinAnnuelPdf(matricule: string, anneeId: number): Promise<ArrayBuffer> {
-  const res = await api.get(`/api/bulletins/annuel/${matricule}/pdf`, {
-    params: { annee_id: anneeId },
-    responseType: 'arraybuffer',
-  })
-  return res.data as ArrayBuffer
-}
-
-export async function downloadBulletinAnnuelPdf(matricule: string, anneeId: number): Promise<void> {
-  declencherTelechargement(
-    new Blob([await fetchBulletinAnnuelPdf(matricule, anneeId)], { type: 'application/pdf' }),
-    undefined,
-    `Bulletin_annuel_${matricule}.pdf`,
-  )
-}
-
-export async function downloadBulletinsAnnuelleClassePdf(idClasse: number, anneeId: number): Promise<void> {
-  const res = await api.get(`/api/bulletins/annuel/classe/${idClasse}/pdf`, {
-    params: { annee_id: anneeId },
-    responseType: 'blob',
-  })
-  declencherTelechargement(
-    res.data as Blob,
-    res.headers['content-disposition'],
-    `Bulletins_annuels_classe_${idClasse}.pdf`,
-  )
-}

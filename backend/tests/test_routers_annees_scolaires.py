@@ -49,6 +49,19 @@ class TestCreation:
         body = detail.json()
         assert len(body["trimestres"]) > 0
 
+    def test_compositions_auto_generees_nommees_par_mois(self, client, auth_headers):
+        """Les compositions portent le nom de leur mois, sans doublon."""
+        resp = _creer_annee(client, auth_headers)
+        annee = resp.json()
+        detail = client.get(f"/api/anneesScolaires/{annee['id']}", headers=auth_headers)
+        assert detail.status_code == 200
+        compos = [t for t in detail.json()["trimestres"] if t["type"] == "COMPOSITION"]
+        assert len(compos) == 9
+        noms = [t["nom"] for t in compos]
+        assert all(nom.startswith("Composition ") for nom in noms)
+        assert all(nom != "Composition 1" for nom in noms)
+        assert len(set(noms)) == len(noms)
+
 
 class TestLecture:
     def test_liste(self, client, auth_headers):
@@ -77,6 +90,16 @@ class TestActivation:
         assert resp.json()["active"] is True
         detail = client.get(f"/api/anneesScolaires/{a1['id']}", headers=auth_headers)
         assert detail.json()["active"] is False
+
+    def test_activer_annee_cloturee_consulte_en_lecture_seule(self, client, auth_headers):
+        """Une année clôturée reste sélectionnable pour consultation (lecture seule)."""
+        annee = _creer_annee(client, auth_headers, active=False).json()
+        client.put(f"/api/anneesScolaires/{annee['id']}/cloturer", headers=auth_headers)
+        resp = client.put(f"/api/anneesScolaires/{annee['id']}/activer", headers=auth_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["active"] is True
+        assert body["cloturee"] is True
 
 
 class TestCloture:

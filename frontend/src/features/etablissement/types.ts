@@ -37,3 +37,21 @@ export interface EtablissementUpdate {
   type_ecole?: string | null
   mode?: string | null
 }
+
+export interface EtablissementInfrastructures {
+  id?: number
+  id_annee_scolaire?: number | null
+  salles_dur?: number | null
+  salles_semi_dur?: number | null
+  salles_banco?: number | null
+  salles_autres?: number | null
+  direction_dur?: number | null
+  direction_banco?: number | null
+  direction_autres?: number | null
+  logement_direction?: number | null
+  tables_bancs?: number | null
+  chaises?: number | null
+  armoires?: number | null
+  tableaux?: number | null
+  mobilier_divers?: number | null
+}

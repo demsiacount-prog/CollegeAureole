@@ -97,7 +97,7 @@ export default function BulletinDetailPage() {
               </Badge>
             </div>
             <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
-              {bulletin.trimestre.type === 'COMPOSITION' ? 'Composition' : 'Trimestre'} {bulletin.trimestre.nom} — {bulletin.classe.niveau} {bulletin.classe.nom}
+              {bulletin.trimestre.nom} — {bulletin.classe.niveau} {bulletin.classe.nom}
             </p>
           </div>
           <div className="text-right">

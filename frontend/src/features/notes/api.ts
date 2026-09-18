@@ -82,40 +82,6 @@ export async function fetchRegistreNotes(params: {
   return res.data
 }
 
-function declencherTelechargement(data: Blob, disposition?: string, fallback = 'registre.pdf') {
-  const match = disposition?.match(/filename="?([^"]+)"?/)
-  const nom = match?.[1] ?? fallback
-  const url = window.URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = nom
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  window.URL.revokeObjectURL(url)
-}
-
-export async function fetchRegistrePdf(params: {
-  classe_id: number
-  cours_id: number
-  annee_id: number
-}): Promise<ArrayBuffer> {
-  const res = await api.get<ArrayBuffer>('/api/notes/registre/pdf', { params, responseType: 'arraybuffer' })
-  return res.data
-}
-
-export async function downloadRegistrePdf(params: {
-  classe_id: number
-  cours_id: number
-  annee_id: number
-}): Promise<void> {
-  declencherTelechargement(
-    new Blob([await fetchRegistrePdf(params)], { type: 'application/pdf' }),
-    undefined,
-    'Registre.pdf',
-  )
-}
-
 export async function fetchExistingNotes(params: {
   id_classe: number
   id_cours: number

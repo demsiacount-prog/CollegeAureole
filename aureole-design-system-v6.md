@@ -2331,7 +2331,7 @@ TopBar : Notes ›  Mathématiques · 5e B · T1
 │  [🔍 Rechercher un élève…]    [Tous ▾]   [Écarts-type]       │
 ├──────────────────────────────────────────────────────────────┤
 │ Tableau de saisie                                             │
-│  Nom élève ↕    Composition 1   Composition 2   Moyenne       │
+│  Nom élève ↕    Composition Octobre   Composition Novembre   Moyenne       │
 │  ──────────────────────────────────────────────────────────── │
 │  Aminata D.    [  14.50  ]     [  16.00  ]     15.25 / 20    │
 │  Ibrahim S.    [         ]     [  12.50  ]     12.50 / 20    │

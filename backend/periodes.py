@@ -13,6 +13,23 @@ import models
 N_TRIMESTRES = 3
 N_COMPOSITIONS = 9
 
+MOIS_FRANCAIS = (
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+)
+
+
+def _mois_composition(debut: date, fin: date) -> str:
+    """Mois (en français) auquel appartient une composition.
+
+    S'appuie sur le jour médian de la période : pour une année scolaire
+    classique (≈ 1 mois par composition), chaque période tombe dans un mois
+    distinct, alors que le mois de début peut se répéter (ex. deux périodes
+    débutant en janvier).
+    """
+    milieu = debut + (fin - debut) // 2
+    return MOIS_FRANCAIS[milieu.month - 1]
+
 
 def _decouper_plage(debut: date, fin: date, n: int):
     """Découpe [debut, fin] en n plages contiguës sans chevauchement."""
@@ -57,10 +74,15 @@ def generer_periodes_par_defaut(db, annee_scolaire_id: int, date_debut: date, da
             cree += 1
 
     if "COMPOSITION" not in types_existants:
+        noms_utilises: set[str] = set()
         for i, (debut, fin) in enumerate(_decouper_plage(date_debut, date_fin, N_COMPOSITIONS), start=1):
+            nom = f"Composition {_mois_composition(debut, fin)}"
+            if nom in noms_utilises:
+                nom = f"{nom} {i}"
+            noms_utilises.add(nom)
             db.add(
                 models.Trimestres(
-                    nom=f"Composition {i}",
+                    nom=nom,
                     date_debut=debut,
                     date_fin=fin,
                     type="COMPOSITION",

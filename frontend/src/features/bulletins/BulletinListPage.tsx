@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Search, FileText, Loader2, CalendarDays } from 'lucide-react'
+import { Download, Search, FileText, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +18,7 @@ import { formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { fetchClasses } from '@/features/classes/api'
 import { fetchTrimestres } from '@/features/trimestres/api'
 import {
@@ -28,9 +29,6 @@ import {
   downloadBulletinPdf,
   downloadBulletinsClassePdf,
   fetchBulletinPdf,
-  downloadBulletinAnnuelPdf,
-  fetchBulletinAnnuelPdf,
-  downloadBulletinsAnnuelleClassePdf,
 } from './api'
 import { PdfViewerModal } from '@/components/pdf/PdfViewerModal'
 
@@ -55,7 +53,8 @@ const PERIOD_TYPE = {
 } as const
 
 export default function BulletinListPage() {
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const qc = useQueryClient()
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
   const { data: annees = [] } = useQuery({ queryKey: ['annees'], queryFn: () => fetchAnneesScolaires() })
@@ -86,14 +85,14 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
   const estJardin = estNiveauJardin(classeNiveau)
 
   const filteredTrimestres = useMemo(() => {
-    if (!classeNiveau || !trimestres.length) return trimestres
+    if (!classeId || !classeNiveau || !trimestres.length) return []
     const niveauNum = getNiveauNumber(classeNiveau)
     // 1ère-5ème : compositions ; 7ème-9ème+lycée : trimestres.
     // 6ème (classe spéciale) : trimestres + compositions intermédiaires.
     if (niveauNum === 6) return trimestres
     const expectedType = niveauNum <= 5 ? PERIOD_TYPE.COMPOSITION : PERIOD_TYPE.TRIMESTRE
     return trimestres.filter((t) => t.type === expectedType)
-  }, [classeNiveau, trimestres])
+  }, [classeId, classeNiveau, trimestres])
 
   useEffect(() => {
     if (prevClasseRef.current !== classeId && classeId) {
@@ -102,7 +101,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
     prevClasseRef.current = classeId
   }, [classeId])
 
-  const [downloadingAnnuelClasse, setDownloadingAnnuelClasse] = useState(false)
+  const [downloading, setDownloading] = useState<'classe' | number | null>(null)
   const [apercuPdf, setApercuPdf] = useState<{
     data: ArrayBuffer
     titre: string
@@ -158,9 +157,6 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
 
   const classeLabel = classes.find((c) => String(c.id) === classeId)
   const trimestreLabel = filteredTrimestres.find((t) => String(t.id) === trimestreId)
-  const anneeLabel = annees.find((a) => String(a.id) === anneeId)?.libelle
-
-  const [downloading, setDownloading] = useState<'classe' | number | null>(null)
 
   const ouvrirPdf = async (
     cle: string,
@@ -178,19 +174,6 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
       toast(extractErrorMessage(err, "Impossible d'afficher ce document."), 'error')
     } finally {
       setApercuLoading(null)
-    }
-  }
-
-  const telechargerAnnuelClasse = async () => {
-    if (!classeId || !anneeId) return
-    setDownloadingAnnuelClasse(true)
-    try {
-      await downloadBulletinsAnnuelleClassePdf(Number(classeId), Number(anneeId))
-      toast('Bulletins annuels de la classe téléchargés.')
-    } catch (e) {
-      toast(extractErrorMessage(e, 'Impossible de télécharger les bulletins annuels.'), 'error')
-    } finally {
-      setDownloadingAnnuelClasse(false)
     }
   }
 
@@ -219,15 +202,6 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
     }
   }
 
-  const telechargerAnnuel = async (matricule: string) => {
-    try {
-      await downloadBulletinAnnuelPdf(matricule, Number(anneeId))
-      toast('Bulletin annuel téléchargé.')
-    } catch (e) {
-      toast(extractErrorMessage(e, 'Impossible de télécharger le bulletin annuel.'), 'error')
-    }
-  }
-
   return (
     <div className="w-full">
       <div className="flex flex-col gap-5">
@@ -249,7 +223,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
               <option key={c.id} value={c.id}>{c.niveau} — {c.nom}</option>
             ))}
           </Select>
-          <Select label="Période" value={trimestreId} onChange={(e) => setTrimestreId(e.target.value)} disabled={!filteredTrimestres.length}>
+          <Select label="Période" value={trimestreId} onChange={(e) => setTrimestreId(e.target.value)} disabled={!classeId || !filteredTrimestres.length}>
             <option value="">— Choisir une période —</option>
             {filteredTrimestres.map((t) => (
               <option key={t.id} value={t.id}>{t.nom}</option>
@@ -287,21 +261,6 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
                 Dépublier
               </Button>
             </>
-          )}
-          {!estJardin && classeId && (
-            <Button
-              variant="secondary"
-              disabled={!anneeId || downloadingAnnuelClasse}
-              title="Bulletins annuels (3 blocs trimestriels) de tous les élèves de la classe"
-              onClick={telechargerAnnuelClasse}
-            >
-              {downloadingAnnuelClasse ? (
-                <Loader2 size={14} strokeWidth={1.75} className="mr-1.5 animate-spin" />
-              ) : (
-                <CalendarDays size={14} strokeWidth={1.75} className="mr-1.5" />
-              )}
-              Bulletins annuels (PDF)
-            </Button>
           )}
         </div>
 
@@ -450,32 +409,6 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
                                 )}
                               </button>
                               </Tooltip>
-                              {!estJardin && (
-                                <Tooltip content="Bulletin annuel (aperçu)">
-                                <button
-                                  disabled={apercuLoading === `a-${b.matricule_eleve}`}
-                                  onClick={() => {
-                                    if (!anneeId) {
-                                      toast('Choisissez une année scolaire.', 'error')
-                                      return
-                                    }
-                                    void ouvrirPdf(
-                                      `a-${b.matricule_eleve}`,
-                                      `Bulletin annuel · ${b.eleve?.prenom ?? ''} ${b.eleve?.nom ?? ''} · ${anneeLabel ?? ''}`,
-                                      () => fetchBulletinAnnuelPdf(b.matricule_eleve, Number(anneeId)),
-                                      () => void telechargerAnnuel(b.matricule_eleve),
-                                    )
-                                  }}
-                                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                                >
-                                  {apercuLoading === `a-${b.matricule_eleve}` ? (
-                                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                                  ) : (
-                                    <CalendarDays size={14} strokeWidth={1.75} />
-                                  )}
-                                </button>
-                                </Tooltip>
-                              )}
                             </div>
                           </TableCell>
                         </TableRow>

@@ -34,6 +34,7 @@ class CloturePreviewResponse(BaseModel):
     total_eleves: int = 0
     blocants: int = 0
     peut_executer: bool = False
+    cloturee: bool = False
     compteurs: CompteursPreview = CompteursPreview()
     eleves: List[ElevePreview] = []
 

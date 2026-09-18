@@ -26,6 +26,18 @@ from services.registre_notes import _periodes_classe
 from services import effectifs as effectifs_service
 from services import rapports_pdf as pdf_service
 
+
+def _annee_chiffre(libelle: str) -> int | None:
+    """Extrait l'année de départ d'un libellé d'année scolaire (« 2025-2026 » → 2025)."""
+    for sep in ("-", "–", "—"):
+        if sep in libelle:
+            annee = libelle.split(sep, 1)[0].strip()
+            if annee.isdigit():
+                return int(annee)
+    if libelle.strip().isdigit():
+        return int(libelle.strip())
+    return None
+
 # ─── Fiche de suivi au second cycle (formulaire officiel DEF) ────────────────
 # Matières du formulaire, dans l'ordre officiel ; la catégorie sert au calcul
 # de l'orientation finale (Littéraire vs Scientifique). La correspondance avec
@@ -460,6 +472,7 @@ def moyennes_annuelles(
         )
         if not inscriptions and classe_id is None:
             continue
+
         eleves_out: List[schemas.EleveMoyenne] = []
         moyennes: list[float] = []
         est_j = est_jardin(classe.niveau)
@@ -503,25 +516,6 @@ def moyennes_annuelles(
     return schemas.RapportMoyennesResponse(annee_label=annee.libelle, classes=classes_out)
 
 
-@router.get("/moyennes-annuelles/pdf")
-def moyennes_annuelles_pdf(
-    classe_id: Optional[int] = None,
-    annee_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-):
-    rapport = moyennes_annuelles(classe_id, annee_id, db)
-    contenu = pdf_service.moyennes_pdf(rapport, _etablissement(db), rapport.annee_label)
-    return Response(
-        content=contenu,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="{_nom_fichier("Rapport_moyennes_annuelles", "classe", str(classe_id or "toutes"), "")}"'
-            )
-        },
-    )
-
-
 # ─── Proposition de passage ────────────────────────────────────────────────────
 
 
@@ -553,17 +547,32 @@ def proposition_passage(
         n_ordre = niveau_ordre(classe.niveau)
         est_fin = n_ordre == 9
 
-        # Année de recrutement = PLUS ANCIENNE inscription de l'élève (toutes années)
+        # Année de recrutement = PLUS ANCIENNE inscription de l'élève (toutes années, toutes classes)
+        matricules = {insc.matricule_eleve for insc in inscriptions if insc.eleve is not None}
         annee_recrutement_par_eleve: dict = {}
-        for i in inscriptions:
-            el = i.eleve
-            if el is None or not el.matricule:
-                continue
-            a = i.annee_scolaire.libelle if i.annee_scolaire else None
-            if a is None:
-                continue
-            if el.matricule not in annee_recrutement_par_eleve or a < annee_recrutement_par_eleve[el.matricule]:
-                annee_recrutement_par_eleve[el.matricule] = a
+        if matricules:
+            for i in (
+                db.query(models.Inscriptions)
+                .join(models.AnneesScolaires, models.Inscriptions.id_annee_scolaire == models.AnneesScolaires.id)
+                .filter(models.Inscriptions.matricule_eleve.in_(matricules))
+                .order_by(models.AnneesScolaires.date_debut.asc())
+                .all()
+            ):
+                an = _annee_chiffre(i.annee_scolaire.libelle) if i.annee_scolaire else None
+                if an is None:
+                    continue
+                if i.matricule_eleve not in annee_recrutement_par_eleve:
+                    annee_recrutement_par_eleve[i.matricule_eleve] = an
+
+        # Années passées dans la classe = comptage sur TOUT l'historique (toutes années scolaires)
+        annees_dans_classe: dict = {}
+        for ins_hist in (
+            db.query(models.Inscriptions)
+            .filter(models.Inscriptions.id_classe == classe.id)
+            .all()
+        ):
+            cle = (ins_hist.matricule_eleve, ins_hist.id_classe)
+            annees_dans_classe[cle] = annees_dans_classe.get(cle, 0) + 1
 
         eleves_out: List[schemas.EleveProposition] = []
         admis = recales = en_attente = exclus = 0
@@ -598,13 +607,14 @@ def proposition_passage(
                     nom=el.nom,
                     prenom=el.prenom,
                     sexe=el.sexe,
-                    date_naissance=el.date_naissance,
-                    lieu_naissance=el.lieu_naissance,
+                    date_naissance=el.date_de_naissance,
+                    lieu_naissance=el.lieu_de_naissance,
                     prenom_pere=el.prenom_pere,
                     nom_pere=el.nom_pere,
                     prenom_mere=el.prenom_mere,
                     nom_mere=el.nom_mere,
                     annee_recrutement=annee_recrutement_par_eleve.get(el.matricule),
+                    annees_passees_classe=annees_dans_classe.get((el.matricule, insc.id_classe), 0),
                     moyenne_annuelle=m,
                     statut_actuel=statistique,
                     proposition=proposition,
@@ -631,7 +641,6 @@ def proposition_passage(
                 eleves=eleves_out,
             )
         )
-    return schemas.PropositionPassageResponse(annee_label=annee.libelle, classes=classes_out)
     return schemas.PropositionPassageResponse(annee_label=annee.libelle, classes=classes_out)
 
 

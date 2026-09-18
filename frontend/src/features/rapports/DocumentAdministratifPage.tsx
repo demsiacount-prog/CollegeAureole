@@ -275,6 +275,7 @@ function TableElevesPropositions({ eleves }: { eleves: ClasseProposition['eleves
             <TableHead>Prénom de la Mère</TableHead>
             <TableHead>Nom de la Mère</TableHead>
             <TableHead>Année de Recrutement</TableHead>
+            <TableHead className="text-center">Années dans la classe</TableHead>
             <TableHead className="text-right">Moyenne</TableHead>
             <TableHead>Proposition</TableHead>
           </TableRow>
@@ -293,6 +294,7 @@ function TableElevesPropositions({ eleves }: { eleves: ClasseProposition['eleves
               <TableCell>{e.prenom_mere ?? '—'}</TableCell>
               <TableCell>{e.nom_mere ?? '—'}</TableCell>
               <TableCell>{e.annee_recrutement ?? '—'}</TableCell>
+              <TableCell className="text-center">{e.annees_passees_classe}</TableCell>
               <TableCell className="text-right">{note(e.moyenne_annuelle)}</TableCell>
               <TableCell>{statutBadge(e.proposition)}</TableCell>
             </TableRow>
@@ -376,14 +378,14 @@ function BlocEffectifs({ lignes }: { lignes: Array<FicheRenseignementsLigne | Fi
               <TableRow key={ligne.libelle}>
                 <TableCell className="font-medium">{ligne.libelle}</TableCell>
                 {cols.map(({ cle, cell }) => (
-                  <TableCell key={cle} className="text-center text-[11px]">
+                  <TableCell key={cle} className="text-center">
                     {cell.total}
                     <span className="block text-[var(--color-ink-faint)]">
                       {cell.garcons}G / {cell.filles}F
                     </span>
                   </TableCell>
                 ))}
-                <TableCell className="text-center text-[11px]">
+                <TableCell className="text-center">
                   {total.total}
                   <span className="block text-[var(--color-ink-faint)]">
                     {total.garcons}G / {total.filles}F
@@ -467,37 +469,27 @@ function RenseignementsPremierCycleData({ fiche }: { fiche: import('./types').Fi
     <BlocEffectifs lignes={fiche.effectifs} />
       {fiche.personnel_admin.length > 0 && <EnTeteTable titre="Personnel administratif" />}
       {fiche.personnel_admin.length > 0 && (
-        <TablePersonnel list={fiche.personnel_admin} colonnes={['prénom', 'nom', 'mle', 'fonction', 'diplôme']} />
+        <TablePersonnel
+          list={fiche.personnel_admin}
+          colonnes={[
+            { label: 'MLE', value: (p) => p.numero_mle },
+            { label: 'Fonction', value: (p) => p.fonction },
+            { label: 'Diplôme', value: (p) => p.diplome },
+          ]}
+        />
       )}
       {fiche.personnel_enseignant.length > 0 && <EnTeteTable titre="Personnel enseignant" />}
       {fiche.personnel_enseignant.length > 0 && (
-        <TablePersonnel list={fiche.personnel_enseignant} colonnes={['prénom', 'nom', 'mle', 'grade', 'classe tenue']} />
+        <TablePersonnel
+          list={fiche.personnel_enseignant}
+          colonnes={[
+            { label: 'MLE', value: (p) => p.numero_mle },
+            { label: 'Grade', value: (p) => p.grade },
+            { label: 'Classe tenue', value: (p) => p.classe_tenue },
+          ]}
+        />
       )}
           {fiche.infrastructures && <BlocInfrastructuresMobiliers infra={fiche.infrastructures} />}
-    </div>
-  )
-}
-
-function BlocInfrastructuresMobiliers({ infra }: { infra: import('./types').FicheRensPCInfrastructures }) {
-  const grille = [
-    { titre: 'Salles construites', paires: [['en dur', infra.salles_dur], ['semi-dur', infra.salles_semi_dur], ['en banco', infra.salles_banco], ['autres', infra.salles_autres]] },
-    { titre: 'Directions', paires: [['en dur', infra.direction_dur], ['en banco', infra.direction_banco], ['autres', infra.direction_autres], ['logement', infra.logement_direction]] },
-    { titre: 'Mobiliers', paires: [['tables-bancs', infra.tables_bancs], ['chaises', infra.chaises], ['armoires', infra.armoires], ['tableaux', infra.tableaux], ['divers', infra.mobilier_divers]] },
-  ]
-  return (
-    <EnTeteTable titre="Infrastructures et mobiliers" />
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {grille.map((g) => (
-        <div key={g.titre} className="rounded-md border p-3">
-          <p className="mb-2 font-medium">{g.titre}</p>
-          {g.paires.map(([l, v]) => (
-            <p key={l} className="flex justify-between text-sm">
-              <span>{l}</span>
-              <span>{v ?? '—'}</span>
-            </p>
-          ))}
-        </div>
-      ))}
     </div>
   )
 }
@@ -533,7 +525,7 @@ function TablePersonnel({
   colonnes,
 }: {
   list: import('./types').FicheRensPCPersonnel[]
-  colonnes: string[]
+  colonnes: { label: string; value: (p: import('./types').FicheRensPCPersonnel) => string | null }[]
 }) {
   return (
     <TableContainer>
@@ -542,8 +534,8 @@ function TablePersonnel({
           <TableRow>
             <TableHead>Prénom</TableHead>
             <TableHead>Nom</TableHead>
-            {colonnes.slice(2).map((c) => (
-              <TableHead key={c}>{c}</TableHead>
+            {colonnes.map((c) => (
+              <TableHead key={c.label}>{c.label}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -552,9 +544,9 @@ function TablePersonnel({
             <TableRow key={i}>
               <TableCell>{p.prenom}</TableCell>
               <TableCell>{p.nom}</TableCell>
-              <TableCell>{p.numero_mle ?? '—'}</TableCell>
-              <TableCell>{p.fonction ?? p.grade ?? '—'}</TableCell>
-              <TableCell>{p.diplome ?? '—'}</TableCell>
+              {colonnes.map((c) => (
+                <TableCell key={c.label}>{c.value(p) ?? '—'}</TableCell>
+              ))}
             </TableRow>
           ))}
         </TableBody>
@@ -564,7 +556,7 @@ function TablePersonnel({
 }
 
 function EnTeteTable({ titre }: { titre: string }) {
-  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-faint)]">{titre}</p>
+  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">{titre}</p>
 }
 
 /** Rapport succinct de rentrée : résumé + effectifs par année + cycles. */

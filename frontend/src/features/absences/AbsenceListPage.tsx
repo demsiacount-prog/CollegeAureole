@@ -17,6 +17,7 @@ import { extractErrorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { fetchAbsences, fetchAbsencesTotal, createAbsence, justifierAbsence } from './api'
 import AbsenceFormDrawer from './AbsenceFormDrawer'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import type { AbsenceCreateInput } from './types'
 
 const PAGE_SIZE = 50
@@ -28,7 +29,8 @@ const justifieeParam = (f: 'tous' | 'justifiees' | 'non-justifiees'): boolean | 
 }
 
 export default function AbsenceListPage() {
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')

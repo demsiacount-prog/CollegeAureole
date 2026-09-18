@@ -10,6 +10,7 @@ import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { fetchClasses } from '@/features/classes/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
 import { fetchSeances, createSeance, updateSeance, deleteSeance } from './api'
@@ -25,8 +26,9 @@ function hhmm(t: string) {
 
 
 export default function SeanceListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
 
   const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })

@@ -175,3 +175,29 @@ class TestExecutionJardin:
         old = db_session.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee["id"]).first()
         assert old.active is False
         assert old.cloturee is True
+
+    def test_executer_refuse_si_annee_active_deja_cloturee(self, client, auth_headers, db_session):
+        """Une année clôturée ré-##activée pour consultation ne peut pas être clôturée à nouveau."""
+        annee = _creer_annee(client, auth_headers).json()
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        ps = _creer_classe(client, auth_headers, niveau="Petite Section", nom="A").json()
+        _creer_eleve_et_inscription(db_session, client, auth_headers, tuteur["id"], ps["id"], annee["id"], prenom="Fatou")
+
+        resp = client.post("/api/cloture/executer", json={
+            "nouvelle_annee": {"libelle": "2026-2027", "date_debut": "2026-09-01", "date_fin": "2027-06-30"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        db_session.expire_all()
+        old = db_session.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee["id"]).first()
+        old.active = True  # revisite de l'année clôturée (mode lecture seule)
+        db_session.commit()
+
+        resp = client.post("/api/cloture/executer", json={
+            "nouvelle_annee": {"libelle": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-06-30"},
+        }, headers=auth_headers)
+        assert resp.status_code == 409
+
+        preview = client.get("/api/cloture/preview", headers=auth_headers)
+        assert preview.status_code == 200
+        assert preview.json()["peut_executer"] is False
+        assert preview.json()["cloturee"] is True

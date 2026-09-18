@@ -297,30 +297,6 @@ def depublier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sess
     return bulletins
 
 
-@router.get("/", response_model=List[schemas.BulletinResponse])
-def get_all_bulletins(
-    matricule_eleve: Optional[str] = None,
-    id_classe: Optional[int] = None,
-    id_trimestre: Optional[int] = None,
-    skip: int = 0,
-    limit: int = Query(default=200, le=500),
-    db: Session = Depends(get_db),
-):
-    # BulletinResponse imbrique details -> cours_nom (via detail.cours) : sans
-    # eager loading, chaque détail de bulletin déclenche une requête supplémentaire.
-    query = db.query(models.Bulletins).options(
-        joinedload(models.Bulletins.eleve),
-        joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours)
-    )
-    if matricule_eleve:
-        query = query.filter(models.Bulletins.matricule_eleve == matricule_eleve)
-    if id_classe:
-        query = query.filter(models.Bulletins.id_classe == id_classe)
-    if id_trimestre:
-        query = query.filter(models.Bulletins.id_trimestre == id_trimestre)
-    return query.order_by(models.Bulletins.rang.asc().nullslast()).offset(skip).limit(limit).all()
-
-
 def _bulletin_avec_relations(db: Session, bulletin_id: int) -> models.Bulletins:
     """Charge un bulletin avec ses relations (détails+cours, élève, trimestre,
     classe) pour la génération du PDF — évite les requêtes N+1."""
@@ -403,36 +379,28 @@ def bulletins_pdf_classe(id_classe: int, id_trimestre: int, db: Session = Depend
     )
 
 
-@router.get("/annuel/classe/{id_classe}/pdf", response_class=Response)
-def bulletins_annuels_classe_pdf(id_classe: int, annee_id: int, db: Session = Depends(get_db)):
-    """PDF regroupant les bulletins annuels de tous les élèves d'une classe."""
-    from services.bulletins_annuels import bulletin_annuel
-
-    eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == id_classe).all()
-    etab = _contexte_etablissement(db)
-    annees = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
-
-    payloads = []
-    for eleve in eleves:
-        try:
-            data = bulletin_annuel(db, eleve.matricule, annee_id)
-        except ValueError:
-            continue
-        if data.get("statut") == "OK" and data.get("trimestres"):
-            payloads.append(data)
-
-    if not payloads:
-        raise HTTPException(status_code=404, detail="Aucun bulletin annuel disponible pour cette classe")
-
-    fichier = pdf_service.nom_fichier_annuel_classe(payloads)
-    contenu = pdf_service.bulletins_annuels_classe_pdf(
-        payloads, etab, annees.libelle if annees else None
+@router.get("/", response_model=List[schemas.BulletinResponse])
+def get_all_bulletins(
+    matricule_eleve: Optional[str] = None,
+    id_classe: Optional[int] = None,
+    id_trimestre: Optional[int] = None,
+    skip: int = 0,
+    limit: int = Query(default=200, le=500),
+    db: Session = Depends(get_db),
+):
+    # BulletinResponse imbrique details -> cours_nom (via detail.cours) : sans
+    # eager loading, chaque détail de bulletin déclenche une requête supplémentaire.
+    query = db.query(models.Bulletins).options(
+        joinedload(models.Bulletins.eleve),
+        joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours)
     )
-    return Response(
-        content=contenu,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{fichier}"'},
-    )
+    if matricule_eleve:
+        query = query.filter(models.Bulletins.matricule_eleve == matricule_eleve)
+    if id_classe:
+        query = query.filter(models.Bulletins.id_classe == id_classe)
+    if id_trimestre:
+        query = query.filter(models.Bulletins.id_trimestre == id_trimestre)
+    return query.order_by(models.Bulletins.rang.asc().nullslast()).offset(skip).limit(limit).all()
 
 
 @router.get("/annuel/{matricule_eleve}", response_model=schemas.BulletinAnnuelResponse)
@@ -443,30 +411,6 @@ def get_bulletin_annuel(matricule_eleve: str, annee_id: int, db: Session = Depen
         return bulletin_annuel(db, matricule_eleve, annee_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-
-
-@router.get("/annuel/{matricule_eleve}/pdf", response_class=Response)
-def bulletins_annuel_pdf(matricule_eleve: str, annee_id: int, db: Session = Depends(get_db)):
-    from services.bulletins_annuels import bulletin_annuel
-
-    etab = _contexte_etablissement(db)
-    annees = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
-    try:
-        data = bulletin_annuel(db, matricule_eleve, annee_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    if data.get("statut") != "OK" or not data.get("trimestres"):
-        raise HTTPException(status_code=404, detail="Aucun bulletin annuel disponible pour cet élève")
-
-    nom = pdf_service.nom_fichier_bulletin_annuel(data)
-    contenu = pdf_service.bulletin_annuel_pdf(
-        data, etab, annees.libelle if annees else None
-    )
-    return Response(
-        content=contenu,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{nom}"'},
-    )
 
 
 @router.get("/{bulletin_id}", response_model=schemas.BulletinDetailFullResponse)

@@ -13,11 +13,16 @@ class EnseignantBase(BaseModel):
     genre: Optional[str] = Field(default=None, max_length=10)
     nina: Optional[str] = Field(default=None, max_length=20)
     date_naissance: Optional[date] = None
+    lieu_de_naissance: Optional[str] = Field(default=None, max_length=200)
+    nationalite: Optional[str] = Field(default=None, max_length=50)
+    situation_matrimoniale: Optional[str] = Field(default=None, max_length=30)
     categorie: Optional[str] = Field(default=None, max_length=100)
     echelon: Optional[str] = Field(default=None, max_length=50)
     fonction: Optional[str] = Field(default=None, max_length=100)
     sf_nombre_enfants: Optional[str] = Field(default=None, max_length=50)
     date_contrat: Optional[date] = None
+    date_titularisation: Optional[date] = None
+    date_dernier_avancement: Optional[date] = None
     classe_tenue: Optional[str] = Field(default=None, max_length=100)
     dernier_poste: Optional[str] = Field(default=None, max_length=150)
     date_arrivee_cap: Optional[date] = None

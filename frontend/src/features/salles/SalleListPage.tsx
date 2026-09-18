@@ -13,10 +13,12 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchSalles, createSalle, updateSalle, deleteSalle } from './api'
 import SalleFormDrawer from './SalleFormDrawer'
 import type { Salle, SalleCreateInput } from './types'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 export default function SalleListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
   const { data: salles = [], isLoading, isError } = useQuery({ queryKey: ['salles'], queryFn: fetchSalles })
 

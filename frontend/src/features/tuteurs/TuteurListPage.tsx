@@ -17,12 +17,14 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchTuteurs, fetchTuteursTotal, deleteTuteur } from './api'
 import { TuteurFormDrawer } from './TuteurFormDrawer'
 import type { Tuteur } from '@/features/shared/types'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 const PAGE_SIZE = 50
 
 export default function TuteurListPage() {
-  const canWrite = true
-  const canDelete = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
+  const canDelete = !lectureSeule
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')

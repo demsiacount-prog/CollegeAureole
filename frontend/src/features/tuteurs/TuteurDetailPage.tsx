@@ -13,10 +13,12 @@ import { DocumentsTab } from '@/features/documents/DocumentsTab'
 import { formatDate } from '@/lib/format'
 import { fetchTuteurById } from './api'
 import { TuteurFormDrawer } from './TuteurFormDrawer'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 
 export default function TuteurDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const canWrite = true
+  const { lectureSeule } = useLectureSeule()
+  const canWrite = !lectureSeule
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: tuteur, isLoading, isError, refetch } = useQuery({

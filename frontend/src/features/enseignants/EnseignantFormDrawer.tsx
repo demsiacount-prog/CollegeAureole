@@ -30,11 +30,16 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
     genre: '',
     nina: '',
     date_naissance: '',
+    lieu_de_naissance: '',
+    nationalite: '',
+    situation_matrimoniale: '',
     categorie: '',
     echelon: '',
     fonction: '',
     sf_nombre_enfants: '',
     date_contrat: '',
+    date_titularisation: '',
+    date_dernier_avancement: '',
     classe_tenue: '',
     dernier_poste: '',
     date_arrivee_cap: '',
@@ -56,11 +61,16 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
         genre: enseignant?.genre ?? '',
         nina: enseignant?.nina ?? '',
         date_naissance: enseignant?.date_naissance ?? '',
+        lieu_de_naissance: enseignant?.lieu_de_naissance ?? '',
+        nationalite: enseignant?.nationalite ?? '',
+        situation_matrimoniale: enseignant?.situation_matrimoniale ?? '',
         categorie: enseignant?.categorie ?? '',
         echelon: enseignant?.echelon ?? '',
         fonction: enseignant?.fonction ?? '',
         sf_nombre_enfants: enseignant?.sf_nombre_enfants ?? '',
         date_contrat: enseignant?.date_contrat ?? '',
+        date_titularisation: enseignant?.date_titularisation ?? '',
+        date_dernier_avancement: enseignant?.date_dernier_avancement ?? '',
         classe_tenue: enseignant?.classe_tenue ?? '',
         dernier_poste: enseignant?.dernier_poste ?? '',
         date_arrivee_cap: enseignant?.date_arrivee_cap ?? '',
@@ -96,6 +106,8 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
         ...form,
         date_naissance: form.date_naissance || undefined,
         date_contrat: form.date_contrat || undefined,
+        date_titularisation: form.date_titularisation || undefined,
+        date_dernier_avancement: form.date_dernier_avancement || undefined,
         date_arrivee_cap: form.date_arrivee_cap || undefined,
       }
       return isEdit ? updateEnseignant(enseignant!.matricule, corps) : createEnseignant(corps)
@@ -211,6 +223,30 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
               onChange={(e) => setForm((f) => ({ ...f, date_naissance: e.target.value }))}
             />
             <Input
+              label="Lieu de naissance"
+              placeholder="ex. Bamako"
+              value={form.lieu_de_naissance ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, lieu_de_naissance: e.target.value }))}
+            />
+            <Input
+              label="Nationalité"
+              placeholder="ex. Malienne"
+              value={form.nationalite ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, nationalite: e.target.value }))}
+            />
+            <Select
+              label="Situation matrimoniale"
+              value={form.situation_matrimoniale ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, situation_matrimoniale: e.target.value }))}
+              options={[
+                { value: '', label: '—' },
+                { value: 'Célibataire', label: 'Célibataire' },
+                { value: 'Marié(e)', label: 'Marié(e)' },
+                { value: 'Divorcé(e)', label: 'Divorcé(e)' },
+                { value: 'Veuf(ve)', label: 'Veuf(ve)' },
+              ]}
+            />
+            <Input
               label="Catégorie"
               placeholder="ex. Titulaire / Contractuel"
               value={form.categorie ?? ''}
@@ -237,6 +273,18 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
               type="date"
               value={form.date_contrat ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, date_contrat: e.target.value }))}
+            />
+            <Input
+              label="Date de titularisation"
+              type="date"
+              value={form.date_titularisation ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, date_titularisation: e.target.value }))}
+            />
+            <Input
+              label="Date du dernier avancement"
+              type="date"
+              value={form.date_dernier_avancement ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, date_dernier_avancement: e.target.value }))}
             />
             <Input
               label="Classe tenue"

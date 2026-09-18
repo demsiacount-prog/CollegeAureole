@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, ChevronDown, LogOut, Moon, Search, Sun } from 'lucide-react'
+import { Bell, ChevronDown, Lock, LogOut, Moon, Search, Sun } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { fetchAnneesScolaires, activerAnneeScolaire } from '@/features/annees_scolaires/api'
 import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
+import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { useCurrentModule } from '@/routes/useModule'
 import { CommandPalette } from '@/components/ui/CommandPalette'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -22,6 +23,7 @@ export function Topbar() {
   const { user, logout } = useAuth()
   const { theme, toggle: toggleTheme } = useTheme()
   const { data: annee } = useAnneeActive()
+  const { lectureSeule } = useLectureSeule()
   const module = useCurrentModule()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [bellOpen, setBellOpen] = useState(false)
@@ -86,6 +88,11 @@ export function Topbar() {
           >
             <span className="size-[5px] shrink-0 rounded-full bg-[var(--success)]" />
             <span className="truncate">{annee.libelle}</span>
+            {lectureSeule && (
+              <Tooltip content="Année clôturée — lecture seule">
+                <Lock className="size-3 shrink-0 text-[var(--warning)]" strokeWidth={2} />
+              </Tooltip>
+            )}
             <ChevronDown className="size-3 shrink-0 text-[var(--ink-faint)]" strokeWidth={1.75} />
           </button>
           </Tooltip>
@@ -124,7 +131,8 @@ export function Topbar() {
                 <span className={`flex-1 truncate ${a.active ? 'font-medium text-[var(--ink)]' : 'text-[var(--ink-dim)]'}`}>
                   {a.libelle}
                 </span>
-                {a.active && <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--success)]">Active</span>}
+                {a.cloturee && <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--warning)]">Clôturée</span>}
+                {a.active && !a.cloturee && <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--success)]">Active</span>}
               </button>
             ))}
           </div>

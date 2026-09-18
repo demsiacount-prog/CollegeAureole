@@ -1,7 +1,6 @@
 import { test, expect, request, type Page } from '@playwright/test'
+import { ADMIN_CREDENTIALS } from './helpers'
 
-const ADMIN_EMAIL = 'admin@etablissement.com'
-const ADMIN_PASSWORD = 'Password123!'
 const DEVISE = 'L’excellence en toute épreuve'
 
 const ROUTES_APP: { label: string; path: string }[] = [
@@ -33,7 +32,7 @@ const LOGO_PNG = Buffer.from(
 async function loginInit(page: Page) {
   const ctx = await request.newContext({ baseURL: 'http://localhost:3001' })
   const res = await ctx.post('/api/auth/connexion', {
-    data: { email: ADMIN_EMAIL, mot_de_passe: ADMIN_PASSWORD },
+    data: { email: ADMIN_CREDENTIALS.email, mot_de_passe: ADMIN_CREDENTIALS.password },
   })
   if (res.status() !== 200) throw new Error(`Login API échoué (${res.status()}): ${await res.text()}`)
   const body = await res.json()
@@ -76,8 +75,8 @@ test.describe('Assistant d’initialisation', () => {
     await expect(page.getByRole('heading', { name: 'Compte administrateur' })).toBeVisible()
     await page.getByLabel('Nom', { exact: true }).fill('Admin')
     await page.getByLabel('Prénom', { exact: true }).fill('Système')
-    await page.getByLabel('Adresse e-mail administrateur').fill(ADMIN_EMAIL)
-    await page.locator('#setup-password').fill(ADMIN_PASSWORD)
+    await page.getByLabel('Adresse e-mail administrateur').fill(ADMIN_CREDENTIALS.email)
+    await page.locator('#setup-password').fill(ADMIN_CREDENTIALS.password)
     await page.getByRole('button', { name: 'Continuer' }).click()
 
     // Écran 3 : année scolaire
@@ -103,7 +102,7 @@ test.describe('Assistant d’initialisation', () => {
   test('la fiche établissement est consultable et modifiable dans Paramètres', async ({ page }) => {
     const ctx = await request.newContext({ baseURL: 'http://localhost:3001' })
     const res = await ctx.post('/api/auth/connexion', {
-      data: { email: ADMIN_EMAIL, mot_de_passe: ADMIN_PASSWORD },
+      data: { email: ADMIN_CREDENTIALS.email, mot_de_passe: ADMIN_CREDENTIALS.password },
     })
     if (res.status() !== 200) throw new Error(`Login API échoué (${res.status()})`)
     const body = await res.json()

@@ -6,6 +6,7 @@ les comptes désactivés et la récupération du profil courant.
 import pytest
 
 from hashing import hash_password
+from credentials import ADMIN_EMAIL, ADMIN_PASSWORD
 
 
 def _connecter(client, email, mot_de_passe):
@@ -14,7 +15,7 @@ def _connecter(client, email, mot_de_passe):
 
 class TestConnexion:
     def test_connexion_reussie(self, client, admin_user):
-        resp = _connecter(client, admin_user.email, "Password123!")
+        resp = _connecter(client, admin_user.email, ADMIN_PASSWORD)
         assert resp.status_code == 200
         body = resp.json()
         assert body["access_token"]
@@ -25,7 +26,7 @@ class TestConnexion:
         assert resp.status_code == 401
 
     def test_email_inconnu(self, client):
-        resp = _connecter(client, "inconnu@etablissement.com", "Password123!")
+        resp = _connecter(client, "inconnu@etablissement.com", ADMIN_PASSWORD)
         assert resp.status_code == 401
 
 
@@ -36,12 +37,12 @@ class TestCompteDesactive:
         user = Utilisateurs(
             nom="Desactive", prenom="Test",
             email="desactive@etablissement.com",
-            mot_de_passe=hash_password("Password123!"),
+            mot_de_passe=hash_password(ADMIN_PASSWORD),
             actif=False,
         )
         db_session.add(user)
         db_session.commit()
-        resp = _connecter(client, "desactive@etablissement.com", "Password123!")
+        resp = _connecter(client, "desactive@etablissement.com", ADMIN_PASSWORD)
         assert resp.status_code in (401, 403)
 
 

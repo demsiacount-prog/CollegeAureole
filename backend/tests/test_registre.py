@@ -2,7 +2,6 @@
 from datetime import date
 
 import models
-from services import pdf as pdf_service
 from services.registre_notes import registre_notes
 
 
@@ -177,23 +176,3 @@ def test_registre_jardin_refuse(db_session):
         assert "jardin" in str(exc).lower() or "appréciation" in str(exc).lower()
     else:
         raise AssertionError("Jardin refusé attendu")
-
-
-def test_registre_pdf_fiche_unique(db_session):
-    """Le PDF (doc3) est une fiche unique en paysage, tableau 2 lignes d'en-tête."""
-    ctx = _contexte(db_session, "7ème Année")
-    e, c, t1, t2, t3 = ctx["eleve"], ctx["cours"], *ctx["periodes"]
-    for t, comp, classe in ((t1, 16.0, 10.0), (t2, 15.0, 11.0), (t3, 14.0, 12.0)):
-        db_session.add(models.Notes(
-            date=date.today(), note=comp, note_classe=classe,
-            matricule_eleve=e.matricule, id_cours=c.id, id_classe=ctx["classe"].id,
-            matricule_enseignant="ENS0099", id_trimestre=t.id,
-        ))
-    db_session.commit()
-
-    payload = registre_notes(db_session, ctx["classe"].id, c.id, ctx["annee"].id)
-    contenu = pdf_service.registre_pdf(payload, None)
-    assert contenu.startswith(b"%PDF")
-    assert b"/Type /Page" in contenu
-    # une seule page : /Type /Pages (arbre) + /Type /Page (page)
-    assert contenu.count(b"/Type /Page") == 2

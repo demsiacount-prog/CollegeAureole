@@ -2,8 +2,8 @@ import { request, type APIRequestContext, type Page } from '@playwright/test'
 
 export const API_BASE = 'http://localhost:3001'
 
-/** Compte unique d'administration (rôles supprimés depuis v5). */
-export const ADMIN_CREDENTIALS = { email: 'admin@etablissement.com', password: 'Password123!' }
+/** Compte administrateur unique (rôles supprimés depuis v5) — identique au seed. */
+export const ADMIN_CREDENTIALS = { email: 'malademsi@collegeaureole.ml', password: 'malademsi' }
 
 /** Connexion via le formulaire de connexion réel (workflow utilisateur). */
 export async function login(page: Page) {

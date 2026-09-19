@@ -128,7 +128,7 @@ function AnneesTab() {
 
   const activerMut = useMutation({
     mutationFn: activerAnneeScolaire,
-    onSuccess: () => { toast('Année scolaire activée'); qc.invalidateQueries({ queryKey: ['annees-scolaires'] }) },
+    onSuccess: () => { toast('Année scolaire activée'); qc.invalidateQueries() },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 

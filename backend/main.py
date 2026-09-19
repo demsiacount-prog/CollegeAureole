@@ -173,6 +173,46 @@ class _CachedStaticFiles(StaticFiles):
         return response
 
 
+class _SecuriteHeadersMiddleware:
+    """Ajoute des en-têtes de sécurité sur toutes les réponses (API + uploads).
+
+    - X-Content-Type-Options: nosniff : bloque le sniffing MIME (un contenu
+      malveillant ne peut pas être re-rendu comme HTML/JS).
+    - X-Frame-Options: DENY : empêche le framing de l'application (clickjacking).
+    - Referrer-Policy: no-referrer : ne jamais fuiter d'URL hors origine.
+
+    Les exports /uploads/ conservent par ailleurs leur cache long
+    (contenus immuables, cf. _CachedStaticFiles)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_avec_en_tetes(message):
+            if message["type"] == "http.response.start":
+                headers = message["headers"]
+                presentes = {nom.lower() for nom, _ in headers}
+                adds = [
+                    (b"X-Content-Type-Options", b"nosniff"),
+                    (b"X-Frame-Options", b"DENY"),
+                    (b"Referrer-Policy", b"no-referrer"),
+                ]
+                headers = [
+                    *headers,
+                    *(en_tete for en_tete in adds if en_tete[0].lower() not in presentes),
+                ]
+                message = {**message, "headers": headers}
+            return await send(message)
+
+        await self.app(scope, receive, send_avec_en_tetes)
+
+
+app.add_middleware(_SecuriteHeadersMiddleware)
+
+
 app.mount("/uploads", _CachedStaticFiles(directory=_UPLOADS_DIR), name="uploads")
 
 

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from fastapi.responses import Response, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
+import magicbytes
 import models
 import schemas
 from security import get_current_user
@@ -56,14 +57,29 @@ def _content_disposition(filename: str, disposition: str = "attachment") -> str:
     return f'{disposition}; filename="{ascii_name}"; filename*=UTF-8\'\'{quote(filename)}'
 
 
-def _verifier_upload(file: UploadFile):
-    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Type de fichier non autorisé")
+def _verifier_upload(file: UploadFile) -> str:
+    """Valide la taille et le contenu réel d'un fichier ; retourne son type MIME vérifié.
+
+    Le `Content-Type` fourni par le client n'est pas une source fiable : on
+    détecte le type par les octets réels (`magicbytes`) et on refuse tout
+    contenu inconnu ou incohérent avec le type annoncé (ex. un HTML déguisé
+    en image).
+    """
     file.file.seek(0, 2)
     taille = file.file.tell()
     file.file.seek(0)
     if taille > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="Fichier trop volumineux")
+
+    contenu = file.file.read()
+    file.file.seek(0)
+    type_reel = magicbytes.type_autorise(contenu, file.content_type, ALLOWED_MIME_TYPES)
+    if type_reel is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Type de fichier non reconnu ou incohérent avec le contenu réel",
+        )
+    return type_reel
 
 
 def _resoudre_entite(
@@ -171,7 +187,7 @@ def _creer_document(
     matricule_enseignant: Optional[str] = None,
     code_tuteur: Optional[str] = None,
 ):
-    _verifier_upload(file)
+    mime_type = _verifier_upload(file)
     if categorie not in CATEGORIES_VALIDES:
         raise HTTPException(status_code=400, detail="Catégorie invalide")
 
@@ -195,7 +211,6 @@ def _creer_document(
         _, ext = os.path.splitext(file.filename or "")
         ext = re.sub(r"[^a-zA-Z0-9]", "", ext)[:10]
         filename = f"{base}{('.' + ext) if ext else ''}"
-    mime_type = file.content_type or _deviner_media_type(filename)
 
     kw = {cle: identifiant}
     doc = models.Documents(
@@ -314,14 +329,21 @@ def telecharger_document(document_id: int, db: Session = Depends(get_db)):
 
 
 def _servir_document(doc: models.Documents, *, disposition: str):
+    # Jamais de rendu inline pour autre chose que des images/PDF : un HTML ou
+    # SVG stocké pourrait être exécuté dans l'origine de l'application.
+    mime = doc.mime_type or _deviner_media_type(doc.filename)
+    if disposition == "inline" and not magicbytes.servir_inline(mime):
+        disposition = "attachment"
+    headers: dict[str, str] = {"X-Content-Type-Options": "nosniff"}
     if doc.contenu is not None:
         return Response(
             content=doc.contenu,
-            media_type=doc.mime_type or _deviner_media_type(doc.filename),
+            media_type=mime,
             headers={
+                **headers,
                 "Content-Disposition": _content_disposition(
                     doc.nom_fichier_original or doc.filename, disposition
-                )
+                ),
             },
         )
     # Fallback : anciens documents stockés sur disque avant la migration BLOB.
@@ -330,7 +352,8 @@ def _servir_document(doc: models.Documents, *, disposition: str):
     return FileResponse(
         doc.filepath,
         filename=doc.nom_fichier_original or doc.filename,
-        media_type=_deviner_media_type(doc.filepath),
+        media_type=mime,
+        headers=headers,
     )
 
 

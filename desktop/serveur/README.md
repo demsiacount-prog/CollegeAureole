@@ -73,6 +73,11 @@ local est détecté automatiquement. Aucune configuration requise.
   (lecture restreinte aux utilisateurs locaux).
 - Le service tourne sous LocalSystem ; pour un durcissement supplémentaire,
   créer un compte de service dédié dans `tout-en-un.nsi`.
+- Gestion sensible réservée au rôle `ADMIN` (comptes, purge, export complet,
+  cycle des années scolaires, clôture) : les autres rôles reçoivent un 403
+  sur ces opérations. Le token de session vit en `localStorage` du client.
+- Dépendances épinglées dans `backend/requirements.lock.txt` (généré à partir
+  de `requirements.txt`, qui exclut le CLI cloud non utilisé de FastAPI).
 
 ## Build local (hors CI)
 

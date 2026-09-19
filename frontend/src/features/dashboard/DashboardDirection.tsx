@@ -57,8 +57,34 @@ const CHART_TOOLTIP = {
   backgroundColor: 'var(--color-surface-2)',
   border: '1px solid var(--color-border)',
   borderRadius: 'var(--radius-md)',
+  boxShadow: 'var(--shadow-card)',
   color: 'var(--color-ink)',
-  fontSize: 12,
+  fontSize: 12.5,
+  fontWeight: 500 as const,
+  maxWidth: 240,
+  padding: '9px 12px',
+} as const
+
+/** Style du texte de chaque série dans le tooltip : nom du module (couleur
+ *  d'encre) puis valeur en semi-gras — la valeur par défaut gris `#999` de
+ *  Recharts est illisible sur fond sombre. */
+const CHART_TOOLTIP_ITEM = {
+  color: 'var(--color-ink)',
+  fontSize: 12.5,
+  padding: 0,
+} as const
+
+const CHART_TOOLTIP_LABEL = {
+  color: 'var(--color-ink)',
+  fontSize: 12.5,
+  fontWeight: 600 as const,
+  marginBottom: 5,
+} as const
+
+/** Empêche le tooltip d'intercepter le survol : sans `pointer-events: none`,
+ *  le pointeur passant sur la bulle fait clignoter le tooltip. */
+const CHART_TOOLTIP_WRAPPER = {
+  pointerEvents: 'none',
 } as const
 
 /** Type J v2 · Dashboard (design system §32 + Type J) :
@@ -168,7 +194,7 @@ export default function DashboardDirection() {
               </div>
               <div className="h-96 max-w-full overflow-x-auto px-2 pb-5 pt-2">
                 {stats.moyennes_par_classe.length > 0 ? (
-                  <div style={{ minWidth: `${Math.max(stats.moyennes_par_classe.length * 80, 500)}px`, height: '100%' }}>
+                  <div style={{ minWidth: `${Math.max(stats.moyennes_par_classe.length * 56, 360)}px`, height: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       {/* EF1 noté /10, EF2 /20 : les barres sont exprimées en % du
                           barème de chaque classe pour rester comparables entre cycles. */}
@@ -182,6 +208,10 @@ export default function DashboardDirection() {
                             return [`${p?.moy ?? '—'} / ${p?.bareme ?? '—'}`, 'Moyenne']
                           }}
                           contentStyle={CHART_TOOLTIP}
+                          labelStyle={CHART_TOOLTIP_LABEL}
+                          itemStyle={CHART_TOOLTIP_ITEM}
+                          wrapperStyle={CHART_TOOLTIP_WRAPPER}
+                          cursor={{ fill: 'var(--color-surface-3)' }}
                         />
                         <Bar dataKey="pct" fill="var(--color-action)" radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -205,7 +235,7 @@ export default function DashboardDirection() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                       <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} angle={-35} textAnchor="end" height={60} />
                       <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
-                      <Tooltip contentStyle={CHART_TOOLTIP} />
+                      <Tooltip contentStyle={CHART_TOOLTIP} labelStyle={CHART_TOOLTIP_LABEL} itemStyle={CHART_TOOLTIP_ITEM} wrapperStyle={CHART_TOOLTIP_WRAPPER} />
                       <Bar dataKey="absences" fill="var(--color-danger)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -240,7 +270,7 @@ export default function DashboardDirection() {
                         <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={CHART_TOOLTIP} />
+                    <Tooltip contentStyle={CHART_TOOLTIP} labelStyle={CHART_TOOLTIP_LABEL} itemStyle={CHART_TOOLTIP_ITEM} wrapperStyle={CHART_TOOLTIP_WRAPPER} />
                     <Legend
                       content={() => (
                         <div className="grid grid-cols-2 gap-x-6 gap-y-2 pt-3 sm:grid-cols-3 xl:grid-cols-6">

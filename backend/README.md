@@ -183,6 +183,31 @@ le mot de passe du compte admin à la première connexion.
 7. **Exécuter les tests** : `cd backend && ./venv/bin/python -m pytest`
    (suite isolée, SQLite en mémoire, aucun impact sur les données de dev).
 
+## Modèle d'autorisation (RBAC)
+
+- **Authentifié** (`get_current_user`) : toute personne connectée et active —
+  accès en lecture/écriture sur les données métier.
+- **Administrateur** (`require_admin`, rôle `ADMIN`) : réservé à la gestion
+  sensible — comptes utilisateurs (`/api/utilisateurs`), export complet de la
+  base (`/api/import-export`), purge/réinitialisation (`/api/setup/reset`,
+  `/api/setup/purge-donnees`), fiche/logo/infrastructures de l'établissement,
+  cycle des années scolaires (création/activation/clôture) et exécution de la
+  clôture (`/api/cloture/executer`). Tout compte non-admin reçoit un **403**.
+- Le changement de **son propre** mot de passe (`/api/auth/utilisateurs/{id}/mot-de-passe`)
+  reste accessible à son titulaire.
+
+## Sécurité des échanges et des fichiers
+
+- **En-têtes de sécurité** ajoutés sur toutes les réponses (`main.py`) :
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer`.
+- **Uploads validés par le contenu réel** (`magicbytes.py`) : le `Content-Type`
+  client n'est plus une source de confiance. Un fichier dont les octets ne
+  correspondent pas au type annoncé (ou à un type inconnu) est refusé.
+- **Prévisualisations inline** limitées aux images et PDF ; tout le reste est
+  renvoyé en `attachment` (`documents.py`).
+- **Transport** : HTTP local acceptable en bureau mono-poste. Dès que l'API est
+  exposée au réseau, placer un reverse proxy TLS devant (voir checklist ci-dessus).
 
 ## Prochaines étapes suggérées
 - Générer un PDF de bulletin de meilleure qualité à partir de `BulletinDetailFullResponse`.

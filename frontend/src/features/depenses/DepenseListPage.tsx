@@ -197,15 +197,7 @@ export default function DepenseListPage() {
               </TableBody>
               {total > 0 && (
                 <tfoot>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right font-semibold text-[var(--color-warning)]">
-                      Total filtré
-                    </TableCell>
-                    <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-warning)]">
-                      {formatMontant(compte.total_montant)}
-                    </TableCell>
-                    <TableCell colSpan={2} />
-                  </TableRow>
+                  
                 </tfoot>
               )}
             </Table>

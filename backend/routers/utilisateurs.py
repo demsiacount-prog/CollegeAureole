@@ -10,7 +10,7 @@ from typing import List
 
 from database import get_db
 from hashing import hash_password
-from security import get_current_user
+from security import get_current_user, require_admin
 from exceptions import (
     ForbiddenError,
     ValidationError,
@@ -20,7 +20,7 @@ import models
 import schemas
 
 
-router = APIRouter(prefix="/api/utilisateurs", tags=["Utilisateurs"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/api/utilisateurs", tags=["Utilisateurs"], dependencies=[Depends(require_admin)])
 
 ROLES_VALUES = {"ADMIN", "DIRECTEUR", "SECRETAIRE", "ENSEIGNANT", "COMPTABLE"}
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, GraduationCap, Repeat, Ban, Clock } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, GraduationCap, Repeat, Ban, Clock, Lock } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
@@ -45,8 +45,7 @@ export default function CloturePage() {
     onSuccess: (data) => {
       setRapport(data)
       toast('Année scolaire clôturée avec succès.')
-      qc.invalidateQueries({ queryKey: ['cloture-preview'] })
-      qc.invalidateQueries({ queryKey: ['annees-scolaires'] })
+      qc.invalidateQueries()
     },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
@@ -158,19 +157,26 @@ export default function CloturePage() {
         subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">{preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}</p>}
       />
 
-      {preview.cloturee ? (
-        <div className="py-16">
-          <EmptyState
-            title="Année déjà clôturée"
-            message={`${preview.annee_active?.libelle ?? "L'année active"} est clôturée et verrouillée. Sélectionnez une autre année (non clôturée) dans le sélecteur d'année pour pouvoir clôturer.`}
-          />
-        </div>
-      ) : preview.total_eleves === 0 ? (
+      {preview.total_eleves === 0 ? (
         <div className="py-16">
           <EmptyState message="Aucune inscription pour l'année active — rien à clôturer." />
         </div>
       ) : (
         <>
+          {preview.cloturee ? (
+            <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-4 py-3 text-sm text-[var(--color-warning)]">
+              <Lock className="size-4 shrink-0" />
+              {`${preview.annee_active?.libelle ?? "Cette année"} est clôturée et verrouillée — consultation des résultats de passage en lecture seule.`}
+            </div>
+          ) : (
+            !preview.peut_executer && (
+              <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-4 py-3 text-sm text-[var(--color-warning)]">
+                <AlertTriangle className="size-4 shrink-0" />
+                {`${preview.blocants} élève(s) encore en attente d'une décision. Réglez-le dans le module Résultats avant de pouvoir exécuter la clôture.`}
+              </div>
+            )
+          )}
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {COMPTEUR_CARDS.map(({ key, label, icon: Icon }) => (
               <Card key={key} className={key === 'EN_ATTENTE' && preview.blocants > 0 ? 'border-[var(--color-danger)]/40 p-4' : 'p-4'}>
@@ -184,13 +190,6 @@ export default function CloturePage() {
               </Card>
             ))}
           </div>
-
-          {!preview.peut_executer && (
-            <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-4 py-3 text-sm text-[var(--color-warning)]">
-              <AlertTriangle className="size-4 shrink-0" />
-              {`${preview.blocants} élève(s) encore en attente d'une décision. Réglez-le dans le module Résultats avant de pouvoir exécuter la clôture.`}
-            </div>
-          )}
 
           <Card>
             <CardHeader>
@@ -230,27 +229,29 @@ export default function CloturePage() {
             </TableContainer>
           </Card>
 
-          <Card className="p-5">
-            <CardTitle className="mb-4 flex items-center gap-2">
-              <CalendarClock className="size-4 text-[var(--color-action)]" />
-              Nouvelle année scolaire
-            </CardTitle>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Input label="Libellé" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} />
-              <Input label="Date de début" type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })} />
-              <Input label="Date de fin" type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })} />
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button
-                variant="danger"
-                disabled={!preview.peut_executer}
-                isLoading={executerMutation.isPending}
-                onClick={() => setConfirmOpen(true)}
-              >
-                Clôturer l'année et créer {form.libelle || 'la nouvelle année'}
-              </Button>
-            </div>
-          </Card>
+          {!preview.cloturee && (
+            <Card className="p-5">
+              <CardTitle className="mb-4 flex items-center gap-2">
+                <CalendarClock className="size-4 text-[var(--color-action)]" />
+                Nouvelle année scolaire
+              </CardTitle>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Input label="Libellé" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} />
+                <Input label="Date de début" type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })} />
+                <Input label="Date de fin" type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })} />
+              </div>
+              <div className="mt-5 flex justify-end">
+                <Button
+                  variant="danger"
+                  disabled={!preview.peut_executer}
+                  isLoading={executerMutation.isPending}
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  Clôturer l'année et créer {form.libelle || 'la nouvelle année'}
+                </Button>
+              </div>
+            </Card>
+          )}
         </>
       )}
 

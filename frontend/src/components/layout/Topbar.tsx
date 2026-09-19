@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, ChevronDown, Lock, LogOut, Moon, Search, Sun } from 'lucide-react'
+import { ChevronDown, Lock, LogOut, Moon, Search, Sun } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { fetchAnneesScolaires, activerAnneeScolaire } from '@/features/annees_scolaires/api'
@@ -26,14 +26,11 @@ export function Topbar() {
   const { lectureSeule } = useLectureSeule()
   const module = useCurrentModule()
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [bellOpen, setBellOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [anneeOpen, setAnneeOpen] = useState(false)
-  const bellRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const anneeRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
-  useClickOutside(bellRef, () => setBellOpen(false))
   useClickOutside(menuRef, () => setMenuOpen(false))
   useClickOutside(anneeRef, () => setAnneeOpen(false))
 
@@ -48,8 +45,7 @@ export function Topbar() {
     onSuccess: () => {
       setAnneeOpen(false)
       toast('Année scolaire activée. Les données rechargent…')
-      queryClient.invalidateQueries({ queryKey: ['anneesScolaires'] })
-      queryClient.invalidateQueries({ queryKey: ['annees-scolaires'] })
+      queryClient.invalidateQueries()
     },
     onError: (err: Error) => {
       toast(extractErrorMessage(err, "Impossible d'activer cette année."), 'error')
@@ -166,7 +162,7 @@ export function Topbar() {
       </Tooltip>
 
       {/* Cloche — notifications */}
-      <div className="relative" ref={bellRef}>
+      {/* <div className="relative" ref={bellRef}>
         <Tooltip content="Notifications">
         <button
           type="button"
@@ -186,7 +182,7 @@ export function Topbar() {
             <p className="px-3.5 py-6 text-center text-[12.5px] text-[var(--ink-faint)]">Aucune notification</p>
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Avatar — menu utilisateur */}
       <div className="relative" ref={menuRef}>

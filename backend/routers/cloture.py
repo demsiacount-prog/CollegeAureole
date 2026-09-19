@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from database import get_db
 import models
 import schemas
-from security import get_current_user
+from security import get_current_user, require_admin
 from bareme import niveau_ordre, est_jardin, jardin_suivant
 
 logger = logging.getLogger("college_aureole")
@@ -127,7 +127,11 @@ def preview_cloture(db: Session = Depends(get_db)):
 
 
 @router.post("/executer", response_model=schemas.ClotureExecuterResponse, status_code=status.HTTP_200_OK)
-def executer_cloture(payload: schemas.ClotureExecuterPayload, db: Session = Depends(get_db)):
+def executer_cloture(
+    payload: schemas.ClotureExecuterPayload,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     try:
         annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
         if not annee_active:

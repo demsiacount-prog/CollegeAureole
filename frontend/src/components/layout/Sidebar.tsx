@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import { ChevronLeft, LogOut } from 'lucide-react'
 import { NAV_SECTIONS } from '@/routes/nav'
@@ -7,7 +6,6 @@ import { useAuth } from '@/auth/useAuth'
 import { useEtablissement } from '@/features/etablissement/useEtablissement'
 import { LogoEtablissement } from '@/components/ui/LogoEtablissement'
 import { Tooltip } from '@/components/ui/Tooltip'
-import { fetchAbsencesTotal } from '@/features/absences/api'
 import { roleLabel } from '@/lib/roles'
 
 function initials(nom: string, prenom: string) {
@@ -18,11 +16,6 @@ function initials(nom: string, prenom: string) {
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { user, logout } = useAuth()
   const { data: etab } = useEtablissement()
-  const { data: absencesNonJustifiees = 0 } = useQuery({
-    queryKey: ['absences', 'non-justifiees', 'count'],
-    queryFn: () => fetchAbsencesTotal({ justifiee: false }),
-    refetchInterval: 60_000,
-  })
 
   if (!user) return null
 
@@ -81,7 +74,6 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             )}
             <div className="flex flex-col">
               {section.items.map((item) => {
-                const badge = item.id === 'absences' ? absencesNonJustifiees : undefined
                 return (
                   <Tooltip key={item.id} content={collapsed ? item.label : undefined}>
                   <NavLink
@@ -108,14 +100,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
                         <span className="ml-[8px] flex-1 truncate text-left transition-opacity duration-150" style={{ opacity: collapsed ? 0 : 1 }}>
                           {item.label}
                         </span>
-                        {badge !== undefined && badge > 0 && (
-                          <span
-                            className="ml-auto rounded-lg bg-[var(--danger)] px-[5px] py-px text-[9px] font-semibold leading-[1.4] text-white transition-opacity duration-150"
-                            style={{ opacity: collapsed ? 0 : 1 }}
-                          >
-                            {badge}
-                          </span>
-                        )}
+                        
                       </>
                     )}
                   </NavLink>

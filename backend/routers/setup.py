@@ -9,7 +9,7 @@ from database import get_db, SessionLocal, engine, Base
 from exceptions import ConflictError
 from migrations import migrer_schema
 from routers.etablissement import enregistrer_logo
-from security import get_current_user
+from security import require_admin
 from services import initialisation
 import models
 
@@ -176,7 +176,7 @@ class ResetInput(BaseModel):
 @router.post("/reset")
 def reset_database(
     payload: ResetInput,
-    _user: models.Utilisateurs = Depends(get_current_user),
+    _user: models.Utilisateurs = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Vide toute la base et recrée le schéma : retour à la configuration initiale.
@@ -211,7 +211,7 @@ PURGE_TOKEN = "PURGE-DONNEES"
 def purge_donnees(
     payload: PurgeInput,
     x_confirm: str | None = Header(default=None, alias="X-Confirm"),
-    utilisateur_courant: models.Utilisateurs = Depends(get_current_user),
+    utilisateur_courant: models.Utilisateurs = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Vide entièrement la base de données et ne conserve que le compte de

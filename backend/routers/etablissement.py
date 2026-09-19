@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
-from security import get_current_user
+import magicbytes
+from security import get_current_user, require_admin
 import models
 import schemas
 router = APIRouter(prefix="/api/etablissement", tags=["Établissement"])
@@ -46,7 +47,7 @@ def get_etablissement(db: Session = Depends(get_db)):
 @router.put("", response_model=schemas.EtablissementResponse)
 def update_etablissement(
     payload: schemas.EtablissementUpdate,
-    _user: models.Utilisateurs = Depends(get_current_user),
+    _user: models.Utilisateurs = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     fiche = _fiche_ou_404(db)
@@ -64,19 +65,27 @@ def update_etablissement(
 def enregistrer_logo(file: UploadFile) -> str:
     """Valide l'image du logo, l'enregistre sur disque et retourne son chemin
     public. Le lien avec la fiche établissement est établi séparément (PUT de
-    l'établissement ou fiche d'initialisation)."""
-    if file.content_type not in _LOGO_MIME_TO_EXT:
-        raise HTTPException(
-            status_code=400,
-            detail="Format d'image non autorisé",
-        )
+    l'établissement ou fiche d'initialisation).
+
+    L'extension est dérivée du **type réel du contenu** (magic bytes), jamais
+    du Content-Type ou du nom envoyé par le client (peu fiables) : un HTML
+    déguisé en `image/png` ne peut pas être enregistré comme logo."""
     file.file.seek(0, 2)
     taille = file.file.tell()
     file.file.seek(0)
     if taille > _LOGO_MAX_SIZE:
         raise HTTPException(status_code=400, detail="Image trop volumineuse")
 
-    ext = _LOGO_MIME_TO_EXT[file.content_type]
+    entete = file.file.read(16)
+    file.file.seek(0)
+    type_reel = magicbytes.detecter_type_mime(entete)
+    if type_reel not in _LOGO_MIME_TO_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail="Format d'image non autorisé",
+        )
+
+    ext = _LOGO_MIME_TO_EXT[type_reel]
 
     os.makedirs(_UPLOADS_LOGOS_DIR, exist_ok=True)
     filename = f"logo_{uuid.uuid4().hex[:12]}{ext}"
@@ -89,7 +98,7 @@ def enregistrer_logo(file: UploadFile) -> str:
 @router.post("/logo")
 def upload_logo(
     file: UploadFile = File(...),
-    _user: models.Utilisateurs = Depends(get_current_user),
+    _user: models.Utilisateurs = Depends(require_admin),
 ):
     """Enregistre l'image du logo et retourne son chemin public (la fiche n'est
     modifiée qu'au prochain PUT de l'établissement)."""
@@ -128,7 +137,7 @@ def get_infrastructures(
 @router.put("/infrastructures", response_model=schemas.EtablissementInfrastructuresResponse)
 def put_infrastructures(
     payload: schemas.EtablissementInfrastructuresPayload,
-    _user: models.Utilisateurs = Depends(get_current_user),
+    _user: models.Utilisateurs = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Crée ou met à jour les infrastructures/mobiliers de l'année scolaire

@@ -152,9 +152,7 @@ export default function ResultatListPage() {
 
           {rapport && (
             <Card className="border-[var(--color-action-wash)] p-4">
-              <p className="text-sm font-medium text-[var(--color-ink)]">
-                Rapport du calcul automatique — seuil {rapport.seuil_applique}/{baremeNiveau(rapport.classe.niveau)}
-              </p>
+             
               <p className="mt-1 text-xs text-[var(--color-ink-dim)]">
                 {rapport.admis} admis · {rapport.diplomes} diplômé(s) · {rapport.recales} recalé(s) ·{' '}
                 {rapport.exclus_conserves} exclu(s) conservé(s) · {rapport.en_attente} toujours en attente

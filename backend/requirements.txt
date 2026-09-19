@@ -1,7 +1,10 @@
 # Dépendances de production.
 # Versions "compatibles" (~=) : le patch peut évoluer, le mineur/majeur est figé.
 # Regénérez un lock exact avec `pip freeze > requirements.lock.txt` avant un déploiement.
-fastapi[standard]~=0.115
+# Extra « standard-no-fastapi-cloud-cli » : l'extra « standard » embarque un CLI
+# cloud (fastapi-cloud-cli) et son attirail (sentry-sdk, …) inutilisé ici — on
+# l'exclut pour réduire la surface de dépendances.
+fastapi[standard-no-fastapi-cloud-cli]~=0.115
 uvicorn[standard]~=0.32
 sqlalchemy~=2.0
 psycopg2-binary~=2.9

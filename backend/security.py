@@ -10,7 +10,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from database import get_db
-from exceptions import UnauthorizedError
+from exceptions import ForbiddenError, UnauthorizedError
 import models
 from timeutils import now_utc
 
@@ -69,3 +69,18 @@ def get_current_user(
     if not utilisateur or not utilisateur.actif:
         raise UnauthorizedError("Compte invalide")
     return utilisateur
+
+
+def require_admin(
+    utilisateur_courant: models.Utilisateurs = Depends(get_current_user),
+) -> models.Utilisateurs:
+    """Réserve l'accès aux seuls comptes administrateurs.
+
+    Les rôles sont portés par le champ `role` du compte. Toute opération de
+    gestion sensible (comptes, purge de base, export complet, paramètres,
+    cycle des années scolaires) doit passer par cette dépendance : l'authentification
+    seule (get_current_user) ne confère aucun droit d'administration.
+    """
+    if (utilisateur_courant.role or "").strip().upper() != "ADMIN":
+        raise ForbiddenError("Action réservée à l'administrateur")
+    return utilisateur_courant

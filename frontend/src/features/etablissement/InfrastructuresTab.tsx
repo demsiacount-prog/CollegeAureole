@@ -139,9 +139,7 @@ export default function InfrastructuresTab() {
             <Warehouse size={14} strokeWidth={1.75} />
             Infrastructures et mobiliers
           </div>
-          <p className="mt-1 text-[11px] text-[var(--color-ink-dim)]">
-            Bloc « Infrastructures et mobiliers » de la fiche de renseignements du 1er cycle.
-          </p>
+          
         </div>
         <Badge tone="success">Année : {anneeActive.libelle}</Badge>
       </div>

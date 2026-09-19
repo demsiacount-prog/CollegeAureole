@@ -39,7 +39,7 @@ def _appliquer_filtres_depenses(query, date_debut, date_fin, categorie, q):
     return query
 
 
-@router.get("/", response_model=List[schemas.DepenseResponse])
+@router.get("/")
 def lister_depenses(
     date_debut: Optional[date_type] = None,
     date_fin:   Optional[date_type] = None,

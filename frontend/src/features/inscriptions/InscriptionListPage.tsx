@@ -213,7 +213,7 @@ export default function InscriptionListPage() {
                       <TableHead>Année</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead className="text-center">Red.</TableHead>
+                      <TableHead >Redoublement</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -238,7 +238,7 @@ export default function InscriptionListPage() {
                           <Badge tone={statutTone(i.statut)}>{i.statut}</Badge>
                         </TableCell>
                         <TableCell className="text-center text-[var(--color-ink-dim)]">
-                          {i.nb_redoublements > 0 ? `${i.nb_redoublements}×` : '—'}
+                          {i.nb_redoublements}
                         </TableCell>
                         <TableCell className="text-right">
                           {canDelete && (

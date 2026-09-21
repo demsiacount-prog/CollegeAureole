@@ -49,36 +49,46 @@ def _creer_eleve_et_inscription(db_session, client, auth_headers, tuteur_id, cla
 
 
 class TestClasseSuivanteJardin:
+    # NB : la fonction a été renommée `_classe_suivante_depuis_index` lors
+    # d'un refactoring perf (elle prend désormais un index pré-chargé plutôt
+    # que la session, pour éviter le N+1 sur la boucle de clôture) — ce test
+    # référençait encore l'ancien nom `_classe_suivante` et échouait donc
+    # systématiquement à l'import (ImportError), sans rapport avec la logique
+    # testée elle-même.
     def test_progression_petite_a_moyenne(self, db_session):
         ps = models.Classes(niveau="Petite Section", nom="A")
         ms = models.Classes(niveau="Moyenne Section", nom="A")
         db_session.add_all([ps, ms])
         db_session.commit()
-        from routers.cloture import _classe_suivante
-        assert _classe_suivante(db_session, ps) is ms
+        from routers.cloture import _classe_suivante_depuis_index, _construire_index_classes
+        index = _construire_index_classes(db_session)
+        assert _classe_suivante_depuis_index(ps, index) is ms
 
     def test_progression_moyenne_a_grande(self, db_session):
         ms = models.Classes(niveau="Moyenne Section", nom="A")
         gs = models.Classes(niveau="Grande Section", nom="A")
         db_session.add_all([ms, gs])
         db_session.commit()
-        from routers.cloture import _classe_suivante
-        assert _classe_suivante(db_session, ms) is gs
+        from routers.cloture import _classe_suivante_depuis_index, _construire_index_classes
+        index = _construire_index_classes(db_session)
+        assert _classe_suivante_depuis_index(ms, index) is gs
 
     def test_progression_grande_a_premiere_annee(self, db_session):
         gs = models.Classes(niveau="Grande Section", nom="A")
         pa = models.Classes(niveau="1ère Année", nom="A")
         db_session.add_all([gs, pa])
         db_session.commit()
-        from routers.cloture import _classe_suivante
-        assert _classe_suivante(db_session, gs) is pa
+        from routers.cloture import _classe_suivante_depuis_index, _construire_index_classes
+        index = _construire_index_classes(db_session)
+        assert _classe_suivante_depuis_index(gs, index) is pa
 
     def test_sans_classe_suivante_renvoie_none(self, db_session):
         gs = models.Classes(niveau="Grande Section", nom="A")
         db_session.add(gs)
         db_session.commit()
-        from routers.cloture import _classe_suivante
-        assert _classe_suivante(db_session, gs) is None
+        from routers.cloture import _classe_suivante_depuis_index, _construire_index_classes
+        index = _construire_index_classes(db_session)
+        assert _classe_suivante_depuis_index(gs, index) is None
 
 
 class TestPreviewJardin:
@@ -177,7 +187,7 @@ class TestExecutionJardin:
         assert old.cloturee is True
 
     def test_executer_refuse_si_annee_active_deja_cloturee(self, client, auth_headers, db_session):
-        """Une année clôturée ré-##activée pour consultation ne peut pas être clôturée à nouveau."""
+        """Refuse la clôture si l'année active est déjà marquée clôturée."""
         annee = _creer_annee(client, auth_headers).json()
         tuteur = _creer_tuteur(client, auth_headers).json()
         ps = _creer_classe(client, auth_headers, niveau="Petite Section", nom="A").json()
@@ -188,8 +198,8 @@ class TestExecutionJardin:
         }, headers=auth_headers)
         assert resp.status_code == 200
         db_session.expire_all()
-        old = db_session.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee["id"]).first()
-        old.active = True  # revisite de l'année clôturée (mode lecture seule)
+        active = db_session.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
+        active.cloturee = True
         db_session.commit()
 
         resp = client.post("/api/cloture/executer", json={

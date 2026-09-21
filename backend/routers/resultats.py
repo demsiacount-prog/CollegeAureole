@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ import schemas
 from security import get_current_user
 from bareme import bareme_niveau, seuil_passage, niveau_ordre
 from services.moyennes import calculer_moyenne_annuelle
+from helpers import get_annee_ou_active
 
 router = APIRouter(prefix="/api/resultats", tags=["Résultats de passage"], dependencies=[Depends(get_current_user)])
 
@@ -28,6 +29,7 @@ class ResultatsClasseResponse(BaseModel):
     effectif: int
     compteurs: dict
     eleves: List[EleveResultat]
+    annee_cloturee: bool = False  # indique si l'année consultée est clôturée (lecture seule)
 
 
 class DetailRapportAuto(BaseModel):
@@ -51,7 +53,8 @@ class RapportAutoResponse(BaseModel):
 
 
 def _annee_active(db: Session) -> models.AnneesScolaires:
-    annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()
+    """Retourne l'année scolaire active (les années clôturées ne sont plus consultables)."""
+    annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
     if not annee:
         raise HTTPException(status_code=404, detail="Aucune année scolaire active")
     return annee
@@ -72,11 +75,22 @@ def _determiner_statut_passage(moyenne: float, seuil: float, est_fin_cycle: bool
 
 
 @router.get("/{id_classe}", response_model=ResultatsClasseResponse)
-def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
+def get_resultats_classe(
+    id_classe: int,
+    annee_id: Optional[int] = Query(None, description="Année à consulter (défaut : année active)"),
+    db: Session = Depends(get_db),
+):
+    """Résultats de passage d'une classe.
+
+    Lecture libre : fonctionne sur l'année active ET les années clôturées.
+    La réponse porte annee_cloturee=True quand l'année est archivée — le
+    frontend doit alors désactiver tous les contrôles de modification.
+    """
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
-    annee = _annee_active(db)
+
+    annee = get_annee_ou_active(db, annee_id)  # accepte clôturée
 
     inscriptions = (
         db.query(models.Inscriptions)
@@ -96,23 +110,48 @@ def get_resultats_classe(id_classe: int, db: Session = Depends(get_db)):
             continue
         compteurs[insc.statut_passage] = compteurs.get(insc.statut_passage, 0) + 1
         eleves_out.append(EleveResultat(
-            inscription_id=insc.id, matricule=eleve.matricule, nom=eleve.nom, prenom=eleve.prenom,
-            photo=eleve.photo, moyenne_annuelle=calculer_moyenne_annuelle(db, eleve.matricule, annee.id),
+            inscription_id=insc.id,
+            matricule=eleve.matricule,
+            nom=eleve.nom,
+            prenom=eleve.prenom,
+            photo=eleve.photo,
+            moyenne_annuelle=calculer_moyenne_annuelle(db, eleve.matricule, annee.id),
             statut_passage=insc.statut_passage,
         ))
 
     return ResultatsClasseResponse(
-        classe=classe, niveau_ordre=niveau_ordre(classe.niveau), effectif=len(inscriptions),
-        compteurs=compteurs, eleves=eleves_out,
+        classe=classe,
+        niveau_ordre=niveau_ordre(classe.niveau),
+        effectif=len(inscriptions),
+        compteurs=compteurs,
+        eleves=eleves_out,
+        annee_cloturee=annee.cloturee,
     )
 
 
 @router.post("/{id_classe}/calcul-auto", response_model=RapportAutoResponse)
-def calculer_automatiquement(id_classe: int, db: Session = Depends(get_db)):
+def calculer_automatiquement(
+    id_classe: int,
+    db: Session = Depends(get_db),
+):
+    """Calcul automatique des statuts de passage par la moyenne (année active).
+
+    FIX SÉCURITÉ : bloqué sur une année clôturée (les statuts de passage
+    ne doivent plus pouvoir être modifiés une fois l'année archivée).
+    """
     classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
+
     annee = _annee_active(db)
+
+    # FIX : bloquer toute modification sur une année clôturée
+    if annee.cloturee:
+        raise HTTPException(
+            status_code=409,
+            detail="Année scolaire clôturée : les statuts de passage ne peuvent plus être modifiés.",
+        )
+
     n_ordre = niveau_ordre(classe.niveau)
     if n_ordre is None:
         raise HTTPException(status_code=400, detail="Niveau non reconnu")
@@ -195,9 +234,23 @@ class StatutPassageRequest(BaseModel):
 
 @router.put("/statut/{inscription_id}", response_model=schemas.InscriptionResponse)
 def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, db: Session = Depends(get_db)):
-    insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
+    """Modification manuelle du statut de passage.
+
+    FIX SÉCURITÉ : bloqué sur une inscription d'une année clôturée.
+    """
+    insc = db.query(models.Inscriptions).options(
+        joinedload(models.Inscriptions.annee_scolaire)
+    ).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
         raise HTTPException(status_code=404, detail="Inscription introuvable")
+
+    # FIX : vérifier que l'année de l'inscription n'est pas clôturée
+    if insc.annee_scolaire and insc.annee_scolaire.cloturee:
+        raise HTTPException(
+            status_code=409,
+            detail="Année scolaire clôturée : le statut de passage ne peut plus être modifié.",
+        )
+
     insc.statut_passage = payload.statut
     db.commit()
     db.refresh(insc)

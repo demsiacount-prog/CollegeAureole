@@ -89,26 +89,26 @@ export default function BulletinDetailPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-[var(--font-serif)] text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+              <h2 className="font-[var(--font-serif)] text-2xl font-semibold tracking-tight text-[var(--ink)]">
                 Bulletin — {bulletin.eleve.prenom} {bulletin.eleve.nom}
               </h2>
               <Badge tone={bulletin.statut === 'PUBLIE' ? 'success' : 'neutral'}>
                 {bulletin.statut === 'PUBLIE' ? 'Publié' : 'Brouillon'}
               </Badge>
             </div>
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1 text-sm text-[var(--ink-dim)]">
               {bulletin.trimestre.nom} — {bulletin.classe.niveau} {bulletin.classe.nom}
             </p>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
-              <span className="text-3xl font-medium text-[var(--color-ink)]">{formatMoyenne(bulletin.moyenne_generale, bareme)}</span>
+              <span className="text-3xl font-medium text-[var(--ink)]">{formatMoyenne(bulletin.moyenne_generale, bareme)}</span>
               <Badge tone={getMoyenneTone(bulletin.moyenne_generale, bareme)}>
                 {bulletin.moyenne_generale != null ? appreciation(bulletin.moyenne_generale, bareme) : '—'}
               </Badge>
             </div>
             {bulletin.rang != null && (
-              <p className="mt-1 text-sm text-[var(--color-ink-dim)]">Rang {bulletin.rang}{bulletin.rang === 1 ? 'er' : 'e'}</p>
+              <p className="mt-1 text-sm text-[var(--ink-dim)]">Rang {bulletin.rang}{bulletin.rang === 1 ? 'er' : 'e'}</p>
             )}
             <div className="mt-3 flex justify-end">
               <Button variant="primary" isLoading={downloading} onClick={telecharger} className="shrink-0">
@@ -122,8 +122,8 @@ export default function BulletinDetailPage() {
 
       {bulletin.appreciation && (
         <Card className="p-5">
-          <p className="text-sm text-[var(--color-ink-dim)]">
-            <span className="font-medium text-[var(--color-ink)]">Appreciation : </span>
+          <p className="text-sm text-[var(--ink-dim)]">
+            <span className="font-medium text-[var(--ink)]">Appreciation : </span>
             {bulletin.appreciation}
           </p>
         </Card>
@@ -134,7 +134,7 @@ export default function BulletinDetailPage() {
           <CardTitle>Détail par matière</CardTitle>
         </CardHeader>
         {bulletin.details.length === 0 ? (
-          <p className="p-5 text-sm text-[var(--color-ink-dim)]">Aucun détail disponible.</p>
+          <p className="p-5 text-sm text-[var(--ink-dim)]">Aucun détail disponible.</p>
         ) : (
           <TableContainer className="rounded-none border-0">
             <Table>
@@ -157,16 +157,16 @@ export default function BulletinDetailPage() {
               <TableBody>
                 {bulletin.details.map((d) => (
                   <TableRow key={d.id}>
-                    <TableCell className="font-medium text-[var(--color-ink)]">{d.cours_nom}</TableCell>
+                    <TableCell className="font-medium text-[var(--ink)]">{d.cours_nom}</TableCell>
                     {montreCoeff ? (
                       <>
-                        <TableCell className="text-center text-[var(--color-ink-dim)]">{d.coefficient}</TableCell>
+                        <TableCell className="text-center text-[var(--ink-dim)]">{d.coefficient}</TableCell>
                         <TableCell className="text-center">
                           <Badge tone={getMoyenneTone(d.moyenne, bareme)}>
                             {formatMoyenne(d.moyenne, bareme)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center font-medium text-[var(--color-ink)]">
+                        <TableCell className="text-center font-medium text-[var(--ink)]">
                           {(d.moyenne * d.coefficient).toFixed(2)}
                         </TableCell>
                       </>
@@ -185,7 +185,7 @@ export default function BulletinDetailPage() {
         )}
       </Card>
 
-      <div className="text-xs text-[var(--color-ink-faint)]">
+      <div className="text-xs text-[var(--ink-faint)]">
         Généré le {formatDate(bulletin.generated_at)}
         {bulletin.published_at && ` · Publié le ${formatDate(bulletin.published_at)}`}
       </div>

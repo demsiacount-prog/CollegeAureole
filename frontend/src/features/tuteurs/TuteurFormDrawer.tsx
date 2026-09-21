@@ -149,7 +149,7 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
         }} placeholder="ex. Badalabougou, Bamako" required error={errors.adresse} />
 
         {error && (
-          <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-w)] px-3 py-2 text-sm text-[var(--danger)]">
             {error}
           </p>
         )}

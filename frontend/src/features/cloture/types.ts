@@ -15,6 +15,9 @@ export interface ElevePreview {
   diplome: boolean
   action_prevue: string
   inscription_id: number
+  /** Vrai quand l'élève admis n'a aucune classe du niveau suivant : il ne
+   *  pourra pas être réinscrit lors de la clôture. */
+  classe_manquante: boolean
 }
 
 export interface CompteursPreview {
@@ -38,6 +41,8 @@ export interface CloturePreview {
   cloturee: boolean
   compteurs: CompteursPreview
   eleves: ElevePreview[]
+  /** Nb d'élèves admis sans classe de destination : à corriger avant clôture. */
+  nb_classes_manquantes: number
 }
 
 export interface NouvelleAnneeInput {
@@ -54,6 +59,13 @@ export interface EleveCloture {
   niveau: string | null
 }
 
+export interface EleveErreurCloture {
+  matricule: string
+  nom: string
+  prenom: string
+  motif: string
+}
+
 export interface RapportCloture {
   admis_passage: number
   admis_diplome: number
@@ -64,6 +76,10 @@ export interface RapportCloture {
   eleves_diplomes: EleveCloture[]
   eleves_redoublants: EleveCloture[]
   eleves_exclus: EleveCloture[]
+  /** Élèves NON traités malgré une décision (classe suivante absente, doublon). */
+  erreurs: EleveErreurCloture[]
+  /** Dérivé de `erreurs`, exposé pour signaler le rattrapage à faire. */
+  nb_erreurs: number
 }
 
 export interface ClotureExecuterResponse {
@@ -71,4 +87,21 @@ export interface ClotureExecuterResponse {
   ancienne_annee: AnneeInfo
   nouvelle_annee: AnneeInfo
   rapport: RapportCloture
+}
+
+export interface ClotureAlerte {
+  id: number
+  id_annee_scolaire: number
+  matricule: string
+  nom: string | null
+  prenom: string | null
+  motif: string
+  resolue: boolean
+  cree_le: string
+  resolue_le: string | null
+}
+
+export interface ClotureAlertesReponse {
+  nb_en_attente: number
+  alertes: ClotureAlerte[]
 }

@@ -141,15 +141,15 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
           />
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-ink)] mb-1">Classes</label>
-            <p className="mb-3 text-xs text-[var(--color-ink-faint)]">
+            <label className="block text-sm font-medium text-[var(--ink)] mb-1">Classes</label>
+            <p className="mb-3 text-xs text-[var(--ink-faint)]">
               Cochez les classes où la matière est enseignée. Le coefficient ne concerne que le second cycle
               (notes /20) et les trimestres de la 6ème (pondérés sur /10) ; il est fixé à 1 pour les
               compositions du premier cycle (notes /10, moyenne simple).
             </p>
-            {errors.classes && <p className="mb-1 text-xs text-[var(--color-danger)]">{errors.classes}</p>}
+            {errors.classes && <p className="mb-1 text-xs text-[var(--danger)]">{errors.classes}</p>}
             {classes.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-faint)]">Aucune classe disponible</p>
+              <p className="text-sm text-[var(--ink-faint)]">Aucune classe disponible</p>
             ) : (
               <div className="space-y-2">
                 {classes.map((cl) => {
@@ -160,16 +160,16 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
                         type="checkbox"
                         checked={!!selected}
                         onChange={() => toggleClasse(cl.id)}
-                        className="accent-[var(--color-action)]"
+                        className="accent-[var(--action)]"
                       />
-                      <span className="text-sm text-[var(--color-ink)] flex-1">
+                      <span className="text-sm text-[var(--ink)] flex-1">
                         {cl.niveau} — {cl.nom}
                       </span>
                       {selected && utiliseCoefficient(cl.niveau, 'TRIMESTRE') && (
                         <div className="flex items-center gap-2">
                           <label
                             htmlFor={`coeff-${cl.id}`}
-                            className="text-xs font-medium text-[var(--color-ink-dim)]"
+                            className="text-xs font-medium text-[var(--ink-dim)]"
                           >
                             Coefficient
                           </label>
@@ -182,7 +182,7 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
                             onChange={(e) => updateCoefficient(cl.id, e.target.value)}
                             placeholder="1"
                             aria-label={`Coefficient pour ${cl.niveau} — ${cl.nom}`}
-                            className="h-8 w-20 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 text-center text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-faint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
+                            className="h-8 w-20 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-2 text-center text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]"
                           />
                         </div>
                       )}
@@ -194,7 +194,7 @@ export default function CoursFormDrawer({ cours, open, onClose, onSubmit }: Prop
           </div>
         </div>
 
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full">
             {isEdit ? 'Mettre à jour' : 'Créer'}
           </Button>

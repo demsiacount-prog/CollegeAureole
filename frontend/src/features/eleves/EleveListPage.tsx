@@ -18,15 +18,21 @@ import { fetchClasses } from '@/features/classes/api'
 import { createInscription } from '@/features/inscriptions/api'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
 import InscriptionWizard from '@/features/inscriptions/InscriptionWizard'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import type { Eleve } from './types'
 
 const PAGE_SIZE = 50
 
+const TONES_STATUT_INSCRIPTION: Record<string, 'success' | 'warning' | 'neutral' | 'danger'> = {
+  Inscrit: 'success',
+  Redoublant: 'warning',
+  Transféré: 'neutral',
+  Exclu: 'danger',
+}
+
 export default function EleveListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -35,6 +41,9 @@ export default function EleveListPage() {
   const [filterStatut, setFilterStatut] = useState('')
   const [page, setPage] = useState(1)
 
+  const { data: anneeActivee } = useAnneeActive()
+  const idAnneeActive = anneeActivee?.id
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
     return () => clearTimeout(timer)
@@ -42,26 +51,28 @@ export default function EleveListPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, filterClasse, filterStatut])
+  }, [debouncedSearch, filterClasse, filterStatut, idAnneeActive])
 
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
 
   const { data: eleves = [], isLoading, isFetching, isError } = useQuery({
-    queryKey: ['eleves', 'liste', page, debouncedSearch, filterClasse, filterStatut],
+    queryKey: ['eleves', 'liste', page, debouncedSearch, filterClasse, filterStatut, idAnneeActive],
     queryFn: () => fetchEleves({
       skip: (page - 1) * PAGE_SIZE,
       limit: PAGE_SIZE,
       q: debouncedSearch,
       classe_id: filterClasse ? Number(filterClasse) : undefined,
       statut: filterStatut || undefined,
+      id_annee_scolaire: idAnneeActive,
     }),
   })
 
   const { data: total = 0 } = useQuery({
-    queryKey: ['eleves', 'total', debouncedSearch, filterClasse, filterStatut],
+    queryKey: ['eleves', 'total', debouncedSearch, filterClasse, filterStatut, idAnneeActive],
     queryFn: () => fetchElevesTotal(debouncedSearch, {
       classe_id: filterClasse ? Number(filterClasse) : undefined,
       statut: filterStatut || undefined,
+      id_annee_scolaire: idAnneeActive,
     }),
   })
 
@@ -151,9 +162,21 @@ export default function EleveListPage() {
               onChange={(e) => setFilterStatut(e.target.value)}
               aria-label="Filtrer par statut"
             >
-              <option value="">Tous les statuts</option>
-              <option value="actif">Actif</option>
-              <option value="inactif">Inactif</option>
+              {idAnneeActive ? (
+                <>
+                  <option value="">Tous les statuts d'inscription</option>
+                  <option value="Inscrit">Inscrit</option>
+                  <option value="Redoublant">Redoublant</option>
+                  <option value="Transféré">Transféré</option>
+                  <option value="Exclu">Exclu</option>
+                </>
+              ) : (
+                <>
+                  <option value="">Tous les statuts</option>
+                  <option value="actif">Actif</option>
+                  <option value="inactif">Inactif</option>
+                </>
+              )}
             </ToolbarFilter>
             <span className="ml-2 text-[11.5px] text-[var(--ink-faint)]">
               {total} élève{total > 1 ? 's' : ''}
@@ -189,22 +212,33 @@ export default function EleveListPage() {
                   <TableCell>
                     <Link to={`/app/eleves/${eleve.matricule}`} className="flex items-center gap-3 group">
                       <Avatar nom={eleve.nom} prenom={eleve.prenom} photo={eleve.photo} size="sm" />
-                      <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
+                      <span className="font-medium text-[var(--ink)] group-hover:text-[var(--action-bright)]">
                         {eleve.prenom} {eleve.nom}
                       </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{eleve.matricule}</TableCell>
-                  <TableCell className="text-[var(--color-ink-dim)]">
-                    {eleve.classe ? `${eleve.classe.niveau} — ${eleve.classe.nom}` : <span className="text-[var(--color-ink-faint)]">Non affecté</span>}
+                  <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">{eleve.matricule}</TableCell>
+                  <TableCell className="text-[var(--ink-dim)]">
+                    {(() => {
+                      const classe = eleve.classe_annee ?? eleve.classe
+                      return classe
+                        ? `${classe.niveau} — ${classe.nom}`
+                        : <span className="text-[var(--ink-faint)]">Non affecté</span>
+                    })()}
                   </TableCell>
-                  <TableCell className="text-[var(--color-ink-dim)]">
+                  <TableCell className="text-[var(--ink-dim)]">
                     {eleve.tuteur.prenom} {eleve.tuteur.nom}
                   </TableCell>
                   <TableCell>
-                    <Badge tone={eleve.statut === 'actif' ? 'success' : 'neutral'}>
-                      {eleve.statut === 'actif' ? 'Actif' : 'Inactif'}
-                    </Badge>
+                    {idAnneeActive ? (
+                      <Badge tone={TONES_STATUT_INSCRIPTION[eleve.statut_annee ?? ''] ?? 'neutral'}>
+                        {eleve.statut_annee ?? '—'}
+                      </Badge>
+                    ) : (
+                      <Badge tone={eleve.statut === 'actif' ? 'success' : 'neutral'}>
+                        {eleve.statut === 'actif' ? 'Actif' : 'Inactif'}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1 opacity-0 transition-all group-hover:opacity-100">
@@ -215,7 +249,7 @@ export default function EleveListPage() {
                             <button
                               onClick={() => { setInscriptionMatricule(eleve.matricule); setInscriptionOpen(true) }}
                               aria-label="Inscrire"
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-action-wash)] hover:text-[var(--color-action-bright)]"
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--action-w)] hover:text-[var(--action-bright)]"
                             >
                               <GraduationCap strokeWidth={1.75} className="size-4" />
                             </button>
@@ -225,7 +259,7 @@ export default function EleveListPage() {
                           <button
                             onClick={() => openEdit(eleve)}
                             aria-label="Modifier"
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                           >
                             <Pencil strokeWidth={1.75} className="size-4" />
                           </button>
@@ -235,7 +269,7 @@ export default function EleveListPage() {
                             <button
                               onClick={() => desactiverMutation.mutate(eleve.matricule)}
                               aria-label="Désactiver"
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             >
                               <UserX strokeWidth={1.75} className="size-4" />
                             </button>
@@ -245,7 +279,7 @@ export default function EleveListPage() {
                             <button
                               onClick={() => activerMutation.mutate(eleve.matricule)}
                               aria-label="Activer"
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]"
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--success-w)] hover:text-[var(--success)]"
                             >
                               <UserCheck strokeWidth={1.75} className="size-4" />
                             </button>

@@ -7,7 +7,7 @@ export function TableSkeleton({ rows = 8, columns = 5 }: TableSkeletonProps) {
   return (
     <table className="w-full text-sm" aria-hidden>
       <thead>
-        <tr className="border-b border-[var(--color-border)]">
+        <tr className="border-b border-[var(--border)]">
           {Array.from({ length: columns }).map((_, i) => (
             <th key={i} className="px-2.5 py-[9px]">
               <span className="skeleton inline-block h-3 w-24 rounded" />
@@ -17,7 +17,7 @@ export function TableSkeleton({ rows = 8, columns = 5 }: TableSkeletonProps) {
       </thead>
       <tbody>
         {Array.from({ length: rows }).map((_, r) => (
-          <tr key={r} className="border-b border-[var(--color-border-soft)] last:border-0">
+          <tr key={r} className="border-b border-[var(--border-soft)] last:border-0">
             {Array.from({ length: columns }).map((_, c) => (
               <td key={c} className="px-2.5 py-[11px]">
                 <span

@@ -101,7 +101,7 @@ export default function AbsenceFormDrawer({ open, onClose, onSubmit }: Props) {
           <Input label="Motif (optionnel)" placeholder="ex. Maladie" value={motif} onChange={(e) => setMotif(e.target.value)} />
         </div>
 
-        <div className="pt-4 mt-2 border-t border-[var(--color-border)]">
+        <div className="pt-4 mt-2 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full">
             Enregistrer
           </Button>

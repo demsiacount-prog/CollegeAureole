@@ -122,7 +122,7 @@ export default function InfrastructuresTab() {
 
   if (!anneeActive) {
     return (
-      <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-4 py-3 text-sm text-[var(--color-ink-dim)]">
+      <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--ink-dim)]">
         Aucune année scolaire active : créez et activez une année scolaire avant de renseigner les infrastructures.
       </div>
     )
@@ -134,8 +134,8 @@ export default function InfrastructuresTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)] p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--ink)]">
             <Warehouse size={14} strokeWidth={1.75} />
             Infrastructures et mobiliers
           </div>
@@ -145,14 +145,14 @@ export default function InfrastructuresTab() {
       </div>
 
       {infraError && (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-info)]/20 bg-[var(--color-info-wash)] px-4 py-3 text-sm text-[var(--color-ink-dim)]">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--info)]/20 bg-[var(--info-w)] px-4 py-3 text-sm text-[var(--ink-dim)]">
           Aucune donnée enregistrée pour cette année : les champs ci-dessous sont vierges.
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {CHAMPS.map(({ groupe, champs }) => (
-          <div key={groupe} className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-3">
+          <div key={groupe} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
             <p className="mb-2 font-medium">{groupe}</p>
             <div className="grid grid-cols-1 gap-3">
               {champs.map(({ field, label }) => (

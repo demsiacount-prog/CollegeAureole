@@ -18,7 +18,6 @@ import { formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
 import { fetchClasses } from '@/features/classes/api'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { calculerAutomatiquement, fetchResultatsClasse, modifierStatutPassage } from './api'
 import type { RapportAuto, StatutPassage } from './types'
 
@@ -32,8 +31,7 @@ const STATUT_INFO: Record<StatutPassage, { label: string; tone: 'neutral' | 'suc
 const STATUT_OPTIONS: StatutPassage[] = ['EN_ATTENTE', 'ADMIS', 'RECALE', 'EXCLU']
 
 export default function ResultatListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canDecide = !lectureSeule
+  const canDecide = true
   const qc = useQueryClient()
 
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
@@ -83,7 +81,7 @@ export default function ResultatListPage() {
         <PageHeader
           title="Résultats de passage"
           subtitle={
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1 text-sm text-[var(--ink-dim)]">
               Décision de passage par élève pour l'année scolaire active.
             </p>
           }
@@ -122,17 +120,17 @@ export default function ResultatListPage() {
               return (
                 <Card key={statut} className="p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-[var(--color-ink-dim)]">{info.label}</p>
-                    <info.icon className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
+                    <p className="text-xs text-[var(--ink-dim)]">{info.label}</p>
+                    <info.icon className="size-4 text-[var(--action)]" strokeWidth={1.75} />
                   </div>
-                  <p className="mt-2 text-2xl font-medium text-[var(--color-ink)]">{count}</p>
+                  <p className="mt-2 text-2xl font-medium text-[var(--ink)]">{count}</p>
                 </Card>
               )
             })}
           </div>
 
           {resultats.niveau_ordre === 9 && (
-            <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-action-wash)] bg-[var(--color-action-wash)] px-4 py-3 text-sm text-[var(--color-action)]">
+            <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--action-w)] bg-[var(--action-w)] px-4 py-3 text-sm text-[var(--action)]">
               <Info className="mt-0.5 size-4 shrink-0" />
               <p>Classe de fin de cycle (9ᵉ) : un élève admis ici est marqué diplômé et sort du système lors de la clôture d'année.</p>
             </div>
@@ -144,16 +142,16 @@ export default function ResultatListPage() {
                 <Zap className="size-4" />
                 Calculer automatiquement
               </Button>
-              <p className="text-xs text-[var(--color-ink-faint)]">
+              <p className="text-xs text-[var(--ink-faint)]">
                 Applique un seuil de {baremeNiveau(resultats.classe.niveau) / 2}/{baremeNiveau(resultats.classe.niveau)} à tous les élèves non exclus de cette classe. Les décisions déjà prises manuellement restent modifiables ensuite.
               </p>
             </div>
           )}
 
           {rapport && (
-            <Card className="border-[var(--color-action-wash)] p-4">
+            <Card className="border-[var(--action-w)] p-4">
              
-              <p className="mt-1 text-xs text-[var(--color-ink-dim)]">
+              <p className="mt-1 text-xs text-[var(--ink-dim)]">
                 {rapport.admis} admis · {rapport.diplomes} diplômé(s) · {rapport.recales} recalé(s) ·{' '}
                 {rapport.exclus_conserves} exclu(s) conservé(s) · {rapport.en_attente} toujours en attente
               </p>
@@ -186,10 +184,10 @@ export default function ResultatListPage() {
                           <TableCell>
                             <Link to={`/app/eleves/${e.matricule}`} className="flex items-center gap-2.5 group">
                               <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
-                              <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">{e.prenom} {e.nom}</span>
+                              <span className="font-medium text-[var(--ink)] group-hover:text-[var(--action-bright)]">{e.prenom} {e.nom}</span>
                             </Link>
                           </TableCell>
-                          <TableCell className="text-[var(--color-ink-dim)]">{formatMoyenne(e.moyenne_annuelle, baremeNiveau(resultats.classe.niveau))}</TableCell>
+                          <TableCell className="text-[var(--ink-dim)]">{formatMoyenne(e.moyenne_annuelle, baremeNiveau(resultats.classe.niveau))}</TableCell>
                           <TableCell>
                             {canDecide ? (
                               <Select

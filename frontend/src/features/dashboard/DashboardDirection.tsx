@@ -9,12 +9,12 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { fetchDashboardStats } from '@/features/dashboard/api'
 
 const PIE_COLORS = [
-  'var(--color-action)',
-  'var(--color-mod-ress)',
-  'var(--color-success)',
-  'var(--color-danger)',
-  'var(--color-info)',
-  'var(--color-warning)',
+  'var(--action)',
+  'var(--mod-res)',
+  'var(--success)',
+  'var(--danger)',
+  'var(--info)',
+  'var(--warning)',
 ]
 
 function formatMontant(v: number): string {
@@ -42,23 +42,23 @@ const ACTIVITY_ICONS: Record<string, LucideIcon> = {
 }
 
 const ACTIVITY_COLORS: Record<string, string> = {
-  eleve: 'var(--color-action)',
-  enseignant: 'var(--color-mod-ress)',
-  tuteur: 'var(--color-info)',
-  inscription: 'var(--color-success)',
-  paiement: 'var(--color-success)',
-  depense: 'var(--color-warning)',
-  note: 'var(--color-action)',
-  absence: 'var(--color-danger)',
-  document: 'var(--color-mod-ress)',
+  eleve: 'var(--action)',
+  enseignant: 'var(--mod-res)',
+  tuteur: 'var(--info)',
+  inscription: 'var(--success)',
+  paiement: 'var(--success)',
+  depense: 'var(--warning)',
+  note: 'var(--action)',
+  absence: 'var(--danger)',
+  document: 'var(--mod-res)',
 }
 
 const CHART_TOOLTIP = {
-  backgroundColor: 'var(--color-surface-2)',
-  border: '1px solid var(--color-border)',
+  backgroundColor: 'var(--surface-2)',
+  border: '1px solid var(--border)',
   borderRadius: 'var(--radius-md)',
   boxShadow: 'var(--shadow-card)',
-  color: 'var(--color-ink)',
+  color: 'var(--ink)',
   fontSize: 12.5,
   fontWeight: 500 as const,
   maxWidth: 240,
@@ -69,13 +69,13 @@ const CHART_TOOLTIP = {
  *  d'encre) puis valeur en semi-gras — la valeur par défaut gris `#999` de
  *  Recharts est illisible sur fond sombre. */
 const CHART_TOOLTIP_ITEM = {
-  color: 'var(--color-ink)',
+  color: 'var(--ink)',
   fontSize: 12.5,
   padding: 0,
 } as const
 
 const CHART_TOOLTIP_LABEL = {
-  color: 'var(--color-ink)',
+  color: 'var(--ink)',
   fontSize: 12.5,
   fontWeight: 600 as const,
   marginBottom: 5,
@@ -189,7 +189,7 @@ export default function DashboardDirection() {
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
             <Card className="min-w-0 xl:col-span-2">
               <div className="flex items-center gap-2 px-5 pt-4">
-                <BookOpen className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
+                <BookOpen className="size-4 text-[var(--action)]" strokeWidth={1.75} />
                 <h3 className="text-[15px] font-medium text-[var(--ink)]">Moyennes par classe</h3>
               </div>
               <div className="h-96 max-w-full overflow-x-auto px-2 pb-5 pt-2">
@@ -199,9 +199,9 @@ export default function DashboardDirection() {
                       {/* EF1 noté /10, EF2 /20 : les barres sont exprimées en % du
                           barème de chaque classe pour rester comparables entre cycles. */}
                       <BarChart data={stats.moyennes_par_classe.map((m) => ({ ...m, pct: m.bareme > 0 ? (m.moy / m.bareme) * 100 : 0 }))}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis dataKey="classe" tick={{ fontSize: 12, fill: 'var(--color-ink-dim)' }} interval={0} angle={-25} textAnchor="end" height={60} />
-                        <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="classe" tick={{ fontSize: 12, fill: 'var(--ink-dim)' }} interval={0} angle={-25} textAnchor="end" height={60} />
+                        <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: 'var(--ink-dim)' }} />
                         <Tooltip
                           formatter={(_value: unknown, _name: unknown, item: { payload?: { moy?: number; bareme?: number } }) => {
                             const p = item?.payload
@@ -211,9 +211,9 @@ export default function DashboardDirection() {
                           labelStyle={CHART_TOOLTIP_LABEL}
                           itemStyle={CHART_TOOLTIP_ITEM}
                           wrapperStyle={CHART_TOOLTIP_WRAPPER}
-                          cursor={{ fill: 'var(--color-surface-3)' }}
+                          cursor={{ fill: 'var(--surface-3)' }}
                         />
-                        <Bar dataKey="pct" fill="var(--color-action)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="pct" fill="var(--action)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -225,18 +225,18 @@ export default function DashboardDirection() {
 
             <Card>
               <div className="flex items-center gap-2 px-5 pt-4">
-                <CalendarCheck className="size-4 text-[var(--color-danger)]" strokeWidth={1.75} />
+                <CalendarCheck className="size-4 text-[var(--danger)]" strokeWidth={1.75} />
                 <h3 className="text-[15px] font-medium text-[var(--ink)]">Absences par mois</h3>
               </div>
               <div className="h-96 px-2 pb-5 pt-2">
                 {stats.absences_par_mois.some((a) => a.absences > 0) ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stats.absences_par_mois}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} angle={-35} textAnchor="end" height={60} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--color-ink-dim)' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="mois" tick={{ fontSize: 11, fill: 'var(--ink-dim)' }} angle={-35} textAnchor="end" height={60} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--ink-dim)' }} />
                       <Tooltip contentStyle={CHART_TOOLTIP} labelStyle={CHART_TOOLTIP_LABEL} itemStyle={CHART_TOOLTIP_ITEM} wrapperStyle={CHART_TOOLTIP_WRAPPER} />
-                      <Bar dataKey="absences" fill="var(--color-danger)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="absences" fill="var(--danger)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -250,7 +250,7 @@ export default function DashboardDirection() {
           <Card>
             <div className="flex items-center justify-between gap-2 px-5 pt-4">
               <div className="flex items-center gap-2">
-                <UserRound className="size-4 text-[var(--color-mod-ress)]" strokeWidth={1.75} />
+                <UserRound className="size-4 text-[var(--mod-res)]" strokeWidth={1.75} />
                 <h3 className="text-[15px] font-medium text-[var(--ink)]">Répartition des élèves</h3>
               </div>
             </div>
@@ -299,7 +299,7 @@ export default function DashboardDirection() {
           {/* Activité récente — pleine largeur */}
           <Card>
             <div className="flex items-center gap-2 px-5 pt-4">
-              <Clock className="size-4 text-[var(--color-ink-faint)]" strokeWidth={1.75} />
+              <Clock className="size-4 text-[var(--ink-faint)]" strokeWidth={1.75} />
               <h3 className="text-[15px] font-medium text-[var(--ink)]">Activité récente</h3>
             </div>
             <div className="px-5 pb-4 pt-1">
@@ -307,7 +307,7 @@ export default function DashboardDirection() {
                 <ul className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
                   {stats.dernieres_activites.map((activite, i) => {
                     const Icon = ACTIVITY_ICONS[activite.type] ?? Clock
-                    const iconColor = ACTIVITY_COLORS[activite.type] ?? 'var(--color-ink-faint)'
+                    const iconColor = ACTIVITY_COLORS[activite.type] ?? 'var(--ink-faint)'
                     return (
                       <li key={i} className="flex items-center gap-[10px] border-b border-[var(--border-soft)] py-2 last:border-none">
                         <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)]">

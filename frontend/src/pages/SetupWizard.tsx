@@ -76,7 +76,7 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={clsx(
                   'mx-2 h-px flex-1 transition-colors duration-500',
-                  done ? 'bg-[var(--color-action)]' : 'bg-[var(--color-border)]',
+                  done ? 'bg-[var(--action)]' : 'bg-[var(--border)]',
                 )}
               />
             )}
@@ -84,9 +84,9 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={clsx(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium transition-all duration-300',
-                  done && 'bg-[var(--color-action)] text-white',
-                  active && 'bg-[var(--color-action-wash)] text-[var(--color-action)] ring-2 ring-[var(--color-action)]',
-                  !done && !active && 'bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]',
+                  done && 'bg-[var(--action)] text-white',
+                  active && 'bg-[var(--action-w)] text-[var(--action)] ring-2 ring-[var(--action)]',
+                  !done && !active && 'bg-[var(--surface-3)] text-[var(--ink-faint)]',
                 )}
               >
                 {done ? <CheckCircle2 className="size-3.5" /> : it.n}
@@ -94,7 +94,7 @@ function StepIndicator({ current }: { current: number }) {
               <span
                 className={clsx(
                   'hidden whitespace-nowrap text-xs font-medium sm:block',
-                  done || active ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]',
+                  done || active ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]',
                 )}
               >
                 {it.label}
@@ -331,26 +331,26 @@ export default function SetupWizard() {
   const activeStep = step === 'form' ? formStep : step === 'running' || step === 'configured' ? 4 : 0
 
   return (
-    <div className="min-h-screen bg-[var(--color-base)] text-[var(--color-ink)]">
+    <div className="min-h-screen bg-[var(--base)] text-[var(--ink)]">
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* ── Brand panel ─────────────────────────────────────────── */}
-        <section className="relative hidden flex-col justify-between overflow-hidden border-r border-[var(--color-border)] bg-gradient-to-br from-[var(--color-surface)] via-[var(--color-base)] to-[var(--color-base)] p-12 lg:flex">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[var(--color-mod-ress)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--color-mod-ress)]/10 blur-3xl" />
+        <section className="relative hidden flex-col justify-between overflow-hidden border-r border-[var(--border)] bg-gradient-to-br from-[var(--surface)] via-[var(--base)] to-[var(--base)] p-12 lg:flex">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[var(--mod-res)]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--mod-res)]/10 blur-3xl" />
 
           <div className="relative flex items-center gap-3">
             {etLogo && (
               <img
                 src={urlAbsolue(etLogo)}
                 alt="Logo de l’établissement"
-                className="h-12 w-12 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                className="h-12 w-12 rounded-[var(--radius-md)] bg-[var(--surface-2)] object-contain p-1 ring-1 ring-[var(--border)]"
               />
             ) }
             <div>
-              <p className="text-xl font-semibold text-[var(--color-halo)]">
+              <p className="text-xl font-semibold text-[var(--halo)]">
                 {etNom.trim()}
               </p>
-              <p className="text-xs text-[var(--color-ink-dim)]">
+              <p className="text-xs text-[var(--ink-dim)]">
                 {etDevise.trim()}
               </p>
             </div>
@@ -360,14 +360,14 @@ export default function SetupWizard() {
             <h1 className="mb-4 max-w-md text-4xl font-semibold leading-tight tracking-tight">
               Prêt à piloter votre établissement&nbsp;?
             </h1>
-            <p className="max-w-md text-sm leading-relaxed text-[var(--color-ink-dim)]">
+            <p className="max-w-md text-sm leading-relaxed text-[var(--ink-dim)]">
               Renseignez la fiche de l’établissement, créez le compte administrateur
               puis choisissez l’année scolaire. L’initialisation est effectuée une
               seule fois, au premier lancement.
             </p>
           </div>
 
-          <p className="relative text-xs text-[var(--color-ink-faint)]">
+          <p className="relative text-xs text-[var(--ink-faint)]">
             © {new Date().getFullYear()} — Tous droits réservés.
           </p>
         </section>
@@ -381,18 +381,18 @@ export default function SetupWizard() {
                 <img
                   src={urlAbsolue(etLogo)}
                   alt="Logo de l’établissement"
-                  className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                  className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--surface-2)] object-contain p-1 ring-1 ring-[var(--border)]"
                 />
               ) : (
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-action-wash)] text-[var(--color-action)] ring-1 ring-[var(--color-border)]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--action-w)] text-[var(--action)] ring-1 ring-[var(--border)]">
                   <GraduationCap className="h-5 w-5" />
                 </span>
               )}
               <div>
-                <p className="text-base font-semibold text-[var(--color-halo)]">
+                <p className="text-base font-semibold text-[var(--halo)]">
                   {etNom.trim()}
                 </p>
-                <p className="text-xs text-[var(--color-ink-dim)]">
+                <p className="text-xs text-[var(--ink-dim)]">
                   {etDevise.trim()}
                 </p>
               </div>
@@ -400,19 +400,19 @@ export default function SetupWizard() {
 
             {step === 'checking' && (
               <div className="flex items-center justify-center py-24">
-                <Loader2 className="size-6 animate-spin text-[var(--color-action)]" />
+                <Loader2 className="size-6 animate-spin text-[var(--action)]" />
               </div>
             )}
 
             {step === 'configured' && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
-                <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-success)] text-white">
+              <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-card)]">
+                <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success)] text-white">
                   <CheckCircle2 className="size-7" />
                 </span>
-                <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                <h2 className="text-xl font-semibold text-[var(--ink)]">
                   Déjà configuré
                 </h2>
-                <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+                <p className="mt-1 text-sm text-[var(--ink-dim)]">
                   L’établissement a déjà été initialisé.
                 </p>
                 <Button
@@ -427,17 +427,17 @@ export default function SetupWizard() {
             )}
 
             {step === 'running' && (
-              <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-card)]">
+              <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-card)]">
                 <StepIndicator current={activeStep} />
                 {runEnEchec ? (
                   <div>
-                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-danger)] text-white">
+                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger)] text-white">
                       <XCircle className="size-7" />
                     </span>
-                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                    <h2 className="text-xl font-semibold text-[var(--ink)]">
                       Échec de l’initialisation
                     </h2>
-                    <p className="mt-2 text-sm text-[var(--color-ink-dim)]">
+                    <p className="mt-2 text-sm text-[var(--ink-dim)]">
                       {progress?.erreur}
                     </p>
                     <div className="mt-6 flex justify-center gap-3">
@@ -455,25 +455,25 @@ export default function SetupWizard() {
                   </div>
                 ) : runTerminee ? (
                   <div>
-                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-success)] text-white">
+                    <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success)] text-white">
                       <CheckCircle2 className="size-7" />
                     </span>
-                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                    <h2 className="text-xl font-semibold text-[var(--ink)]">
                       Initialisation terminée
                     </h2>
-                    <p className="mt-2 text-sm text-[var(--color-ink-dim)]">
+                    <p className="mt-2 text-sm text-[var(--ink-dim)]">
                       L’application est prête. Conservez précieusement vos identifiants.
                     </p>
 
                     <div className="mt-6 space-y-2 text-left">
-                      <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+                      <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--ink)]">
                           <KeyRound className="size-3.5" />
                           Administrateur
                         </div>
-                        <div className="mt-2 space-y-1 break-all font-mono text-xs text-[var(--color-ink-dim)]">
-                          <p>E-mail : <span className="text-[var(--color-ink)]">{email}</span></p>
-                          <p>Mot de passe : <span className="text-[var(--color-ink)]">{password}</span></p>
+                        <div className="mt-2 space-y-1 break-all font-mono text-xs text-[var(--ink-dim)]">
+                          <p>E-mail : <span className="text-[var(--ink)]">{email}</span></p>
+                          <p>Mot de passe : <span className="text-[var(--ink)]">{password}</span></p>
                         </div>
                       </div>
                     </div>
@@ -486,24 +486,24 @@ export default function SetupWizard() {
                 ) : (
                   <div>
                     <div className="relative mx-auto mb-6 h-20 w-20">
-                      <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-action)]/20" />
-                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--color-action-wash)]">
-                        <Loader2 className="size-8 animate-spin text-[var(--color-action)]" />
+                      <span className="absolute inset-0 animate-ping rounded-full bg-[var(--action)]/20" />
+                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--action-w)]">
+                        <Loader2 className="size-8 animate-spin text-[var(--action)]" />
                       </span>
                     </div>
-                    <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                    <h2 className="text-xl font-semibold text-[var(--ink)]">
                       Initialisation en cours
                     </h2>
-                    <p className="mt-2 min-h-5 text-sm text-[var(--color-ink-dim)]">
+                    <p className="mt-2 min-h-5 text-sm text-[var(--ink-dim)]">
                       {progress?.message || 'Veuillez patienter…'}
                     </p>
-                    <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-3)]">
+                    <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-3)]">
                       <div
-                        className="h-full rounded-full bg-[var(--color-action)] transition-all duration-500"
+                        className="h-full rounded-full bg-[var(--action)] transition-all duration-500"
                         style={{ width: `${progress?.pourcent ?? 0}%` }}
                       />
                     </div>
-                    <p className="mt-2 text-xs text-[var(--color-ink-faint)]">
+                    <p className="mt-2 text-xs text-[var(--ink-faint)]">
                       Étape {progress?.etape ?? 0}/{progress?.nb_etapes ?? 5}
                     </p>
                   </div>
@@ -513,18 +513,18 @@ export default function SetupWizard() {
 
             {step === 'form' && (
               <>
-                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]">
+                <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-card)]">
                   <div className="mb-5 flex items-start justify-between">
                     <div>
-                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-action-wash)] text-[var(--color-action)]">
+                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--action-w)] text-[var(--action)]">
                         <GraduationCap className="h-4 w-4" />
                       </div>
-                      <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                      <h2 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
                         {formStep === 1 && 'Configuration initiale'}
                         {formStep === 2 && 'Compte administrateur'}
                         {formStep === 3 && 'Année scolaire'}
                       </h2>
-                      <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+                      <p className="mt-1 text-sm text-[var(--ink-dim)]">
                         {formStep === 1 && 'Renseignez la fiche de votre établissement.'}
                         {formStep === 2 && 'Ce compte pilotera l\u2019ensemble de l\u2019application.'}
                         {formStep === 3 && 'Définissez la période scolaire.'}
@@ -533,7 +533,7 @@ export default function SetupWizard() {
                     <button
                       type="button"
                       onClick={toggleTheme}
-                      className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-2 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]"
+                      className="rounded-[var(--radius-sm)] border border-[var(--border)] p-2 text-[var(--ink-dim)] transition-colors hover:bg-[var(--surface-2)]"
                       aria-label="Changer de thème"
                     >
                       {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -670,7 +670,7 @@ export default function SetupWizard() {
                         </div>
 
                         <div>
-                          <div className="mb-1 text-xs font-medium text-[var(--color-ink-dim)]">
+                          <div className="mb-1 text-xs font-medium text-[var(--ink-dim)]">
                             Logo de l’établissement 
                           </div>
                           <input
@@ -684,31 +684,31 @@ export default function SetupWizard() {
                             type="button"
                             onClick={() => logoFileRef.current?.click()}
                             disabled={logoUploading}
-                            className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-action)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
+                            className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-4 text-left transition-colors hover:border-[var(--action)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]"
                           >
                             {etLogo ? (
                               <img
                                 src={urlAbsolue(etLogo)}
                                 alt="Aperçu du logo"
-                                className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                                className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--surface-3)] object-contain p-1 ring-1 ring-[var(--border)]"
                               />
                             ) : (
-                              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
+                              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--surface-3)] text-[var(--ink-faint)]">
                                 {logoUploading
                                   ? <Loader2 size={20} strokeWidth={1.75} className="animate-spin" />
                                   : <ImagePlus size={20} strokeWidth={1.75} />}
                               </span>
                             )}
                             <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-medium text-[var(--color-ink)]">
+                              <span className="block text-sm font-medium text-[var(--ink)]">
                                 {logoUploading ? 'Envoi du logo…' : etLogo ? 'Modifier le logo' : 'Importer le logo de l’établissement'}
                               </span>
-                              <span className="mt-0.5 block text-[11px] text-[var(--color-ink-faint)]">
+                              <span className="mt-0.5 block text-[11px] text-[var(--ink-faint)]">
                                 PNG, JPG, WebP ou GIF — 2 Mo maximum. 
                               </span>
                             </span>
                             {etLogo && !logoUploading && (
-                              <CheckCircle2 className="size-5 shrink-0 text-[var(--color-success)]" strokeWidth={1.75} />
+                              <CheckCircle2 className="size-5 shrink-0 text-[var(--success)]" strokeWidth={1.75} />
                             )}
                           </button>
                           {etLogo && (
@@ -728,7 +728,7 @@ export default function SetupWizard() {
                             </div>
                           )}
                           {fieldErrors.et_logo && (
-                            <p className="mt-1 text-xs text-[var(--color-danger)]">{fieldErrors.et_logo}</p>
+                            <p className="mt-1 text-xs text-[var(--danger)]">{fieldErrors.et_logo}</p>
                           )}
                         </div>
                         </motion.div>
@@ -784,7 +784,7 @@ export default function SetupWizard() {
                         />
 
                         <div className="flex flex-col gap-1.5">
-                          <label htmlFor="setup-password" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                          <label htmlFor="setup-password" className="text-sm font-medium text-[var(--ink-dim)]">
                             Mot de passe
                           </label>
                           <div className="relative">
@@ -800,23 +800,23 @@ export default function SetupWizard() {
                               required
                               minLength={8}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 pr-10 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
-                                fieldErrors.mot_de_passe ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--surface-2)] px-3 pr-10 text-sm text-[var(--ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--action)] focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]',
+                                fieldErrors.mot_de_passe ? 'border-[var(--danger)]' : 'border-[var(--border)]',
                               )}
                             />
                             <button
                               type="button"
                               onClick={() => setShowPwd((v) => !v)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] p-1 text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-3)]"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] p-1 text-[var(--ink-dim)] transition-colors hover:bg-[var(--surface-3)]"
                               aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                             >
                               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                           {fieldErrors.mot_de_passe ? (
-                            <p className="text-xs text-[var(--color-danger)]">{fieldErrors.mot_de_passe}</p>
+                            <p className="text-xs text-[var(--danger)]">{fieldErrors.mot_de_passe}</p>
                           ) : (
-                            <p className="text-xs text-[var(--color-ink-faint)]">
+                            <p className="text-xs text-[var(--ink-faint)]">
                               Au moins 8 caractères.
                             </p>
                           )}
@@ -834,7 +834,7 @@ export default function SetupWizard() {
                         >
                         <div className="grid grid-cols-2 gap-3">
                           <div className="flex flex-col gap-1.5">
-                            <label htmlFor="date-debut" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                            <label htmlFor="date-debut" className="text-sm font-medium text-[var(--ink-dim)]">
                               Rentrée
                             </label>
                             <input
@@ -846,16 +846,16 @@ export default function SetupWizard() {
                                 if (fieldErrors.date_debut) setFieldErrors((p) => ({ ...p, date_debut: undefined }))
                               }}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
-                                fieldErrors.date_debut ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--surface-2)] px-3 text-sm text-[var(--ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--action)] focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]',
+                                fieldErrors.date_debut ? 'border-[var(--danger)]' : 'border-[var(--border)]',
                               )}
                             />
                             {fieldErrors.date_debut && (
-                              <p className="text-xs text-[var(--color-danger)]">{fieldErrors.date_debut}</p>
+                              <p className="text-xs text-[var(--danger)]">{fieldErrors.date_debut}</p>
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5">
-                            <label htmlFor="date-fin" className="text-sm font-medium text-[var(--color-ink-dim)]">
+                            <label htmlFor="date-fin" className="text-sm font-medium text-[var(--ink-dim)]">
                               Fin d’année
                             </label>
                             <input
@@ -867,12 +867,12 @@ export default function SetupWizard() {
                                 if (fieldErrors.date_fin) setFieldErrors((p) => ({ ...p, date_fin: undefined }))
                               }}
                               className={clsx(
-                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] px-3 text-sm text-[var(--color-ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--color-action)] focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]',
-                                fieldErrors.date_fin ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+                                'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--surface-2)] px-3 text-sm text-[var(--ink)] outline-none transition-colors duration-150 focus-visible:border-[var(--action)] focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]',
+                                fieldErrors.date_fin ? 'border-[var(--danger)]' : 'border-[var(--border)]',
                               )}
                             />
                             {fieldErrors.date_fin && (
-                              <p className="text-xs text-[var(--color-danger)]">{fieldErrors.date_fin}</p>
+                              <p className="text-xs text-[var(--danger)]">{fieldErrors.date_fin}</p>
                             )}
                           </div>
                         </div>
@@ -883,7 +883,7 @@ export default function SetupWizard() {
                     {error && (
                       <p
                         role="alert"
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-sm text-[var(--color-danger)]"
+                        className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-w)] px-3 py-2 text-sm text-[var(--danger)]"
                       >
                         {error}
                       </p>

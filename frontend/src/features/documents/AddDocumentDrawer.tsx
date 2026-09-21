@@ -77,25 +77,25 @@ export function AddDocumentDrawer({
         />
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-[var(--color-ink)]">Fichier</span>
+          <span className="text-sm font-medium text-[var(--ink)]">Fichier</span>
           <label
             className={clsx(
               'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--radius-sm)] border border-dashed px-4 py-6 text-center transition-colors',
               file
-                ? 'border-[var(--color-action)] bg-[var(--color-action-wash)]'
-                : 'border-[var(--color-border)] bg-[var(--color-surface-2)] hover:border-[var(--color-action)] hover:bg-[var(--color-action-wash)]',
+                ? 'border-[var(--action)] bg-[var(--action-w)]'
+                : 'border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--action)] hover:bg-[var(--action-w)]',
             )}
           >
             {file ? (
               <>
-                <p className="max-w-full truncate text-sm font-medium text-[var(--color-ink)]">{file.name}</p>
-                <p className="font-mono text-xs text-[var(--color-ink-faint)]">{formatFileSize(file.size)}</p>
+                <p className="max-w-full truncate text-sm font-medium text-[var(--ink)]">{file.name}</p>
+                <p className="font-mono text-xs text-[var(--ink-faint)]">{formatFileSize(file.size)}</p>
               </>
             ) : (
               <>
-                <FileUp size={22} strokeWidth={1.75} className="text-[var(--color-ink-faint)]" />
-                <p className="text-sm text-[var(--color-ink-dim)]">Sélectionner un fichier</p>
-                <p className="text-xs text-[var(--color-ink-faint)]">PDF · DOCX · XLSX · JPG · PNG · max 10 Mo</p>
+                <FileUp size={22} strokeWidth={1.75} className="text-[var(--ink-faint)]" />
+                <p className="text-sm text-[var(--ink-dim)]">Sélectionner un fichier</p>
+                <p className="text-xs text-[var(--ink-faint)]">PDF · DOCX · XLSX · JPG · PNG · max 10 Mo</p>
               </>
             )}
             <input
@@ -108,8 +108,8 @@ export function AddDocumentDrawer({
         </div>
 
         {submitting && (
-          <p className="flex items-center gap-2 text-sm text-[var(--color-ink-dim)]">
-            <Loader2 className="size-4 animate-spin text-[var(--color-action)]" />
+          <p className="flex items-center gap-2 text-sm text-[var(--ink-dim)]">
+            <Loader2 className="size-4 animate-spin text-[var(--action)]" />
             Import en cours…
           </p>
         )}

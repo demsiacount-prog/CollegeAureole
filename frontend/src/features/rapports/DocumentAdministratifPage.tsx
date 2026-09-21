@@ -182,7 +182,7 @@ export default function DocumentAdministratifPage() {
         <PageHeader
           title="Document administratif"
           subtitle={
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1 text-sm text-[var(--ink-dim)]">
               Proposition de passage, classement des élèves, fiches de renseignements (1er et 2nd cycles) et
               rapport succinct de rentrée pour l'année scolaire active.
             </p>
@@ -380,14 +380,14 @@ function BlocEffectifs({ lignes }: { lignes: Array<FicheRenseignementsLigne | Fi
                 {cols.map(({ cle, cell }) => (
                   <TableCell key={cle} className="text-center">
                     {cell.total}
-                    <span className="block text-[var(--color-ink-faint)]">
+                    <span className="block text-[var(--ink-faint)]">
                       {cell.garcons}G / {cell.filles}F
                     </span>
                   </TableCell>
                 ))}
                 <TableCell className="text-center">
                   {total.total}
-                  <span className="block text-[var(--color-ink-faint)]">
+                  <span className="block text-[var(--ink-faint)]">
                     {total.garcons}G / {total.filles}F
                   </span>
                 </TableCell>
@@ -408,7 +408,7 @@ function RenseignementsData({ fiche }: { fiche: import('./types').FicheRenseigne
           <CardTitle>{fiche.ecole}</CardTitle>
         </CardHeader>
         <CardBody>
-          <p className="text-sm text-[var(--color-ink-dim)]">
+          <p className="text-sm text-[var(--ink-dim)]">
             Académie : {fiche.academie ?? '—'} · CAP : {fiche.cap ?? '—'} · Dirigée par :{' '}
             {fiche.dirigee_par ?? '—'} · Tél : {fiche.telephone ?? '—'}
           </p>
@@ -459,7 +459,7 @@ function RenseignementsPremierCycleData({ fiche }: { fiche: import('./types').Fi
         <CardTitle>{fiche.ecole}</CardTitle>
       </CardHeader>
       <CardBody>
-        <p className="text-sm text-[var(--color-ink-dim)]">
+        <p className="text-sm text-[var(--ink-dim)]">
           Village/Quartier : {fiche.village_quartier ?? '—'} · Commune : {fiche.commune ?? '—'} · CAP :{' '}
           {fiche.cap ?? '—'} · Dirigé par : {fiche.dirige_par ?? '—'} · Tél : {fiche.telephone ?? '—'}
         </p>
@@ -556,7 +556,7 @@ function TablePersonnel({
 }
 
 function EnTeteTable({ titre }: { titre: string }) {
-  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">{titre}</p>
+  return <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-faint)]">{titre}</p>
 }
 
 /** Rapport succinct de rentrée : résumé + effectifs par année + cycles. */
@@ -568,7 +568,7 @@ function RapportRentreeData({ rapport }: { rapport: import('./types').RapportRen
           <CardTitle>{rapport.ecole}</CardTitle>
         </CardHeader>
         <CardBody className="flex flex-col gap-3">
-          <p className="text-sm text-[var(--color-ink-dim)]">
+          <p className="text-sm text-[var(--ink-dim)]">
             Village/Quartier : {rapport.village_quartier ?? '—'} · Commune : {rapport.commune ?? '—'} · CAP :{' '}
             {rapport.cap ?? '—'} · Cercle : {rapport.cercle ?? '—'} · AE : {rapport.ae ?? '—'}
           </p>

@@ -116,7 +116,7 @@ export default function DepenseFormDrawer({ open, onClose, depense }: Props) {
           />
           <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Facultatif" />
           {error && (
-            <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+            <p className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
               {error}
             </p>
           )}

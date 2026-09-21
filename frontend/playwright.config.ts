@@ -16,7 +16,7 @@ export default defineConfig({
       command: [
         `set -a && . ./.env && set +a`,
         `psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`,
-        `venv/bin/uvicorn main:app --host 127.0.0.1 --port 3001`,
+        `AUTO_CREATE_TABLES=true venv/bin/uvicorn main:app --host 127.0.0.1 --port 3001`,
       ].join(' && '),
       cwd: '../backend',
       url: 'http://localhost:3001/api/setup/status',
@@ -35,9 +35,9 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: 'VITE_API_TARGET=http://localhost:3001 npm run dev -- --port 5173 --strictPort',
+      command: 'VITE_API_TARGET=http://localhost:3001 npm run dev -- --port 5175 --strictPort',
       cwd: '.',
-      url: 'http://localhost:5173',
+      url: 'http://localhost:5175',
       reuseExistingServer: false,
       timeout: 90_000,
       stdout: 'pipe',
@@ -60,7 +60,7 @@ export default defineConfig({
       name: 'default',
       testMatch: /.*\.spec\.ts/,
       testIgnore: /(initialisation-wizard|final-purge)\.spec\.ts/,
-      use: { baseURL: 'http://localhost:5173' },
+      use: { baseURL: 'http://localhost:5175' },
       deps: ['initialisation'],
     },
     {

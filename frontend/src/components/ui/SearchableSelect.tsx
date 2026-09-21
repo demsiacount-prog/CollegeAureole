@@ -96,10 +96,10 @@ export function SearchableSelect({
   return (
     <div className="flex flex-col gap-1.5" ref={rootRef}>
       {label && (
-        <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
+        <span className="text-sm font-medium text-[var(--ink)]">{label}</span>
       )}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ink-faint)]" />
         <input
           ref={inputRef}
           role="combobox"
@@ -119,10 +119,10 @@ export function SearchableSelect({
           placeholder={placeholder}
           disabled={disabled}
           className={clsx(
-            'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface-2)] pl-9 pr-9 text-sm text-[var(--color-ink)]',
-            'placeholder:text-[var(--color-ink-faint)] transition-colors duration-150',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)] focus-visible:border-[var(--color-action)]',
-            error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]',
+            'h-10 w-full rounded-[var(--radius-sm)] border bg-[var(--surface-2)] pl-9 pr-9 text-sm text-[var(--ink)]',
+            'placeholder:text-[var(--ink-faint)] transition-colors duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-ring)] focus-visible:border-[var(--action)]',
+            error ? 'border-[var(--danger)]' : 'border-[var(--border)]',
           )}
         />
         {selected && !disabled && (
@@ -130,21 +130,21 @@ export function SearchableSelect({
             type="button"
             onClick={handleClear}
             aria-label="Effacer la sélection"
-            className="absolute right-8 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--color-ink-faint)] transition-colors hover:text-[var(--color-ink)]"
+            className="absolute right-8 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--ink-faint)] transition-colors hover:text-[var(--ink)]"
           >
             <X className="size-3.5" />
           </button>
         )}
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ink-faint)]" />
       </div>
       {open && !disabled && (
         <div className="relative z-20">
           <ul
             role="listbox"
-            className="absolute left-0 right-0 max-h-56 overflow-auto rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-float)]"
+            className="absolute left-0 right-0 max-h-56 overflow-auto rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-[var(--shadow-float)]"
           >
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-[var(--color-ink-faint)]">{emptyMessage}</li>
+              <li className="px-3 py-2 text-sm text-[var(--ink-faint)]">{emptyMessage}</li>
             ) : (
               filtered.map((o, i) => (
                 <li key={o.value}>
@@ -156,14 +156,14 @@ export function SearchableSelect({
                     onMouseEnter={() => setHighlight(i)}
                     className={clsx(
                       'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors',
-                      i === highlight ? 'bg-[var(--color-surface-3)] text-[var(--color-ink)]' : 'text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]',
+                      i === highlight ? 'bg-[var(--surface-3)] text-[var(--ink)]' : 'text-[var(--ink)] hover:bg-[var(--surface-2)]',
                     )}
                   >
                     <span className="truncate">
                       {o.label}
-                      {o.sublabel && <span className="ml-2 font-mono text-xs text-[var(--color-ink-faint)]">{o.sublabel}</span>}
+                      {o.sublabel && <span className="ml-2 font-mono text-xs text-[var(--ink-faint)]">{o.sublabel}</span>}
                     </span>
-                    {o.value === value && <Check className="size-4 shrink-0 text-[var(--color-action-bright)]" />}
+                    {o.value === value && <Check className="size-4 shrink-0 text-[var(--action-bright)]" />}
                   </button>
                 </li>
               ))
@@ -171,7 +171,7 @@ export function SearchableSelect({
           </ul>
         </div>
       )}
-      {error && <p className="text-xs text-[var(--color-danger)]">{error}</p>}
+      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
     </div>
   )
 }

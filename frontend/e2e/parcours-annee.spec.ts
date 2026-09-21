@@ -11,6 +11,7 @@ const NIVEAU_CLASSE = '6ème Année'
 const NOM_CLASSE = 'E2E'
 const LIBELLE_CLASSE = `${NIVEAU_CLASSE} — ${NOM_CLASSE}`
 const NOM_SALLE = 'Salle E2E'
+const ROW_REF = new RegExp(`${PRENOM_ELEVE}\\s+${NOM_ELEVE}|${NOM_ELEVE}\\s+${PRENOM_ELEVE}`)
 const NOM_COURS = 'E2E Matière'
 const FRAIS_INSCRIPTION = '8000'
 const MENSUALITE = '5000'
@@ -36,7 +37,7 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByLabel('Nom', { exact: true }).fill(NOM_SALLE)
     await page.getByRole('button', { name: 'Créer' }).click()
     await expect(page.getByText('Salle créée')).toBeVisible({ timeout: 10_000 })
-    await page.getByPlaceholder('Rechercher une salle…').fill(NOM_SALLE)
+    await page.getByLabel('Rechercher une salle').fill(NOM_SALLE)
     await expect(page.locator('tbody tr', { hasText: NOM_SALLE })).toBeVisible()
 
     await page.goto('/app/enseignants')
@@ -49,13 +50,13 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByLabel('Adresse', { exact: true }).fill('Badalabougou, Bamako')
     await page.getByRole('button', { name: 'Créer' }).click()
     await expect(page.getByText('Enseignant créé.')).toBeVisible({ timeout: 10_000 })
-    await page.getByPlaceholder('Rechercher par nom, matricule, spécialité…').fill(NOM_ENSEIGNANT)
+    await page.getByLabel('Rechercher un enseignant').fill(NOM_ENSEIGNANT)
     await expect(page.locator('tbody tr', { hasText: 'Enseignant E2E' })).toBeVisible({ timeout: 10_000 })
 
     await page.goto('/app/classes')
     await page.getByRole('button', { name: 'Nouvelle classe' }).click()
     await page.getByLabel('Nom de la classe').fill(NOM_CLASSE)
-    await page.getByLabel('Niveau').selectOption(NIVEAU_CLASSE)
+    await page.getByLabel('Niveau', { exact: true }).selectOption(NIVEAU_CLASSE)
     await page.getByLabel('Salle').selectOption({ label: NOM_SALLE })
     await page.getByLabel('Frais d\'inscription (FCFA)').fill(FRAIS_INSCRIPTION)
     await page.getByLabel('Mensualité (FCFA)').fill(MENSUALITE)
@@ -114,6 +115,11 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByLabel('Classe attribuée').selectOption({ label: LIBELLE_CLASSE })
     await page.getByRole('button', { name: 'Suivant' }).click()
 
+    // L'état civil est requis pour marquer l'acte de naissance comme reçu.
+    await page.getByLabel('Acte de naissance N°').fill('N° 1234/25')
+    await page.getByLabel("Date de l'acte").fill('2012-06-15')
+    await page.getByLabel('Délivré par').fill('Mairie de Bamako')
+
     const marquerRecu = page.getByRole('button', { name: 'Marquer reçu' })
     await marquerRecu.first().click()
     await expect(marquerRecu).toHaveCount(1)
@@ -124,9 +130,9 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByRole('button', { name: "Enregistrer l'inscription" }).click()
     await expect(page.getByText('Inscription enregistrée.')).toBeVisible({ timeout: 30_000 })
 
-    await expect(page.getByPlaceholder('Rechercher par nom, prénom ou matricule…')).toBeVisible({ timeout: 15_000 })
-    await page.getByPlaceholder('Rechercher par nom, prénom ou matricule…').fill(NOM_ELEVE)
-    const row = page.locator('tbody tr', { hasText: NOM_ELEVE })
+    await expect(page.getByLabel('Rechercher une inscription')).toBeVisible({ timeout: 15_000 })
+    await page.getByLabel('Rechercher une inscription').fill(NOM_ELEVE)
+    const row = page.locator('tbody tr', { hasText: ROW_REF })
     await expect(row).toBeVisible({ timeout: 15_000 })
     await expect(row).toContainText('Inscrit')
 
@@ -136,7 +142,7 @@ async function pickCombobox(page: Page, value: string) {
     expect(insc).toBeTruthy()
     expect(insc.statut).toBe('Inscrit')
     const matricule = insc.matricule_eleve
-    expect(matricule).toMatch(/^EL2500/)
+    expect(matricule).toMatch(/^AU25\d+/)
     await api.dispose()
 
     await page.goto('/app/paiements')
@@ -149,8 +155,8 @@ async function pickCombobox(page: Page, value: string) {
     await page.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(page.getByText(/Paiement enregistré/)).toBeVisible({ timeout: 15_000 })
 
-    await page.getByPlaceholder('Rechercher par élève, code, mode…').fill(NOM_ELEVE)
-    const paiementRow = page.locator('tbody tr', { hasText: NOM_ELEVE })
+    await page.getByLabel('Rechercher un paiement').fill(NOM_ELEVE)
+    const paiementRow = page.locator('tbody tr', { hasText: ROW_REF })
     await expect(paiementRow).toBeVisible({ timeout: 15_000 })
     await expect(paiementRow).toContainText('PAI')
     await expect(paiementRow).toContainText('ESPECES')
@@ -180,14 +186,17 @@ async function pickCombobox(page: Page, value: string) {
     await expect(matiere).toBeEnabled({ timeout: 10_000 })
     await matiere.selectOption({ label: NOM_COURS })
 
-    const noteInput = page.getByLabel(`Note de ${PRENOM_ELEVE} ${NOM_ELEVE}`)
+    const noteInput = page.getByLabel(`Note de composition de ${PRENOM_ELEVE} ${NOM_ELEVE}`)
     await expect(noteInput).toBeVisible({ timeout: 15_000 })
     await noteInput.fill(NOTE)
-    await expect(page.getByText('Très bien')).toBeVisible()
 
+    // Perte de focus : l'auto-enregistrement (onBlur) sauvegarde la note.
+    await page.getByRole('heading', { name: 'Saisie des notes' }).click()
+    await expect(page.locator('tbody tr', { hasText: ROW_REF })).toContainText('Enregistré', { timeout: 15_000 })
+
+    // La sauvegarde manuelle reste actionnable et confirme.
     await page.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(page.getByText('Notes enregistrées.')).toBeVisible({ timeout: 15_000 })
-    await expect(page.locator('tbody tr', { hasText: NOM_ELEVE })).toContainText('Enregistré', { timeout: 15_000 })
 
     await page.goto('/app/bulletins')
     await page.getByLabel('Classe').selectOption({ label: LIBELLE_CLASSE })
@@ -196,7 +205,7 @@ async function pickCombobox(page: Page, value: string) {
     await bulletinPeriode.selectOption({ index: 1 })
     await page.getByRole('button', { name: 'Générer pour la classe' }).click()
     await expect(page.getByText('1 bulletin(s) généré(s)')).toBeVisible({ timeout: 20_000 })
-    const bulRow = page.locator('tbody tr', { hasText: NOM_ELEVE })
+    const bulRow = page.locator('tbody tr', { hasText: ROW_REF })
     await expect(bulRow).toBeVisible({ timeout: 15_000 })
     await expect(bulRow).toContainText('8.00 / 10')
     await expect(bulRow).toContainText('1er')
@@ -221,13 +230,12 @@ async function pickCombobox(page: Page, value: string) {
     await expect(page.getByText(LIBELLE_CLASSE).first()).toBeVisible()
     await expect(page.getByText(matricule).first()).toBeVisible()
 
-    await page.getByRole('button', { name: /Résultats/ }).click()
-    await expect(page.getByText('Moy. annuelle 8.00 /10')).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText('1 période')).toBeVisible()
-    await expect(page.getByText('Composition Octobre')).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Note /10' })).toBeVisible()
-    await expect(page.locator('tbody tr', { hasText: NOM_COURS })).toContainText('8.00')
-    await expect(page.getByText('Enseignant E2E').first()).toBeVisible()
+    await page.getByRole('tab', { name: 'Bulletins' }).click()
+    const bulDossier = page.locator('tbody tr', { hasText: 'Trimestre 1' })
+    await expect(bulDossier).toBeVisible({ timeout: 10_000 })
+    await expect(bulDossier).toContainText('8.00')
+    await expect(bulDossier).toContainText('1ᵉ', { timeout: 10_000 })
+    await expect(bulDossier).toContainText('Publié', { timeout: 10_000 })
   })
 
   test('nettoyage des données du parcours via l\'API', async () => {
@@ -235,6 +243,13 @@ async function pickCombobox(page: Page, value: string) {
 
     const inscriptions = await (await api.get('/api/inscriptions/', { params: { q: NOM_ELEVE } })).json()
     for (const insc of inscriptions) {
+      const paiements = await (
+        await api.get('/api/paiements/', { params: { id_inscription: insc.id, limit: 500 } })
+      ).json()
+      for (const p of paiements) {
+        const del = await api.delete(`/api/paiements/${p.id}`)
+        expect(del.ok()).toBeTruthy()
+      }
       const res = await api.delete(`/api/inscriptions/${insc.id}`)
       expect(res.ok()).toBeTruthy()
     }

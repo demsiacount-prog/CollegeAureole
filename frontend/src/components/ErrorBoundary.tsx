@@ -32,15 +32,15 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-          <AlertOctagon className="size-10 text-[var(--color-danger)]" strokeWidth={1.75} />
+          <AlertOctagon className="size-10 text-[var(--danger)]" strokeWidth={1.75} />
           <div>
-            <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+            <h2 className="text-xl font-semibold text-[var(--ink)]">
               Une erreur est survenue
             </h2>
-            <p className="mt-1.5 max-w-md text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1.5 max-w-md text-sm text-[var(--ink-dim)]">
               Cette page n'a pas pu s'afficher correctement.
             </p>
-            <p className="mt-3 max-w-md rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 font-[var(--font-mono)] text-xs text-[var(--color-danger)]">
+            <p className="mt-3 max-w-md rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 font-[var(--font-mono)] text-xs text-[var(--danger)]">
               {this.state.error.message}
             </p>
           </div>

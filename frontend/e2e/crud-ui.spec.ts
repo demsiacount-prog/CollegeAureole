@@ -11,7 +11,7 @@ test.describe('CRUD UI — salle (créer / voir / supprimer)', () => {
     await page.getByLabel('Nom').fill(nom)
     await page.getByRole('button', { name: 'Créer' }).click()
 
-    const recherche = page.getByPlaceholder('Rechercher une salle…')
+    const recherche = page.getByLabel('Rechercher une salle')
     await recherche.fill(nom)
     await expect(page.getByText(nom, { exact: true }).first()).toBeVisible({ timeout: 15_000 })
 

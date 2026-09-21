@@ -63,8 +63,8 @@ function SuspenseRoute({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center py-24 text-[var(--color-ink-dim)]">
-          <Loader2 className="size-6 animate-spin text-[var(--color-action)]" />
+        <div className="flex justify-center py-24 text-[var(--ink-dim)]">
+          <Loader2 className="size-6 animate-spin text-[var(--action)]" />
         </div>
       }
     >

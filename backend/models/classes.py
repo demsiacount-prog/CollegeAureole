@@ -6,6 +6,14 @@ from database import Base
 
 
 class Classes(Base):
+    """Classe d'élèves — objet GLOBAL, hors année scolaire.
+
+    Une classe est réutilisée d'année en année (jamais dupliquée à la clôture) :
+    c'est pourquoi elle ne porte AUCUN champ année scolaire, et ses tarifs
+    (frais_inscription, mensualite) restent modifiables quels que soient les
+    états de clôture des années (les montants sont figés au moment de chaque
+    inscription dans Inscriptions/Echeances).
+    """
     __tablename__ = "classes"
     id = Column(Integer, primary_key=True)
     code_classe = Column(String, nullable=True, unique=True, index=True)

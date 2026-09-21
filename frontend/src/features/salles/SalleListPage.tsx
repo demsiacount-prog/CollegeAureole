@@ -13,12 +13,9 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchSalles, createSalle, updateSalle, deleteSalle } from './api'
 import SalleFormDrawer from './SalleFormDrawer'
 import type { Salle, SalleCreateInput } from './types'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 export default function SalleListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: salles = [], isLoading, isError } = useQuery({ queryKey: ['salles'], queryFn: fetchSalles })
 
@@ -98,8 +95,8 @@ export default function SalleListPage() {
               <TableBody>
                 {filtered.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium text-[var(--color-ink)]">{s.nom}</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">
+                    <TableCell className="font-medium text-[var(--ink)]">{s.nom}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">
                       {s.capacite != null ? `${s.capacite} places` : '—'}
                     </TableCell>
                     <TableCell className="text-right">
@@ -107,7 +104,7 @@ export default function SalleListPage() {
                         {canWrite && (
                           <button
                             onClick={() => { setEditing(s); setDrawerOpen(true) }}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label={`Modifier ${s.nom}`}
                           >
                             <Pencil size={14} strokeWidth={1.75} />
@@ -116,7 +113,7 @@ export default function SalleListPage() {
                         {canDelete && (
                           <button
                             onClick={() => setDeleting(s)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             aria-label={`Supprimer ${s.nom}`}
                           >
                             <Trash2 size={14} strokeWidth={1.75} />

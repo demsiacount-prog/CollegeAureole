@@ -24,15 +24,15 @@ const sizes: Record<Variant, string> = {
 }
 
 const trackColors: Record<Variant, string> = {
-  installer: 'bg-[var(--color-surface-3)]',
-  splash: 'bg-[var(--color-surface-2)]',
-  wizard: 'bg-[var(--color-surface-3)]',
+  installer: 'bg-[var(--surface-3)]',
+  splash: 'bg-[var(--surface-2)]',
+  wizard: 'bg-[var(--surface-3)]',
 }
 
 const fillColors: Record<Variant, string> = {
-  installer: 'bg-[var(--color-action)]',
-  splash: 'bg-[var(--color-halo)]',
-  wizard: 'bg-[var(--color-action)]',
+  installer: 'bg-[var(--action)]',
+  splash: 'bg-[var(--halo)]',
+  wizard: 'bg-[var(--action)]',
 }
 
 const transitions: Record<Variant, string> = {

@@ -87,7 +87,7 @@ export default function FicheEtablissementTab() {
   if (isError || !data || !form) {
     return (
       <div className="space-y-4">
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-wash)] px-4 py-3 text-sm text-[var(--color-danger)]">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger-w)] px-4 py-3 text-sm text-[var(--danger)]">
           La fiche de l’établissement n’existe pas encore. Elle est créée lors de la
           configuration initiale de l’application.
         </div>
@@ -125,36 +125,36 @@ export default function FicheEtablissementTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)] p-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--ink)]">
           <Building2 size={14} strokeWidth={1.75} />
           Établissement
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Nom</div>
-            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.nom}</div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">Nom</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--ink)]">{data.nom}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Sigle</div>
-            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.sigle ?? '—'}</div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">Sigle</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--ink)]">{data.sigle ?? '—'}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Devise</div>
-            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.devise ?? '—'}</div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">Devise</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--ink)]">{data.devise ?? '—'}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Académie</div>
-            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.academie ?? '—'}</div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">Académie</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--ink)]">{data.academie ?? '—'}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">CAP</div>
-            <div className="mt-0.5 text-sm font-medium text-[var(--color-ink)]">{data.cap ?? '—'}</div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">CAP</div>
+            <div className="mt-0.5 text-sm font-medium text-[var(--ink)]">{data.cap ?? '—'}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">Initialisé le</div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink)]">
-              <CalendarCheck size={13} strokeWidth={1.75} className="text-[var(--color-ink-dim)]" />
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-faint)]">Initialisé le</div>
+            <div className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]">
+              <CalendarCheck size={13} strokeWidth={1.75} className="text-[var(--ink-dim)]" />
               {data.date_initialisation
                 ? new Date(data.date_initialisation).toLocaleDateString('fr-FR')
                 : '—'}
@@ -164,9 +164,9 @@ export default function FicheEtablissementTab() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-[var(--radius-lg)] border border-[var(--color-border)] p-4" noValidate>
-        <div className="text-xs font-semibold text-[var(--color-ink)]">Modifier la fiche</div>
-        <p className="mt-0.5 text-[11px] text-[var(--color-ink-dim)]">
+      <form onSubmit={handleSubmit} className="rounded-[var(--radius-lg)] border border-[var(--border)] p-4" noValidate>
+        <div className="text-xs font-semibold text-[var(--ink)]">Modifier la fiche</div>
+        <p className="mt-0.5 text-[11px] text-[var(--ink-dim)]">
           Ces informations identifient l’établissement dans l’ensemble du système.
         </p>
 
@@ -264,7 +264,7 @@ export default function FicheEtablissementTab() {
             error={fieldErrors.email}
           />
           <div className="sm:col-span-2">
-            <div className="mb-1 text-xs font-medium text-[var(--color-ink-dim)]">Logo</div>
+            <div className="mb-1 text-xs font-medium text-[var(--ink-dim)]">Logo</div>
             <input
               ref={fileRef}
               type="file"
@@ -276,31 +276,31 @@ export default function FicheEtablissementTab() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 text-left transition-colors hover:border-[var(--color-halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action-ring)]"
+              className="flex w-full items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-4 text-left transition-colors hover:border-[var(--halo)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-ring)]"
             >
               {form.logo ? (
                 <img
                   src={urlAbsolue(form.logo)}
                   alt="Logo de l’établissement"
-                  className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] object-contain p-1 ring-1 ring-[var(--color-border)]"
+                  className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--surface-3)] object-contain p-1 ring-1 ring-[var(--border)]"
                 />
               ) : (
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-ink-faint)]">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--surface-3)] text-[var(--ink-faint)]">
                   {uploading
                     ? <Loader2 size={20} strokeWidth={1.75} className="animate-spin" />
                     : <ImagePlus size={20} strokeWidth={1.75} />}
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-[var(--color-ink)]">
+                <span className="block text-sm font-medium text-[var(--ink)]">
                   {uploading ? 'Envoi du logo…' : form.logo ? 'Modifier le logo' : 'Importer le logo de l’établissement'}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-[var(--color-ink-faint)]">
+                <span className="mt-0.5 block text-[11px] text-[var(--ink-faint)]">
                   PNG, JPG, WebP ou GIF — 2 Mo maximum. Affiché sur la page de connexion et dans l’application.
                 </span>
               </span>
               {form.logo && !uploading && (
-                <CheckCircle2 className="size-5 shrink-0 text-[var(--color-success)]" strokeWidth={1.75} />
+                <CheckCircle2 className="size-5 shrink-0 text-[var(--success)]" strokeWidth={1.75} />
               )}
             </button>
             {form.logo && (

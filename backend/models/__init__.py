@@ -21,6 +21,7 @@ from models.depenses import Depenses
 from models.documents import Documents
 from models.etablissement import Etablissement
 from models.infrastructures import EtablissementInfrastructures
+from models.cloture_alertes import ClotureAlertes
 __all__ = [
     "Tuteurs", "Enseignants", "Utilisateurs",
     "AnneesScolaires", "Trimestres", "Classes", "AffectationCoursClasse", "Cours",
@@ -28,4 +29,5 @@ __all__ = [
     "Absences", "Inscriptions", "Echeances", "Paiements", "Remises",
     "EtablissementInfrastructures",
     "Salles", "Seances", "Depenses", "Documents", "Etablissement",
+    "ClotureAlertes",
 ]

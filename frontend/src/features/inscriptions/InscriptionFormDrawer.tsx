@@ -131,13 +131,13 @@ export default function InscriptionFormDrawer({ open, onClose, onSubmit, initial
           <Input label="Observation (optionnel)" placeholder="ex. Redoublant" value={observation} onChange={(e) => setObservation(e.target.value)} />
 
           {submitError && (
-            <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+            <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
               {submitError}
             </p>
           )}
         </div>
 
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full" disabled={enCours}>
             {enCours ? 'Enregistrement…' : 'Inscrire'}
           </Button>

@@ -18,7 +18,7 @@ export function TableContainer({ className, moduleColor, ...rest }: HTMLAttribut
   return (
     <div
       className={clsx(
-        'overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]',
+        'overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]',
         className,
       )}
       style={{ borderTop: color ? `2px solid ${color}` : undefined }}
@@ -34,24 +34,24 @@ export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>) 
 export function TableHeader({ className, ...rest }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={clsx('border-b border-[var(--color-border)] bg-[var(--color-surface-2)]', className)}
+      className={clsx('border-b border-[var(--border)] bg-[var(--surface-2)]', className)}
       {...rest}
     />
   )
 }
 
 export function TableBody({ className, ...rest }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={clsx('divide-y divide-[var(--color-border-soft)]', className)} {...rest} />
+  return <tbody className={clsx('divide-y divide-[var(--border-soft)]', className)} {...rest} />
 }
 
 export function TableRow({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={clsx('transition-colors hover:bg-[var(--color-surface-2)]', className)} {...rest} />
+  return <tr className={clsx('transition-colors hover:bg-[var(--surface-2)]', className)} {...rest} />
 }
 
 export function TableHead({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={clsx('px-2.5 py-[9px] text-left text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--color-ink-faint)]', className)}
+      className={clsx('px-2.5 py-[9px] text-left text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--ink-faint)]', className)}
       {...rest}
     />
   )

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, patchNote, deleteNote, saveNotesBulk } from './api'
 import type { Note, NoteBulkItem } from './api'
 import { Link } from 'react-router-dom'
@@ -33,6 +32,7 @@ function NoteInput({
   registerRef,
   onCommit,
   onBlur,
+  max,
 }: {
   value: string
   onChange: (value: string) => void
@@ -43,6 +43,7 @@ function NoteInput({
   registerRef: (key: string, el: HTMLInputElement | null) => void
   onCommit: (key: string, dir: 'next' | 'prev', column: 'next' | 'same') => void
   onBlur?: () => void
+  max?: number
 }) {
   return (
     <input
@@ -56,6 +57,7 @@ function NoteInput({
         let raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '')
         const firstDot = raw.indexOf('.')
         if (firstDot !== -1) raw = raw.slice(0, firstDot + 1) + raw.slice(firstDot + 1).replace(/\./g, '')
+        if (max != null && raw !== '' && !isNaN(Number(raw)) && Number(raw) > max) return
         onChange(raw)
       }}
       onFocus={(e) => e.target.select()}
@@ -90,8 +92,7 @@ interface StudentRow {
 }
 
 export default function NoteListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const queryClient = useQueryClient()
 
   const [classeId, setClasseId] = useState<number | null>(null)
@@ -130,21 +131,20 @@ export default function NoteListPage() {
   }, [])
 
   const { data: classes = EMPTY_ARRAY } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
-  const { data: annees = EMPTY_ARRAY } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
+  const { data: activeAnnee } = useAnneeActive()
 
   const [filterAnnee, setFilterAnnee] = useState('')
-  const filterInit = useRef(false)
+  const activeAnneeId = activeAnnee?.id
   useEffect(() => {
-    if (!filterInit.current && annees.length > 0) {
-      const active = annees.find((a) => a.active)
-      if (active) setFilterAnnee(active.id.toString())
-      filterInit.current = true
+    if (activeAnneeId != null && String(activeAnneeId) !== filterAnnee) {
+      setFilterAnnee(String(activeAnneeId))
     }
-  }, [annees])
+  }, [activeAnneeId])
 
   const { data: trimestres = EMPTY_ARRAY } = useQuery({
     queryKey: ['trimestres', filterAnnee],
     queryFn: () => fetchTrimestres(filterAnnee ? Number(filterAnnee) : undefined),
+    enabled: !!filterAnnee,
   })
 
   const { data: classeDetail, isLoading: loadingClasse } = useQuery({
@@ -199,10 +199,7 @@ export default function NoteListPage() {
     return filteredTrimestres.find((t) => t.id === trimestreId)?.nom ?? null
   }, [trimestreId, filteredTrimestres])
 
-  const anneeLibelle = useMemo(() => {
-    if (!filterAnnee) return null
-    return annees.find((a) => a.id.toString() === filterAnnee)?.libelle ?? null
-  }, [filterAnnee, annees])
+  const anneeLibelle = activeAnnee?.libelle ?? null
 
   const { data: existingNotes = EMPTY_ARRAY, isLoading: loadingNotes, isError: erreurNotes } = useQuery({
     queryKey: ['existing-notes', classeId, coursId, trimestreId],
@@ -236,18 +233,20 @@ export default function NoteListPage() {
   const updateLocal = useCallback((matricule: string, value: string) => {
     if (value !== '' && value.includes('-')) return
     if (value !== '' && isNaN(Number(value))) return
+    if (bareme != null && value !== '' && !isNaN(Number(value)) && Number(value) > bareme) return
     setRows((prev) =>
       prev.map((r) => (r.matricule === matricule ? { ...r, localValue: value } : r)),
     )
-  }, [])
+  }, [bareme])
 
   const updateLocalClasse = useCallback((matricule: string, value: string) => {
     if (value !== '' && value.includes('-')) return
     if (value !== '' && isNaN(Number(value))) return
+    if (bareme != null && value !== '' && !isNaN(Number(value)) && Number(value) > bareme) return
     setRows((prev) =>
       prev.map((r) => (r.matricule === matricule ? { ...r, localClasse: value } : r)),
     )
-  }, [])
+  }, [bareme])
 
   const hasChanges = useMemo(() => {
     return rows.some((r) => {
@@ -259,6 +258,8 @@ export default function NoteListPage() {
     })
   }, [rows])
 
+  const autosaveEnCours = useRef<Promise<unknown> | null>(null)
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!classeId || !coursId || trimestreId == null) return
@@ -266,6 +267,10 @@ export default function NoteListPage() {
       if (!matriculeEnseignant) {
         throw new Error("Ce cours n'a pas d'enseignant assigné : impossible d'enregistrer les notes.")
       }
+
+      // Termine l'auto-enregistrement (blur) éventuellement en vol, pour éviter
+      // une double création concurrente sur la même note.
+      if (autosaveEnCours.current) await autosaveEnCours.current.catch(() => {})
 
       const base = {
         matricule_eleve: '',
@@ -396,6 +401,23 @@ export default function NoteListPage() {
     },
   })
 
+  const declencherAutosave = useCallback(
+    (row: { matricule: string; localValue: string; localClasse: string }) => {
+      const promesse = autosaveMutation.mutateAsync({
+        matricule: row.matricule,
+        localValue: row.localValue,
+        localClasse: row.localClasse,
+      })
+      autosaveEnCours.current = promesse
+      promesse
+        .catch(() => {})
+        .finally(() => {
+          if (autosaveEnCours.current === promesse) autosaveEnCours.current = null
+        })
+    },
+    [autosaveMutation],
+  )
+
   const stats = useMemo(() => {
     const filled = rows.filter((r) => r.localValue !== '').length
     const total = rows.length
@@ -486,14 +508,14 @@ export default function NoteListPage() {
             title="Saisie des notes"
             breadcrumb={breadcrumb}
             subtitle={
-              <p className="mt-1 truncate text-sm text-[var(--color-ink-dim)]">{headerSubtitle}</p>
+              <p className="mt-1 truncate text-sm text-[var(--ink-dim)]">{headerSubtitle}</p>
             }
           />
           {canWrite && ready && rows.length > 0 && !estJardin && (
             <Button
               variant="primary"
               onClick={() => mutation.mutate()}
-              disabled={!hasChanges || mutation.isPending || !matriculeEnseignant}
+              disabled={mutation.isPending || !matriculeEnseignant}
               isLoading={mutation.isPending}
             >
               <Save strokeWidth={1.75} className="size-4" />
@@ -503,20 +525,6 @@ export default function NoteListPage() {
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <div className="w-48">
-            <Select
-              label="Année scolaire"
-              value={filterAnnee}
-              onChange={(e) => setFilterAnnee(e.target.value)}
-              disabled={!annees.length}
-            >
-              <option value="">Toutes les années</option>
-              {annees.map((a) => (
-                <option key={a.id} value={a.id}>{a.libelle}</option>
-              ))}
-            </Select>
-          </div>
-
           <div className="w-48">
             <Select
               label="Classe"
@@ -611,21 +619,26 @@ export default function NoteListPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
             <ToolbarSpacer />
-            <label className="flex h-[30px] items-center gap-2 pl-1 pr-2 text-[12.5px] text-[var(--color-ink-dim)]">
+            <label className="flex h-[30px] items-center gap-2 pl-1 pr-2 text-[12.5px] text-[var(--ink-dim)]">
               <span className="hidden sm:inline">Écarts-type</span>
-              <Switch checked={afficherEcartsType} onChange={setAfficherEcartsType} label="" />
+              <Switch
+                checked={afficherEcartsType}
+                onChange={setAfficherEcartsType}
+                label=""
+                ariaLabel="Afficher les écarts-type"
+              />
             </label>
           </PageToolbar>
 
           {selectedCours?.enseignant ? (
-            <p className="text-sm text-[var(--color-ink-dim)]">
+            <p className="text-sm text-[var(--ink-dim)]">
               Enseignant :{' '}
-              <span className="font-medium text-[var(--color-ink)]">
+              <span className="font-medium text-[var(--ink)]">
                 {selectedCours.enseignant.prenom} {selectedCours.enseignant.nom}
               </span>
             </p>
           ) : (
-            <p className="text-sm text-[var(--color-warning)]">
+            <p className="text-sm text-[var(--warning)]">
               Aucun enseignant assigné à ce cours : l'enregistrement des notes est désactivé.
             </p>
           )}
@@ -670,7 +683,7 @@ export default function NoteListPage() {
                         <TableCell>
                           <Link to={`/app/eleves/${row.matricule}`} className="flex items-center gap-3 group">
                             <Avatar nom={row.nom} prenom={row.prenom} size="sm" />
-                            <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
+                            <span className="font-medium text-[var(--ink)] group-hover:text-[var(--action-bright)]">
                               {row.prenom} {row.nom}
                             </span>
                           </Link>
@@ -681,11 +694,12 @@ export default function NoteListPage() {
                             onChange={(v) => updateLocal(row.matricule, v)}
                             disabled={!canWrite || autosaveMutation.isPending}
                             isInvalid={compInvalid}
+                            max={bareme ?? undefined}
                             cellKey={`comp:${rowIndex}`}
                             registerRef={registerRef}
                             onCommit={commitNav}
                             onBlur={() =>
-                            autosaveMutation.mutate({
+                            declencherAutosave({
                               matricule: row.matricule,
                               localValue: row.localValue,
                               localClasse: row.localClasse,
@@ -700,11 +714,12 @@ export default function NoteListPage() {
                             onChange={(v) => updateLocalClasse(row.matricule, v)}
                             disabled={!canWrite || autosaveMutation.isPending}
                             isInvalid={classeInvalid}
+                            max={bareme ?? undefined}
                             cellKey={`classe:${rowIndex}`}
                             registerRef={registerRef}
                             onCommit={commitNav}
                             onBlur={() =>
-                            autosaveMutation.mutate({
+                            declencherAutosave({
                               matricule: row.matricule,
                               localValue: row.localValue,
                               localClasse: row.localClasse,
@@ -717,26 +732,26 @@ export default function NoteListPage() {
                           {isValid && bareme != null && effective != null ? (
                             <span
                               className={`font-[var(--font-mono)] text-[13px] font-semibold px-[10px] ${
-                                effective >= bareme / 2 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
+                                effective >= bareme / 2 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                               }`}
                             >
                               {effective.toFixed(2)} / {bareme}
                             </span>
                           ) : (
-                            <span className="px-[10px] font-[var(--font-mono)] text-[13px] italic text-[var(--color-ink-faint)]">
+                            <span className="px-[10px] font-[var(--font-mono)] text-[13px] italic text-[var(--ink-faint)]">
                               —
                             </span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
                           {isModified ? (
-                            <span className="text-xs font-medium text-[var(--color-warning)]">Modifié</span>
+                            <span className="text-xs font-medium text-[var(--warning)]">Modifié</span>
                           ) : row.existingNote ? (
-                            <span className="text-xs text-[var(--color-success)]">Enregistré</span>
+                            <span className="text-xs text-[var(--success)]">Enregistré</span>
                           ) : isNew ? (
-                            <span className="text-xs text-[var(--color-info)]">Nouveau</span>
+                            <span className="text-xs text-[var(--info)]">Nouveau</span>
                           ) : (
-                            <span className="text-[var(--color-ink-faint)]">—</span>
+                            <span className="text-[var(--ink-faint)]">—</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -747,34 +762,34 @@ export default function NoteListPage() {
             </TableContainer>
           )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border-soft)] pt-3">
-              <p className="text-sm text-[var(--color-ink-dim)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-soft)] pt-3">
+              <p className="text-sm text-[var(--ink-dim)]">
                 Moyenne de classe :{' '}
                 {stats.moyenne != null && bareme != null ? (
-                  <span className={`font-[var(--font-mono)] text-[13px] font-semibold ${stats.moyenne >= bareme / 2 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
+                  <span className={`font-[var(--font-mono)] text-[13px] font-semibold ${stats.moyenne >= bareme / 2 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                     {stats.moyenne.toFixed(2)} / {bareme}
                   </span>
                 ) : (
-                  <span className="text-[var(--color-ink-faint)]">—</span>
+                  <span className="text-[var(--ink-faint)]">—</span>
                 )}
               </p>
-              <p className="text-sm text-[var(--color-ink-dim)]">
+              <p className="text-sm text-[var(--ink-dim)]">
                 {stats.filled}/{stats.total} notes saisies · Manquantes :{' '}
-                <span className="font-medium text-[var(--color-ink)]">{stats.manquantes}</span>
+                <span className="font-medium text-[var(--ink)]">{stats.manquantes}</span>
               </p>
             </div>
 
             {afficherEcartsType && stats.ecartTypeComp != null && (
-              <p className="text-sm text-[var(--color-ink-dim)]">
+              <p className="text-sm text-[var(--ink-dim)]">
                 Écart-type (composition) :{' '}
-                <span className="font-[var(--font-mono)] text-[13px] font-semibold text-[var(--color-ink)]">
+                <span className="font-[var(--font-mono)] text-[13px] font-semibold text-[var(--ink)]">
                   {stats.ecartTypeComp.toFixed(2)}
                 </span>
               </p>
             )}
 
             {saveError && (
-              <p className="rounded-[var(--radius-sm)] bg-[var(--color-danger)]/10 px-4 py-2 text-sm text-[var(--color-danger)]">
+              <p className="rounded-[var(--radius-sm)] bg-[var(--danger)]/10 px-4 py-2 text-sm text-[var(--danger)]">
                 {saveError}
               </p>
             )}

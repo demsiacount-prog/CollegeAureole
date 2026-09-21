@@ -1,17 +1,12 @@
 import { useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Lock, LogOut, Moon, Search, Sun } from 'lucide-react'
+import { LogOut, Moon, Search, Sun } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { useTheme } from '@/hooks/useTheme'
-import { fetchAnneesScolaires, activerAnneeScolaire } from '@/features/annees_scolaires/api'
 import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { useCurrentModule } from '@/routes/useModule'
 import { CommandPalette } from '@/components/ui/CommandPalette'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { useClickOutside } from '@/lib/useClickOutside'
-import { toast } from '@/components/ui/toast'
-import { extractErrorMessage } from '@/lib/api'
 import { roleLabel } from '@/lib/roles'
 
 function initials(nom: string, prenom: string) {
@@ -23,34 +18,11 @@ export function Topbar() {
   const { user, logout } = useAuth()
   const { theme, toggle: toggleTheme } = useTheme()
   const { data: annee } = useAnneeActive()
-  const { lectureSeule } = useLectureSeule()
   const module = useCurrentModule()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [anneeOpen, setAnneeOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const anneeRef = useRef<HTMLDivElement>(null)
-  const queryClient = useQueryClient()
   useClickOutside(menuRef, () => setMenuOpen(false))
-  useClickOutside(anneeRef, () => setAnneeOpen(false))
-
-  const { data: annees = [] } = useQuery({
-    queryKey: ['annees-scolaires'],
-    queryFn: fetchAnneesScolaires,
-    staleTime: 2 * 60_000,
-  })
-
-  const activerMutation = useMutation({
-    mutationFn: activerAnneeScolaire,
-    onSuccess: () => {
-      setAnneeOpen(false)
-      toast('Année scolaire activée. Les données rechargent…')
-      queryClient.invalidateQueries()
-    },
-    onError: (err: Error) => {
-      toast(extractErrorMessage(err, "Impossible d'activer cette année."), 'error')
-    },
-  })
 
   if (!user) return null
 
@@ -71,69 +43,28 @@ export function Topbar() {
         ) : null}
       </div>
 
-      {/* Année scolaire active — sélecteur (§30) */}
-      <div className="relative" ref={anneeRef}>
-        {annee ? (
-          <Tooltip content="Changer d'année scolaire">
-          <button
-            type="button"
-            onClick={() => setAnneeOpen((o) => !o)}
-            aria-expanded={anneeOpen}
-            className="flex max-w-[180px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-[9px] text-[12px] text-[var(--ink-dim)] transition-colors duration-75 hover:bg-[var(--surface-3)]"
+      {/* Année scolaire active (§30) — figée sur l'année courante */}
+      {annee ? (
+        <Tooltip content="Année scolaire active">
+          <span
+            className="flex max-w-[180px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-[9px] text-[12px] text-[var(--ink)]"
             style={{ height: '28px' }}
           >
             <span className="size-[5px] shrink-0 rounded-full bg-[var(--success)]" />
             <span className="truncate">{annee.libelle}</span>
-            {lectureSeule && (
-              <Tooltip content="Année clôturée — lecture seule">
-                <Lock className="size-3 shrink-0 text-[var(--warning)]" strokeWidth={2} />
-              </Tooltip>
-            )}
-            <ChevronDown className="size-3 shrink-0 text-[var(--ink-faint)]" strokeWidth={1.75} />
-          </button>
-          </Tooltip>
-        ) : (
-          <Tooltip content="Aucune année scolaire active">
-          <button
-            type="button"
-            onClick={() => setAnneeOpen((o) => !o)}
-            aria-expanded={anneeOpen}
-            className="flex items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-transparent px-[9px] text-[11.5px] text-[var(--warning)] transition-colors duration-75 hover:bg-[var(--surface-2)]"
+          </span>
+        </Tooltip>
+      ) : (
+        <Tooltip content="Aucune année scolaire active">
+          <span
+            className="flex items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-transparent px-[9px] text-[11.5px] text-[var(--warning)]"
             style={{ height: '28px' }}
           >
             <span className="size-[5px] shrink-0 rounded-full bg-[var(--warning)]" />
             <span className="hidden md:inline">Aucune année active</span>
-            <ChevronDown className="size-3 shrink-0" strokeWidth={1.75} />
-          </button>
-          </Tooltip>
-        )}
-        {anneeOpen && (
-          <div className="animate-fade-in absolute right-0 top-[calc(100%+8px)] z-50 min-w-[220px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)]">
-            <p className="border-b border-[var(--border)] px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-faint)]">
-              Année scolaire
-            </p>
-            {annees.length === 0 && (
-              <p className="px-3.5 py-6 text-center text-[12.5px] text-[var(--ink-faint)]">Aucune année</p>
-            )}
-            {annees.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                disabled={a.active || activerMutation.isPending}
-                onClick={() => activerMutation.mutate(a.id)}
-                className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[12.5px] transition-colors hover:bg-[var(--surface-2)] disabled:cursor-default disabled:hover:bg-transparent"
-              >
-                <span className={`size-[5px] shrink-0 rounded-full ${a.active ? 'bg-[var(--success)]' : 'bg-transparent'}`} />
-                <span className={`flex-1 truncate ${a.active ? 'font-medium text-[var(--ink)]' : 'text-[var(--ink-dim)]'}`}>
-                  {a.libelle}
-                </span>
-                {a.cloturee && <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--warning)]">Clôturée</span>}
-                {a.active && !a.cloturee && <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--success)]">Active</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          </span>
+        </Tooltip>
+      )}
 
       {/* Recherche (§40) */}
       <Tooltip content="Rechercher (Ctrl+K)">

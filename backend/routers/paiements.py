@@ -113,6 +113,11 @@ def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = 
                 ).first()
             if not ech:
                 raise HTTPException(status_code=404, detail="Échéance introuvable")
+            # FIX : cette même vérification existait déjà sur l'endpoint dédié
+            # POST /echeances/{id}/remises mais pas ici — une remise supérieure
+            # au reste dû pouvait passer sans erreur et fausser la comptabilité.
+            if remise_data.montant > ech.reste_a_payer:
+                raise HTTPException(status_code=400, detail="Remise supérieure au reste à payer")
             remise = models.Remises(
                 id_echeance=ech.id,
                 montant=remise_data.montant,
@@ -356,6 +361,12 @@ def supprimer_paiement(paiement_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Paiement introuvable")
+    # FIX : la suppression était le seul endpoint de /paiements à ne pas
+    # vérifier la clôture d'année (création et modification le font déjà) ;
+    # on pouvait donc altérer l'historique financier d'une année archivée.
+    inscription_verif = db.query(models.Inscriptions).filter(models.Inscriptions.id == p.id_inscription).first()
+    if inscription_verif and inscription_verif.annee_scolaire and inscription_verif.annee_scolaire.cloturee:
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée : suppression du paiement impossible.")
     if p.id_echeance:
         ech = db.query(models.Echeances).filter(models.Echeances.id == p.id_echeance).first()
         if ech:

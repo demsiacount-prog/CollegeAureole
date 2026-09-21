@@ -17,11 +17,8 @@ import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import type { Classe } from '@/features/shared/types'
 import { formatDate } from '@/lib/format'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 export default function ClasseListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const qc = useQueryClient()
 
   const { data: classes = [], isLoading, isError } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
@@ -116,17 +113,17 @@ export default function ClasseListPage() {
               <TableBody>
                 {filtered.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="text-[var(--color-ink)]">{c.niveau}</TableCell>
-                    <TableCell className="font-medium text-[var(--color-ink)]">{c.nom}</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{c.salle?.nom ?? '—'}</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{c.frais_inscription.toLocaleString('fr-FR')} FCFA</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{c.mensualite.toLocaleString('fr-FR')} FCFA</TableCell>
+                    <TableCell className="text-[var(--ink)]">{c.niveau}</TableCell>
+                    <TableCell className="font-medium text-[var(--ink)]">{c.nom}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{c.salle?.nom ?? '—'}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{c.frais_inscription.toLocaleString('fr-FR')} FCFA</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{c.mensualite.toLocaleString('fr-FR')} FCFA</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Tooltip content="Voir les élèves">
                           <button
                             onClick={() => setDetailId(c.id)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label="Voir les élèves"
                           >
                             <Eye size={14} strokeWidth={1.75} />
@@ -135,7 +132,7 @@ export default function ClasseListPage() {
                         {canWrite && (
                           <button
                             onClick={() => openEdit(c)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label="Modifier"
                           >
                             <Pencil size={14} strokeWidth={1.75} />
@@ -144,7 +141,7 @@ export default function ClasseListPage() {
                         {canWrite && (
                           <button
                             onClick={() => setDeleting(c)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             aria-label="Supprimer"
                           >
                             <Trash2 size={14} strokeWidth={1.75} />
@@ -178,19 +175,19 @@ export default function ClasseListPage() {
               {detail.eleves.map((e) => (
                 <div
                   key={e.matricule}
-                  className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] px-4 py-3"
+                  className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-soft)] px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-3)] text-sm font-semibold text-[var(--color-ink)]">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-sm font-semibold text-[var(--ink)]">
                       {e.nom.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-medium text-[var(--color-ink)]">{e.nom} {e.prenom}</p>
-                      <p className="text-xs text-[var(--color-ink-faint)]">Né{e.sexe === 'M' ? '' : 'e'} le {formatDate(e.date_de_naissance)}</p>
+                      <p className="font-medium text-[var(--ink)]">{e.nom} {e.prenom}</p>
+                      <p className="text-xs text-[var(--ink-faint)]">Né{e.sexe === 'M' ? '' : 'e'} le {formatDate(e.date_de_naissance)}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-xs text-[var(--color-ink-dim)]">{e.matricule}</p>
+                    <p className="font-mono text-xs text-[var(--ink-dim)]">{e.matricule}</p>
                     {e.statut === 'actif' ? (
                       <Badge tone="success">Actif</Badge>
                     ) : (

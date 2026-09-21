@@ -310,3 +310,163 @@ def test_bulletin_annuel_non_officiel_ef1(db_session):
     noms = {l["cours_nom"] for l in payload["trimestres"][0]["lignes"]}
     assert noms == {"Rédaction", "Mathématique", "Physique – Chimie"}
 
+
+def test_bulletin_utilise_classe_de_l_annee_du_trimestre(db_session):
+    """Régressions : la classe d'un bulletin est celle de l'INSCRIPTION de
+    l'année du trimestre, jamais Eleves.classe_id (classe ACTUELLE de l'élève).
+
+    Un élève qui a changé de classe depuis doit retrouver l'ancien bulletin
+    avec les coefficients et le barème de son ancienne classe.
+    """
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")  # 2025-2026
+    s = _Seed(db_session, "7ème", periode)
+    s.ajouter_note(s.cours[0][0], 16.0)
+    s.ajouter_note(s.cours[1][0], 12.0)
+    s.ajouter_note(s.cours[2][0], 10.0)
+
+    # L'élève a depuis changé de classe : classe B en 2026-2027.
+    annee2 = models.AnneesScolaires(
+        libelle="2026-2027", date_debut=date(2026, 9, 1), date_fin=date(2027, 6, 30), active=True
+    )
+    db_session.add(annee2)
+    db_session.flush()
+    classe_b = models.Classes(niveau="7ème", nom="7ème B", frais_inscription=0, mensualite=0)
+    db_session.add(classe_b)
+    db_session.flush()
+
+    # Inscription de l'élève en 2025-2026 dans la classe A : source de vérité.
+    db_session.add(models.Inscriptions(
+        matricule_eleve=s.eleve.matricule,
+        id_classe=s.classe.id,
+        id_annee_scolaire=periode.annee_scolaire_id,
+        statut="Inscrit",
+    ))
+    s.eleve.classe_id = classe_b.id
+    db_session.commit()
+
+    calcul = _calculer_bulletin(db_session, s.eleve.matricule, periode.id)
+    assert calcul["id_classe"] == s.classe.id  # classe de l'année 1, pas la B
+    details = {d["id_cours"]: d["coefficient"] for d in calcul["details"]}
+    assert details[s.cours[0][0].id] == 4.0  # coefficients de la classe A
+    # Moyenne pondérée avec les coefficients A (4, 4, 3) : (16*4+12*4+10*3)/11.
+    assert calcul["moyenne_generale"] == round(142 / 11, 2)
+
+
+def test_generation_classe_union_inscription_et_effectifs(db_session):
+    """L'effectif de génération d'une classe pour un trimestre est l'UNION des
+    inscriptions de (classe, année du trimestre) et des élèves actuellement
+    dans la classe — jamais uniquement les inscriptions, ni uniquement la
+    classe actuelle.
+
+    - élève inscrit en A pour l'année du trimestre → inclus ;
+    - élève dans A aujourd'hui mais SANS inscription de l'année (données
+      incomplètes) → inclus (régressions si on le perd) ;
+    - élève passé en classe B l'année suivante → exclu de A.
+    """
+    from schemas import BulletinGenerateClasseRequest
+    from routers.bulletins import generer_bulletins_classe
+
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")  # 2025-2026
+    annee1 = (
+        db_session.query(models.AnneesScolaires)
+        .filter(models.AnneesScolaires.id == periode.annee_scolaire_id)
+        .first()
+    )
+    s = _Seed(db_session, "4ème", periode)
+
+    # Élève 1 : inscrit en A pour l'année du trimestre.
+    db_session.add(models.Inscriptions(
+        matricule_eleve=s.eleve.matricule, id_classe=s.classe.id,
+        id_annee_scolaire=annee1.id, statut="Inscrit",
+    ))
+    s.ajouter_note(s.cours[0][0], 8.0)
+    s.ajouter_note(s.cours[1][0], 7.0)
+    s.ajouter_note(s.cours[2][0], 6.0)
+
+    # Élève 2 : dans la classe A aujourd'hui, sans inscription 2025-2026.
+    eleve2 = models.Eleves(
+        nom="Diallo", prenom="Moussa", date_de_naissance=date(2012, 1, 1),
+        lieu_de_naissance="Dakar", sexe="M", statut="actif",
+        tuteur_id=s.tuteur.id, classe_id=s.classe.id,
+    )
+    db_session.add(eleve2)
+    db_session.flush()
+    for cours, _ in s.cours:
+        db_session.add(models.Notes(
+            date=date.today(), note=8.0, matricule_eleve=eleve2.matricule,
+            id_cours=cours.id, id_classe=s.classe.id,
+            matricule_enseignant=s.enseignant.matricule, id_trimestre=periode.id,
+        ))
+
+    # Élève 3 : passé en classe B l'année suivante → ne doit pas figurer en A.
+    annee2 = models.AnneesScolaires(
+        libelle="2026-2027", date_debut=date(2026, 9, 1), date_fin=date(2027, 6, 30), active=True
+    )
+    db_session.add(annee2)
+    db_session.flush()
+    classe_b = models.Classes(niveau="4ème", nom="4ème B", frais_inscription=0, mensualite=0)
+    db_session.add(classe_b)
+    db_session.flush()
+    eleve3 = models.Eleves(
+        nom="Ka", prenom="Binta", date_de_naissance=date(2012, 2, 2),
+        lieu_de_naissance="Thiès", sexe="F", statut="actif",
+        tuteur_id=s.tuteur.id, classe_id=classe_b.id,
+    )
+    db_session.add(eleve3)
+    db_session.flush()
+    db_session.add(models.Inscriptions(
+        matricule_eleve=eleve3.matricule, id_classe=classe_b.id,
+        id_annee_scolaire=annee2.id, statut="Inscrit",
+    ))
+    db_session.commit()
+
+    resultats = generer_bulletins_classe(
+        BulletinGenerateClasseRequest(id_classe=s.classe.id, id_trimestre=periode.id), db_session
+    )
+    matricules = sorted(r.matricule_eleve for r in resultats)
+    assert s.eleve.matricule in matricules
+    assert eleve2.matricule in matricules
+    assert eleve3.matricule not in matricules
+
+
+def test_bulletin_annuel_utilise_classe_inscription_annee(db_session):
+    """Bulletin annuel : la classe affichée et les agrégats utilisent la classe
+    de l'année demandée (inscription), même après un changement de classe."""
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")
+    annee = (
+        db_session.query(models.AnneesScolaires)
+        .filter(models.AnneesScolaires.id == periode.annee_scolaire_id)
+        .first()
+    )
+    s = _Seed(db_session, "Seconde", periode)
+    s.ajouter_note(s.cours[0][0], 16.0)
+    s.ajouter_note(s.cours[1][0], 12.0)
+    s.ajouter_note(s.cours[2][0], 10.0)
+    db_session.add(models.Bulletins(
+        matricule_eleve=s.eleve.matricule, id_trimestre=periode.id, id_classe=s.classe.id,
+        moyenne_generale=12.5, rang=1, statut="PUBLIE",
+    ))
+
+    # Changement de classe l'année suivante (classe B active).
+    annee2 = models.AnneesScolaires(
+        libelle="2026-2027", date_debut=date(2026, 9, 1), date_fin=date(2027, 6, 30), active=True
+    )
+    db_session.add(annee2)
+    db_session.flush()
+    classe_b = models.Classes(niveau="Première", nom="1ère B", frais_inscription=0, mensualite=0)
+    db_session.add(classe_b)
+    db_session.flush()
+    db_session.add(models.Inscriptions(
+        matricule_eleve=s.eleve.matricule,
+        id_classe=s.classe.id,
+        id_annee_scolaire=annee.id,
+        statut="Inscrit",
+    ))
+    s.eleve.classe_id = classe_b.id
+    db_session.commit()
+
+    payload = bulletin_annuel(db_session, s.eleve.matricule, annee.id)
+    assert payload["classe"]["id"] == s.classe.id
+    assert payload["classe"]["nom"] == s.classe.nom
+    assert payload["officiel"] is False  # Seconde → liste dynamique
+

@@ -20,7 +20,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  *  Base : 30px de haut, radius-md, Inter 12.5px/500, transition 80ms. */
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-[var(--halo)] text-[var(--halo-ink)] hover:bg-[var(--halo-bright)] active:bg-[var(--halo-dim)]',
+    'bg-[var(--action)] text-white hover:bg-[var(--action-dk)] active:bg-[var(--action-dk)]',
   secondary:
     'bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--border)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-3)]',
   ghost:

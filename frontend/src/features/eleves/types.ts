@@ -32,6 +32,11 @@ export interface Eleve {
   updated_at: string
   tuteur: Tuteur
   classe: Classe | null
+  /** Classe de l'inscription de l'année de consultation (`id_annee_scolaire`),
+   * si fournie ; sinon null. */
+  classe_annee?: Classe | null
+  /** Statut de l'inscription de l'année de consultation, si fournie ; sinon null. */
+  statut_annee?: string | null
 }
 
 export interface EleveCreateInput {

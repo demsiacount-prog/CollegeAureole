@@ -53,7 +53,7 @@ export function FicheSuiviSection({ matricule }: { matricule: string }) {
   if (isError || !fiche) {
     return (
       <Card className="mb-4 w-full p-4">
-        <p className="text-sm text-[var(--color-ink-dim)]">
+        <p className="text-sm text-[var(--ink-dim)]">
           {extractErrorMessage(error, 'Impossible de charger la fiche de suivi.')}
         </p>
       </Card>
@@ -69,45 +69,45 @@ function ContenuFiche({ fiche }: { fiche: FicheSuivi }) {
   return (
     <Card className="mb-4 w-full p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-[var(--color-ink)]">Fiche de suivi et de transfert</p>
+        <p className="text-sm font-medium text-[var(--ink)]">Fiche de suivi et de transfert</p>
         {fiche.orientation && <Badge tone="info">Orientation : {fiche.orientation}</Badge>}
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Élève : </span>
+      <div className="mb-4 grid grid-cols-1 gap-1.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Élève : </span>
           {fiche.nom} {fiche.prenom}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Classe : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Classe : </span>
           {fiche.classe ?? '—'}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Année : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Année : </span>
           {fiche.annee_label}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Naissance : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Naissance : </span>
           {fiche.date_de_naissance ? formatDate(fiche.date_de_naissance) : '—'} · {fiche.lieu_de_naissance}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Sexe : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Sexe : </span>
           {fiche.sexe}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Adresse : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Adresse : </span>
           {fiche.adresse ?? '—'}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Père : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Père : </span>
           {fiche.pere ?? '—'}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Mère : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Mère : </span>
           {fiche.mere ?? '—'}
         </p>
-        <p className="text-[11.5px] text-[var(--color-ink)]">
-          <span className="text-[var(--color-ink-faint)]">Absences : </span>
+        <p className="text-[11.5px] text-[var(--ink)]">
+          <span className="text-[var(--ink-faint)]">Absences : </span>
           {fiche.nb_absences} (dont {fiche.nb_absences_injustifiees} injustifiées)
         </p>
       </div>
@@ -286,7 +286,7 @@ function ContenuFiche({ fiche }: { fiche: FicheSuivi }) {
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-faint)]">
             Remarques
           </p>
-          <ul className="list-inside list-disc space-y-1 text-[12px] text-[var(--color-ink-dim)]">
+          <ul className="list-inside list-disc space-y-1 text-[12px] text-[var(--ink-dim)]">
             {fiche.remarques.map((r) => (
               <li key={r}>{r}</li>
             ))}

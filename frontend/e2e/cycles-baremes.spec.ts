@@ -70,15 +70,13 @@ test.describe('Barèmes et coefficients par cycle', () => {
         nom: 'Ponderee', prenom: 'EleveBar', date_de_naissance: '2009-03-03',
         lieu_de_naissance: 'Bamako', sexe: 'M', statut: 'actif',
         tuteur_id: (await tuteur.json()).id,
+        classe_id: idClasse,
       })
       expect(eleve.status()).toBe(201)
       matriculeEleve = (await eleve.json()).matricule
+
       const annees = await (await request.get(`${API_BASE}/api/anneesScolaires/`, auth)).json()
       const anneeActive = annees.find((a: { active: boolean }) => a.active)
-      const insc = await post('/api/inscriptions/', {
-        matricule_eleve: matriculeEleve, id_classe: idClasse, id_annee_scolaire: anneeActive.id,
-      })
-      expect(insc.status()).toBe(201)
 
       // Période TRIMESTRE du second cycle + notes /20.
       const periodes = await (await request.get(`${API_BASE}/api/trimestres/`, auth)).json()
@@ -181,15 +179,12 @@ test.describe('Barèmes et coefficients par cycle', () => {
         nom: 'Arithmetique', prenom: 'EleveBar', date_de_naissance: '2013-09-09',
         lieu_de_naissance: 'Bamako', sexe: 'F', statut: 'actif',
         tuteur_id: (await tuteur.json()).id,
+        classe_id: idClasse,
       })
       expect(eleve.status()).toBe(201)
       matriculeEleve = (await eleve.json()).matricule
       const annees = await (await request.get(`${API_BASE}/api/anneesScolaires/`, auth)).json()
       const anneeActive = annees.find((a: { active: boolean }) => a.active)
-      const insc = await post('/api/inscriptions/', {
-        matricule_eleve: matriculeEleve, id_classe: idClasse, id_annee_scolaire: anneeActive.id,
-      })
-      expect(insc.status()).toBe(201)
 
       const periodes = await (await request.get(`${API_BASE}/api/trimestres/`, auth)).json()
       const composition = periodes.find(

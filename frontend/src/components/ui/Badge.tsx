@@ -6,11 +6,11 @@ type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
 export type BadgeTone = Tone
 
 const toneClasses: Record<Tone, string> = {
-  neutral: 'bg-[var(--color-surface-3)] text-[var(--color-ink-dim)]',
-  success: 'bg-[var(--color-success-wash)] text-[var(--color-success)]',
-  warning: 'bg-[var(--color-warning-wash)] text-[var(--color-warning)]',
-  danger: 'bg-[var(--color-danger-wash)] text-[var(--color-danger)]',
-  info: 'bg-[var(--color-info-wash)] text-[var(--color-info)]',
+  neutral: 'bg-[var(--surface-3)] text-[var(--ink-dim)]',
+  success: 'bg-[var(--success-w)] text-[var(--success)]',
+  warning: 'bg-[var(--warning-w)] text-[var(--warning)]',
+  danger: 'bg-[var(--danger-w)] text-[var(--danger)]',
+  info: 'bg-[var(--info-w)] text-[var(--info)]',
 }
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {

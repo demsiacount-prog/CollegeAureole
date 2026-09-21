@@ -146,7 +146,7 @@ class TestCreationNote:
         }, headers=auth_headers)
         assert resp.status_code == 422
 
-    def test_doublon_409(self, client, auth_headers, db_session):
+    def test_doublon_devient_upsert(self, client, auth_headers, db_session):
         ctx = _setup_eleve_cours(db_session, client, auth_headers)
         payload = {
             "matricule_eleve": ctx["eleve"]["matricule"],
@@ -156,8 +156,18 @@ class TestCreationNote:
             "note": 12.0,
         }
         client.post("/api/notes/", json=payload, headers=auth_headers)
+        # Double soumission (auto-enregistrement blur + sauvegarde manuelle) :
+        # l'upsert met à jour la note existante au lieu de lever un conflit.
+        payload["note"] = 14.0
         resp = client.post("/api/notes/", json=payload, headers=auth_headers)
-        assert resp.status_code == 409
+        assert resp.status_code == 201
+        assert resp.json()["note"] == 14.0
+        notes = client.get("/api/notes/", params={
+            "matricule_eleve": ctx["eleve"]["matricule"],
+            "id_cours": ctx["cours"]["id"],
+        }, headers=auth_headers).json()
+        assert len(notes) == 1
+        assert notes[0]["note"] == 14.0
 
     def test_jardin_refuse_400(self, client, auth_headers, db_session):
         ctx = _setup_eleve_cours(db_session, client, auth_headers, niveau="Petite Section")
@@ -376,7 +386,7 @@ class TestBulkNotes:
         ]}, headers=auth_headers)
         assert resp.status_code == 422
 
-    def test_bulk_doublon_409(self, client, auth_headers, db_session):
+    def test_bulk_doublon_upsert(self, client, auth_headers, db_session):
         ctx = _setup_eleve_cours(db_session, client, auth_headers)
         client.post("/api/notes/", json={
             "matricule_eleve": ctx["eleve"]["matricule"],
@@ -385,10 +395,16 @@ class TestBulkNotes:
             "matricule_enseignant": ctx["enseignant"]["matricule"],
             "note": 10.0,
         }, headers=auth_headers)
+        # Lot : note déjà créée (id inconnu, auto-enregistrement en vol) → l'upsert
+        # la met à jour au lieu de lever un conflit.
         resp = client.post("/api/notes/bulk", json={"notes": [
-            self._payload(ctx, 12.0),  # même (élève, cours, trimestre=null) → doublon
+            self._payload(ctx, 12.0),  # même (élève, cours, trimestre=null)
         ]}, headers=auth_headers)
-        assert resp.status_code == 409
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["creees"] == 0
+        assert body["modifiees"] == 1
+        assert body["notes"][0]["note"] == 12.0
 
 
 class TestSuppressionNote:

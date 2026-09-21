@@ -349,6 +349,18 @@ def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
     insc = db.query(models.Inscriptions).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
         raise HTTPException(status_code=404, detail="Inscription introuvable")
+    # FIX BUG CRITIQUE (perte de données) : Inscriptions.paiements et
+    # Inscriptions.echeances sont en cascade="all, delete-orphan". Supprimer
+    # une inscription effaçait donc silencieusement tout son historique de
+    # paiements et d'échéances, y compris sur une année clôturée.
+    if insc.annee_scolaire and insc.annee_scolaire.cloturee:
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée : suppression de l'inscription impossible.")
+    nb_paiements = db.query(models.Paiements).filter(models.Paiements.id_inscription == inscription_id).count()
+    if nb_paiements:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Impossible de supprimer cette inscription : {nb_paiements} paiement(s) y sont rattaché(s).",
+        )
     db.delete(insc)
     db.commit()
     return None

@@ -1,7 +1,7 @@
 import logging
 from datetime import date
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -10,11 +10,34 @@ from exceptions import ConflictError
 from migrations import migrer_schema
 from routers.etablissement import enregistrer_logo
 from security import require_admin
-from services import initialisation
+from services import initialisation, sauvegardes
 import models
 
 logger = logging.getLogger("college_aureole")
-router = APIRouter(prefix="/api/setup", tags=["Setup"])
+
+HOSTS_LOCAUX = {"127.0.0.1", "::1", "localhost"}
+
+
+def exiger_localhost(request: Request) -> None:
+    """Réserve l'initialisation au poste local.
+
+    La documentation annonce ces endpoints « accessible uniquement depuis le
+    localhost », mais aucun contrôle d'IP n'était implémenté : n'importe qui
+    sur le réseau pouvait lancer /api/setup/* tant que l'application n'était
+    pas initialisée (création d'un compte admin). On verrouille désormais
+    les appels hors machine locale (et hors TestClient des tests backend).
+    """
+    hote = request.client.host if request.client else ""
+    if hote in HOSTS_LOCAUX or hote == "testclient":
+        return
+    raise HTTPException(status_code=403, detail="Accès réservé au poste local")
+
+
+router = APIRouter(
+    prefix="/api/setup",
+    tags=["Setup"],
+    dependencies=[Depends(exiger_localhost)],
+)
 
 # Tables contenant des données utilisateur : si au moins une est non vide,
 # la réinitialisation de la base a un intérêt (bouton visible).
@@ -182,11 +205,20 @@ def reset_database(
     """Vide toute la base et recrée le schéma : retour à la configuration initiale.
 
     Dangereux par nature (supprime toutes les données), accessible uniquement
-    depuis le localhost, et requiert une confirmation explicite.
+    depuis le localhost, et requiert une confirmation explicite. FIX : un
+    snapshot complet (sauvegarde/) est toujours écrit AVANT la destruction —
+    l'opération est annulée si le snapshot ne peut pas être écrit.
     """
     if not payload.confirm:
         raise HTTPException(status_code=400, detail="Confirmation requise")
-    logger.warning("Réinitialisation complète de la base demandée.")
+    try:
+        sauvegardes.sauvegarde_avant_destruction(db, "réinitialisation")
+    except OSError:
+        raise HTTPException(
+            status_code=500,
+            detail="Impossible d'écrire la sauvegarde de sécurité avant réinitialisation : opération annulée.",
+        )
+    logger.warning("Réinitialisation complète de la base demandée (sauvegarde de sécurité écrite).")
     db.close()
     Base.metadata.drop_all(bind=engine)
     _supprimer_tampon_alembic()
@@ -222,6 +254,15 @@ def purge_donnees(
         raise HTTPException(status_code=400, detail="Confirmation requise")
     if x_confirm != PURGE_TOKEN:
         raise HTTPException(status_code=400, detail="Confirmation requise")
+
+    # FIX : snapshot complet avant destruction (annulé si écriture impossible).
+    try:
+        sauvegardes.sauvegarde_avant_destruction(db, "purge des données")
+    except OSError:
+        raise HTTPException(
+            status_code=500,
+            detail="Impossible d'écrire la sauvegarde de sécurité avant purge : opération annulée.",
+        )
 
     compte = {
         "id": utilisateur_courant.id,

@@ -66,7 +66,7 @@ export function FicheMensuelleSection({
   return (
     <Card className="mb-4 w-full p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-medium text-[var(--color-ink)]">Fiche de notes mensuelle</p>
+        <p className="text-sm font-medium text-[var(--ink)]">Fiche de notes mensuelle</p>
         <Select
           label="Période"
           value={periodeId}

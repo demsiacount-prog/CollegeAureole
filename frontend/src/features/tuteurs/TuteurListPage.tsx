@@ -17,14 +17,11 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchTuteurs, fetchTuteursTotal, deleteTuteur } from './api'
 import { TuteurFormDrawer } from './TuteurFormDrawer'
 import type { Tuteur } from '@/features/shared/types'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 const PAGE_SIZE = 50
 
 export default function TuteurListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -119,7 +116,7 @@ export default function TuteurListPage() {
                       <div className="flex items-center gap-3">
                         <Avatar nom={t.nom} prenom={t.prenom} size="sm" />
                         <div>
-                          <Link to={`/app/tuteurs/${t.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-action-bright)]">
+                          <Link to={`/app/tuteurs/${t.id}`} className="font-medium text-[var(--ink)] hover:text-[var(--action-bright)]">
                             {t.prenom} {t.nom}
                           </Link>
                         </div>
@@ -128,13 +125,13 @@ export default function TuteurListPage() {
                     <TableCell>
                       <Badge tone="neutral">{t.profession || '—'}</Badge>
                     </TableCell>
-                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{t.telephone}</TableCell>
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">{t.telephone}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
                         {canWrite && (
                           <button
                             onClick={() => openEdit(t)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label={`Modifier ${t.prenom} ${t.nom}`}
                           >
                             <Pencil strokeWidth={1.75} className="size-4" />
@@ -143,7 +140,7 @@ export default function TuteurListPage() {
                         {canDelete && (
                           <button
                             onClick={() => setDeleting(t)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             aria-label={`Supprimer ${t.prenom} ${t.nom}`}
                           >
                             <Trash2 strokeWidth={1.75} className="size-4" />

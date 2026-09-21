@@ -71,7 +71,7 @@ export default function SalleFormDrawer({ salle, open, onClose, onSubmit }: Prop
           />
         </div>
 
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full">
             {isEdit ? 'Mettre à jour' : 'Créer'}
           </Button>

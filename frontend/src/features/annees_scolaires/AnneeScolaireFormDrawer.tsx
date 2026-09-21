@@ -76,7 +76,7 @@ export default function AnneeScolaireFormDrawer({ open, onClose, onSubmit }: Pro
           />
         </div>
 
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full">
             Créer
           </Button>

@@ -35,7 +35,7 @@ const ROLE_BADGE_TONE: Record<string, 'success' | 'info' | 'neutral'> = {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-4 border-b border-[var(--color-border-soft)] pb-2 text-sm font-semibold text-[var(--color-ink)]">
+    <h3 className="mb-4 border-b border-[var(--border-soft)] pb-2 text-sm font-semibold text-[var(--ink)]">
       {children}
     </h3>
   )
@@ -87,7 +87,7 @@ export default function UtilisateursTab() {
 
   if (isError) {
     return (
-      <div className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-wash)] px-4 py-3 text-sm text-[var(--color-danger)]">
+      <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger-w)] px-4 py-3 text-sm text-[var(--danger)]">
         Impossible de charger les utilisateurs.
       </div>
     )
@@ -126,11 +126,11 @@ export default function UtilisateursTab() {
                   const estMoi = u.id === user?.id
                   return (
                     <TableRow key={u.id}>
-                      <TableCell className="font-medium text-[var(--color-ink)]">
+                      <TableCell className="font-medium text-[var(--ink)]">
                         {u.prenom} {u.nom}
-                        {estMoi && <span className="ml-2 text-xs font-normal text-[var(--color-ink-faint)]">(vous)</span>}
+                        {estMoi && <span className="ml-2 text-xs font-normal text-[var(--ink-faint)]">(vous)</span>}
                       </TableCell>
-                      <TableCell className="text-[var(--color-ink-dim)]">{u.email}</TableCell>
+                      <TableCell className="text-[var(--ink-dim)]">{u.email}</TableCell>
                       <TableCell>
                         <Badge tone={ROLE_BADGE_TONE[u.role] ?? 'neutral'}>
                           {ROLE_LABELS[u.role] ?? u.role}
@@ -139,7 +139,7 @@ export default function UtilisateursTab() {
                       <TableCell>
                         {u.actif ? <Badge tone="success">Actif</Badge> : <Badge tone="danger">Désactivé</Badge>}
                       </TableCell>
-                      <TableCell className="text-[var(--color-ink-dim)]">
+                      <TableCell className="text-[var(--ink-dim)]">
                         {new Date(u.created_at).toLocaleDateString('fr-FR')}
                       </TableCell>
                       <TableCell className="text-right">

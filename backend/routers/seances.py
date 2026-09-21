@@ -13,7 +13,7 @@ def _chevauchement(deb1, fin1, deb2, fin2) -> bool:
     return deb1 < fin2 and deb2 < fin1
 
 
-def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = None):
+def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = None, id_annee_scolaire: Optional[int] = None):
     cours = db.query(models.Cours).filter(models.Cours.id == payload.id_cours).first()
     if not cours:
         raise HTTPException(status_code=404, detail="Cours introuvable")
@@ -21,13 +21,26 @@ def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = N
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
 
+    # Année de référence : portée par le payload (création) ou par la séance que
+    # l'on modifie (SeanceUpdate ne permet pas de changer d'année).
+    annee_id = getattr(payload, "id_annee_scolaire", None) or id_annee_scolaire
+    if annee_id is None:
+        raise HTTPException(status_code=400, detail="Année scolaire manquante")
+
     if payload.id_salle:
         salle = db.query(models.Salles).filter(models.Salles.id == payload.id_salle).first()
         if not salle:
             raise HTTPException(status_code=404, detail="Salle introuvable")
         if salle.capacite is not None:
-            effectif = db.query(models.Eleves).filter(
-                models.Eleves.classe_id == payload.id_classe,
+            # Effectif de la classe POUR l'année de la séance (inscriptions),
+            # pas Eleves.classe_id (effectif d'une autre année, faussé en début
+            # d'année ou après un changement de classe).
+            effectif = db.query(models.Inscriptions).join(
+                models.Eleves,
+                models.Eleves.matricule == models.Inscriptions.matricule_eleve,
+            ).filter(
+                models.Inscriptions.id_classe == payload.id_classe,
+                models.Inscriptions.id_annee_scolaire == annee_id,
                 models.Eleves.statut == "actif",
             ).count()
             if effectif > salle.capacite:
@@ -37,7 +50,7 @@ def _verifier_conflits(db: Session, payload, id_seance_exclue: Optional[int] = N
                 )
 
     seances_du_jour = db.query(models.Seances).filter(
-        models.Seances.id_annee_scolaire == payload.id_annee_scolaire,
+        models.Seances.id_annee_scolaire == annee_id,
         models.Seances.jour_semaine == payload.jour_semaine,
         models.Seances.id != (id_seance_exclue or -1),
     ).all()
@@ -107,9 +120,14 @@ def update_seance(seance_id: int, payload: schemas.SeanceUpdate, db: Session = D
     seance = db.query(models.Seances).filter(models.Seances.id == seance_id).first()
     if not seance:
         raise HTTPException(status_code=404, detail="Séance introuvable")
-    _verifier_conflits(db, payload, id_seance_exclue=seance_id)
+    # SeanceUpdate est partiel : on applique les champs fournis PUIS on vérifie
+    # les conflits et la capacité sur la séance fusionnée (cours/classe/année
+    # inchangés si absents du payload, année impossible à changer).
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(seance, key, value)
+    _verifier_conflits(
+        db, seance, id_seance_exclue=seance_id, id_annee_scolaire=seance.id_annee_scolaire
+    )
     db.commit()
     db.refresh(seance)
     return seance

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
@@ -84,15 +84,16 @@ def activer_annee_scolaire(
     db: Session = Depends(get_db),
     _admin: models.Utilisateurs = Depends(require_admin),
 ):
-    """Sélectionne l'année à consulter.
+    """Sélectionne l'année de travail courante.
 
-    Une année clôturée peut être (re)activée pour être **consultée en lecture
-    seule** : toutes les écritures restent bloquées par leur garde `cloturee`,
-    mais on peut y revenir après sa clôture pour consulter les données.
-    """
+    Une année **clôturée ne peut plus être (ré)activée** : elle est archivée
+    et ne doit plus être consultable. Toutes les écritures restent par ailleurs
+    bloquées par leur garde `cloturee`."""
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == annee_id).first()
     if not annee:
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
+    if annee.cloturee:
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée : consultation impossible.")
     db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
     annee.active = True
     db.commit()

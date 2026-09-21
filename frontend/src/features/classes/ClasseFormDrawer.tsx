@@ -143,7 +143,7 @@ export function ClasseFormDrawer({ open, onClose, classe }: Props) {
         error={errors.mensualite}
       />
       {error && (
-        <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+        <p className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
           {error}
         </p>
       )}

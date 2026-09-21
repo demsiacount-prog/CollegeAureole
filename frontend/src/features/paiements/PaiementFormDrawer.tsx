@@ -172,13 +172,13 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} noValidate className="flex flex-col h-full">
         <div className="space-y-4">
           {!isEdit && (
-            <div className="flex gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-1">
+            <div className="flex gap-2 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface-2)] p-1">
               <button
                 type="button"
                 className={`flex-1 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'individuel'
-                    ? 'bg-[var(--color-action)] text-[var(--color-ink)]'
-                    : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
+                    ? 'bg-[var(--action)] text-[var(--ink)]'
+                    : 'text-[var(--ink-dim)] hover:bg-[var(--surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('individuel')}
               >
@@ -188,8 +188,8 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                 type="button"
                 className={`flex-1 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
                   typePaiement === 'groupe'
-                    ? 'bg-[var(--color-action)] text-[var(--color-ink)]'
-                    : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)]'
+                    ? 'bg-[var(--action)] text-[var(--ink)]'
+                    : 'text-[var(--ink-dim)] hover:bg-[var(--surface-3)]'
                 }`}
                 onClick={() => setTypePaiement('groupe')}
               >
@@ -220,24 +220,24 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
               )}
 
               {!isEdit && inscriptionId && (
-                <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-3">
-                  <p className="text-xs font-medium text-[var(--color-ink-dim)]">Échéances impayées</p>
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface-2)] p-3">
+                  <p className="text-xs font-medium text-[var(--ink-dim)]">Échéances impayées</p>
                   {loadingEcheances ? (
                     <div className="mt-2 flex justify-center"><Spinner /></div>
                   ) : echeancesImpayees.length === 0 ? (
-                    <p className="mt-1 text-sm text-[var(--color-ink-faint)]">Toutes les échéances sont soldées.</p>
+                    <p className="mt-1 text-sm text-[var(--ink-faint)]">Toutes les échéances sont soldées.</p>
                   ) : (
                     <ul className="mt-2 space-y-1">
                       {echeancesImpayees.map((ech) => (
                         <li key={ech.id} className="flex items-center justify-between text-sm">
-                          <span className="text-[var(--color-ink)]">
+                          <span className="text-[var(--ink)]">
                             {ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois}
                           </span>
                           <div className="flex items-center gap-2">
                             {ech.total_remises > 0 && (
-                              <span className="text-xs text-[var(--color-success)]">-{formatMontant(ech.total_remises)}</span>
+                              <span className="text-xs text-[var(--success)]">-{formatMontant(ech.total_remises)}</span>
                             )}
-                            <span className="font-medium text-[var(--color-ink)]">{formatMontant(ech.reste_a_payer)}</span>
+                            <span className="font-medium text-[var(--ink)]">{formatMontant(ech.reste_a_payer)}</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -251,7 +251,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                     </ul>
                   )}
                   {resteGlobal > 0 && (
-                    <p className="mt-2 border-t border-[var(--color-border-soft)] pt-2 text-sm font-medium text-[var(--color-ink)]">
+                    <p className="mt-2 border-t border-[var(--border-soft)] pt-2 text-sm font-medium text-[var(--ink)]">
                       Reste total : {formatMontant(resteGlobal)}
                     </p>
                   )}
@@ -260,13 +260,13 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
 
               {!isEdit && (
               <div>
-                <label className="block text-sm font-medium text-[var(--color-ink-dim)]">Mois à payer</label>
+                <label className="block text-sm font-medium text-[var(--ink-dim)]">Mois à payer</label>
                 {!inscriptionId ? (
-                  <p className="mt-1 text-sm text-[var(--color-ink-faint)]">Sélectionnez d'abord un élève.</p>
+                  <p className="mt-1 text-sm text-[var(--ink-faint)]">Sélectionnez d'abord un élève.</p>
                 ) : loadingEcheances ? (
                   <div className="mt-2 flex justify-center"><Spinner /></div>
                 ) : echeancesImpayees.length === 0 ? (
-                  <p className="mt-1 text-sm text-[var(--color-ink-faint)]">Toutes les échéances sont soldées.</p>
+                  <p className="mt-1 text-sm text-[var(--ink-faint)]">Toutes les échéances sont soldées.</p>
                 ) : (
                   <div className="mt-1.5 space-y-1.5">
                     {echeancesImpayees.map((ech) => {
@@ -279,15 +279,15 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                               type="checkbox"
                               checked={checked}
                               onChange={() => toggleEcheance(ech.id)}
-                              className="accent-[var(--color-action)]"
+                              className="accent-[var(--action)]"
                             />
-                            <span className="flex-1 text-sm text-[var(--color-ink)]">
+                            <span className="flex-1 text-sm text-[var(--ink)]">
                               {ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois}
                             </span>
                             {ech.total_remises > 0 && (
-                              <span className="text-xs text-[var(--color-success)]">-{formatMontant(ech.total_remises)}</span>
+                              <span className="text-xs text-[var(--success)]">-{formatMontant(ech.total_remises)}</span>
                             )}
-                            <span className="text-sm font-medium text-[var(--color-ink)]">
+                            <span className="text-sm font-medium text-[var(--ink)]">
                               {formatMontant(ech.reste_a_payer)}
                             </span>
                           </div>
@@ -310,7 +310,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                                     setRemisesParEcheance((prev) => { const n = { ...prev }; delete n[ech.id]; return n })
                                   }
                                 }}
-                                className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
+                                className="w-28 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface)] px-2 py-0.5 text-xs"
                               />
                               <input
                                 type="text"
@@ -324,14 +324,14 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                                     }))
                                   }
                                 }}
-                                className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-2 py-0.5 text-xs"
+                                className="flex-1 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface)] px-2 py-0.5 text-xs"
                               />
                             </div>
                           )}
                         </div>
                       )
                     })}
-                    <p className="pt-1 text-xs text-[var(--color-ink-faint)]">
+                    <p className="pt-1 text-xs text-[var(--ink-faint)]">
                       Aucun mois coché = paiement appliqué aux prochaines échéances par défaut.
                     </p>
                   </div>
@@ -388,7 +388,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                 required
                 error={errors.montant}
               />
-              <p className="text-xs text-[var(--color-ink-faint)]">
+              <p className="text-xs text-[var(--ink-faint)]">
                 Le montant sera divisé équitablement entre les enfants et appliqué aux échéances les plus anciennes.
               </p>
             </>
@@ -420,7 +420,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
           />
 
           {error && (
-            <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+            <p className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
               {error}
             </p>
           )}

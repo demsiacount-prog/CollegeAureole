@@ -14,12 +14,9 @@ import { useDocuments } from '@/features/documents/hooks'
 import { formatDate } from '@/lib/format'
 import { fetchEnseignantDossier } from './api'
 import EnseignantFormDrawer from './EnseignantFormDrawer'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 export default function EnseignantDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: dossier, isLoading, isError, refetch } = useQuery({
@@ -168,9 +165,9 @@ function HistoriqueTab({ historique }: { historique: import('./types').AnneeHist
     <div className="flex flex-col gap-4">
       {historique.map((h) => (
         <Card key={h.annee_scolaire?.id ?? 'none'} className="overflow-hidden">
-          <div className="border-b border-[var(--color-border-soft)] px-5 py-3">
+          <div className="border-b border-[var(--border-soft)] px-5 py-3">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-[var(--color-ink)]">
+              <span className="font-medium text-[var(--ink)]">
                 {h.annee_scolaire?.libelle ?? 'Année inconnue'}
               </span>
               {h.annee_scolaire?.active && <Badge tone="success">Active</Badge>}
@@ -189,16 +186,16 @@ function HistoriqueTab({ historique }: { historique: import('./types').AnneeHist
               <TableBody>
                 {h.affectations.map((a, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-[var(--color-ink)]">
+                    <TableCell className="text-[var(--ink)]">
                       <span className="flex items-center gap-1.5">
-                        <BookOpen size={14} strokeWidth={1.75} className="text-[var(--color-ink-faint)]" />
+                        <BookOpen size={14} strokeWidth={1.75} className="text-[var(--ink-faint)]" />
                         {a.cours.nom}
                       </span>
                     </TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">
+                    <TableCell className="text-[var(--ink-dim)]">
                       {a.classe ? `${a.classe.niveau} — ${a.classe.nom}` : '—'}
                     </TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{a.cours.volume_horaire}h</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{a.cours.volume_horaire}h</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

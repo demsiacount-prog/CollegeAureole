@@ -5,7 +5,7 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={clsx(
-        'rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]',
+        'rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]',
         className,
       )}
       {...rest}
@@ -20,7 +20,7 @@ export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement
 export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={clsx('text-[15px] font-medium tracking-tight text-[var(--color-ink)]', className)}
+      className={clsx('text-[15px] font-medium tracking-tight text-[var(--ink)]', className)}
       {...rest}
     />
   )

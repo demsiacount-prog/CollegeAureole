@@ -23,7 +23,9 @@ class MoyenneTrimestre(BaseModel):
 
 class InscriptionBase(BaseModel):
     matricule_eleve: str = Field(min_length=1, max_length=20)
-    id_classe: int
+    # None = pré-inscription : un élève inscrit dans l'année sans classe encore
+    # affectée. L'affectation (changement d'id_classe) se fait ensuite.
+    id_classe: Optional[int] = None
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
     nb_redoublements: int = Field(default=0, ge=0, le=20)

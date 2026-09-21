@@ -382,7 +382,7 @@ export function PdfViewerModal({
     <div ref={rootRef} className={fullscreen ? 'pdfv-root pdfv-fullscreen' : 'pdfv-root'}>
       <div className="pdfv-chrome no-print">
         <div className="pdfv-title">
-          <FileWarning size={15} strokeWidth={1.75} className="shrink-0 text-[var(--color-ink-faint)]" />
+          <FileWarning size={15} strokeWidth={1.75} className="shrink-0 text-[var(--ink-faint)]" />
           <span title={filename}>{filename}</span>
         </div>
 
@@ -540,7 +540,7 @@ export function PdfViewerModal({
         )}
         {phase === 'erreur' && (
           <div className="pdfv-center">
-            <FileWarning size={34} strokeWidth={1.5} className="text-[var(--color-ink-faint)]" />
+            <FileWarning size={34} strokeWidth={1.5} className="text-[var(--ink-faint)]" />
             <span className="pdfv-error">Impossible d'afficher ce PDF.</span>
             <span className="max-w-sm text-center text-xs">{erreur}</span>
             {onDownload && (

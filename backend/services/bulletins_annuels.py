@@ -109,16 +109,34 @@ def _rang_annuel(moyennes: dict, matricule: str) -> Optional[int]:
 
 
 def bulletin_annuel(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> dict:
-    """Construit la charge utile du bulletin annuel d'un élève."""
+    """Construit la charge utile du bulletin annuel d'un élève.
+
+    La classe de référence est celle de l'INSCRIPTION de l'année demandée,
+    jamais Eleves.classe_id seul (classe actuelle, fausse pour les années
+    antérieures après un changement de classe). Repli : classe actuelle quand
+    aucune inscription n'existe (données anciennes).
+    """
     eleve = db.query(models.Eleves).filter(models.Eleves.matricule == matricule_eleve).first()
     if not eleve:
         raise ValueError("Élève introuvable")
-    if not eleve.classe_id:
-        raise ValueError("Aucune classe pour cet élève")
 
     annee = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == id_annee_scolaire).first()
     if not annee:
         raise ValueError("Année scolaire introuvable")
+
+    id_classe_annee = eleve.classe_id
+    inscription_annee = (
+        db.query(models.Inscriptions)
+        .filter(
+            models.Inscriptions.matricule_eleve == eleve.matricule,
+            models.Inscriptions.id_annee_scolaire == id_annee_scolaire,
+        )
+        .first()
+    )
+    if inscription_annee is not None and inscription_annee.id_classe is not None:
+        id_classe_annee = inscription_annee.id_classe
+    if id_classe_annee is None:
+        raise ValueError("Aucune classe pour cet élève")
 
     trimestres = (
         db.query(models.Trimestres)
@@ -132,7 +150,7 @@ def bulletin_annuel(db: Session, matricule_eleve: str, id_annee_scolaire: int) -
     if not trimestres:
         return {
             "eleve": {"matricule": eleve.matricule, "nom": eleve.nom, "prenom": eleve.prenom},
-            "classe": {"id": eleve.classe_id, "niveau": "", "nom": ""},
+            "classe": {"id": id_classe_annee, "niveau": "", "nom": ""},
             "annee_libelle": annee.libelle,
             "bareme": 20,
             "trimestres": [],
@@ -140,7 +158,7 @@ def bulletin_annuel(db: Session, matricule_eleve: str, id_annee_scolaire: int) -
         }
 
     ids_trimestres = [t.id for t in trimestres]
-    moyennes_annuelles = _moyennes_annuelles_classe(db, eleve.classe_id, ids_trimestres)
+    moyennes_annuelles = _moyennes_annuelles_classe(db, id_classe_annee, ids_trimestres)
 
     blocs = []
     for trimestre in trimestres:
@@ -152,7 +170,7 @@ def bulletin_annuel(db: Session, matricule_eleve: str, id_annee_scolaire: int) -
             )
             .first()
         )
-        id_classe = bulletin.id_classe if bulletin else eleve.classe_id
+        id_classe = bulletin.id_classe if bulletin else id_classe_annee
         classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
         niveau = classe.niveau if classe else ""
         bareme = bareme_niveau(niveau) if classe else 20
@@ -275,12 +293,12 @@ def bulletin_annuel(db: Session, matricule_eleve: str, id_annee_scolaire: int) -
     mention = appreciation_for_moyenne(moyenne_annuelle, bareme) if moyenne_annuelle is not None else None
     decision = _decision(moyenne_annuelle, bareme)
 
-    classe = classe_actuelle(db, eleve)
+    classe = db.query(models.Classes).filter(models.Classes.id == id_classe_annee).first()
 
     return {
         "eleve": {"matricule": eleve.matricule, "nom": eleve.nom, "prenom": eleve.prenom},
         "classe": {
-            "id": eleve.classe_id,
+            "id": id_classe_annee,
             "niveau": classe.niveau if classe else "",
             "nom": classe.nom if classe else "",
         },
@@ -302,7 +320,3 @@ def _decision(moyenne: Optional[float], bareme: int) -> str:
     if moyenne >= bareme / 2:
         return "Admis en classe supérieure"
     return "Redouble la classe"
-
-
-def classe_actuelle(db: Session, eleve) -> Optional[models.Classes]:
-    return db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()

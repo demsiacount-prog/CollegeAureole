@@ -12,10 +12,14 @@ interface FormFieldProps {
 export function FormField({ label, required, error, hint, children }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-[5px]">
-      <label className="text-[12px] font-medium text-[var(--ink-dim)]">
-        {label}
-        {required && <span className="ml-[2px] text-[var(--danger)]">*</span>}
-      </label>
+      <div className="flex items-start gap-[2px]">
+        <label className="text-[12px] font-medium text-[var(--ink-dim)]">{label}</label>
+        {required && (
+          <span aria-hidden="true" className="translate-y-[-1px] text-[12px] leading-[150%] text-[var(--danger)]">
+            *
+          </span>
+        )}
+      </div>
       {children}
       {error && <p className="text-[11.5px] text-[var(--danger)]">{error}</p>}
       {!error && hint && <p className="text-[11.5px] text-[var(--ink-faint)]">{hint}</p>}

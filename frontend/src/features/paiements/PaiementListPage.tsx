@@ -18,7 +18,6 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate, formatMontant } from '@/lib/format'
 import { fetchPaiements, fetchPaiementsTotal, fetchPaiementStats, deletePaiement } from './api'
 import PaiementFormDrawer from './PaiementFormDrawer'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import type { Paiement } from './types'
 
 const MODE_COLORS: Record<string, string> = {
@@ -31,9 +30,8 @@ const MODE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function PaiementListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -109,48 +107,48 @@ export default function PaiementListPage() {
               <Card className="flex flex-col justify-between p-4 min-h-[112px]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Total payé</p>
-                    <p className="text-xs text-[var(--color-ink-faint)]">tout l'historique</p>
+                    <p className="text-sm font-medium text-[var(--ink-dim)]">Total payé</p>
+                    <p className="text-xs text-[var(--ink-faint)]">tout l'historique</p>
                   </div>
-                  <Wallet className="size-5 shrink-0 text-[var(--color-success)]" strokeWidth={1.75} />
+                  <Wallet className="size-5 shrink-0 text-[var(--success)]" strokeWidth={1.75} />
                 </div>
-                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--ink)]">
                   {formatMontant(stats.total_encaisse)}
                 </p>
               </Card>
               <Card className="flex flex-col justify-between p-4 min-h-[112px]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Restant dû</p>
-                    <p className="text-xs text-[var(--color-ink-faint)]">échéances non soldées</p>
+                    <p className="text-sm font-medium text-[var(--ink-dim)]">Restant dû</p>
+                    <p className="text-xs text-[var(--ink-faint)]">échéances non soldées</p>
                   </div>
-                  <AlertTriangle className="size-5 shrink-0 text-[var(--color-danger)]" strokeWidth={1.75} />
+                  <AlertTriangle className="size-5 shrink-0 text-[var(--danger)]" strokeWidth={1.75} />
                 </div>
-                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--ink)]">
                   {formatMontant(stats.montant_impaye)}
                 </p>
               </Card>
               <Card className="flex flex-col justify-between p-4 min-h-[112px]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Échéances soldées</p>
-                    <p className="text-xs text-[var(--color-ink-faint)]">tout l'historique</p>
+                    <p className="text-sm font-medium text-[var(--ink-dim)]">Échéances soldées</p>
+                    <p className="text-xs text-[var(--ink-faint)]">tout l'historique</p>
                   </div>
-                  <CheckCircle2 className="size-5 shrink-0 text-[var(--color-action)]" strokeWidth={1.75} />
+                  <CheckCircle2 className="size-5 shrink-0 text-[var(--action)]" strokeWidth={1.75} />
                 </div>
-                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--ink)]">
                   {stats.nb_echeances_soldees}
                 </p>
               </Card>
               <Card className="flex flex-col justify-between p-4 min-h-[112px]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">Échéances impayées</p>
-                    <p className="text-xs text-[var(--color-ink-faint)]">en attente ou partielles</p>
+                    <p className="text-sm font-medium text-[var(--ink-dim)]">Échéances impayées</p>
+                    <p className="text-xs text-[var(--ink-faint)]">en attente ou partielles</p>
                   </div>
-                  <Clock className="size-5 shrink-0 text-[var(--color-warning)]" strokeWidth={1.75} />
+                  <Clock className="size-5 shrink-0 text-[var(--warning)]" strokeWidth={1.75} />
                 </div>
-                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--color-ink)]">
+                <p className="mt-3 text-[26px] font-bold leading-none text-[var(--ink)]">
                   {stats.nb_echeances_impayees}
                 </p>
               </Card>
@@ -201,23 +199,23 @@ export default function PaiementListPage() {
                   const nomEleve = `${p.eleve_nom ?? ''} ${p.eleve_prenom ?? ''}`.trim()
                   return (
                     <TableRow key={p.id}>
-                      <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                      <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">
                         {p.code_paiement ?? '—'}
                       </TableCell>
-                      <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                      <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">
                         {formatDate(p.date)}
                       </TableCell>
                       <TableCell>
                         <Link to={`/app/eleves/${p.matricule_eleve ?? ''}`} className="group inline-block">
-                          <p className="text-sm font-medium text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">
+                          <p className="text-sm font-medium text-[var(--ink)] group-hover:text-[var(--action-bright)]">
                             {nomEleve || '—'}
                           </p>
-                          <p className="text-xs text-[var(--color-ink-faint)]">
+                          <p className="text-xs text-[var(--ink-faint)]">
                             {p.matricule_eleve ?? '—'}
                           </p>
                         </Link>
                       </TableCell>
-                      <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-ink)]">
+                      <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--ink)]">
                         {formatMontant(p.montant)}
                       </TableCell>
                       <TableCell>
@@ -227,7 +225,7 @@ export default function PaiementListPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--color-ink-faint)]">
+                      <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--ink-faint)]">
                         {p.observation ?? '—'}
                       </TableCell>
                       <TableCell>

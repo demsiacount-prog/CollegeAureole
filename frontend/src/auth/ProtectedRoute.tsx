@@ -9,7 +9,7 @@ export function ProtectedRoute() {
 
   if (isInitializing) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[var(--color-base)]">
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--base)]">
         <Spinner label="Vérification de la session…" />
       </div>
     )

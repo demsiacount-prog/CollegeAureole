@@ -3,6 +3,7 @@ const LIBELLES: Record<string, string> = {
   DIRECTEUR: 'Directeur',
   COMPTABLE: 'Comptable',
   SECRETAIRE: 'Secrétaire',
+  ENSEIGNANT: 'Enseignant',
 }
 
 /** Libellé lisible d'un rôle utilisateur, avec repli sur l'original en majuscule. */

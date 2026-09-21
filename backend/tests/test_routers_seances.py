@@ -4,7 +4,9 @@ Couverture : CRUD complet, détection de conflits (classe, enseignant, salle),
 capacité salle, filtrage par année/classe/enseignant.
 """
 import pytest
-from datetime import time
+from datetime import date, time
+
+import models
 
 
 def _creer_base(client, auth_headers):
@@ -152,6 +154,85 @@ class TestLecture:
         )
         assert resp.status_code == 200
         assert len(resp.json()) == 1
+
+
+class TestModification:
+    def test_modifier_seance(self, client, auth_headers):
+        """Un PUT ne doit plus échouer (SeanceUpdate ne porte pas d'année) : les
+        conflits et la capacité sont vérifiés sur l'année de la séance existante."""
+        base = _creer_base(client, auth_headers)
+        created = client.post("/api/seances/", json={
+            "id_cours": base["cours"]["id"],
+            "id_classe": base["classe"]["id"],
+            "id_annee_scolaire": base["annee"]["id"],
+            "id_salle": base["salle"]["id"],
+            "jour_semaine": "Lundi",
+            "heure_debut": "08:00",
+            "heure_fin": "10:00",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/seances/{created['id']}", json={
+            "jour_semaine": "Mardi",
+            "heure_debut": "09:00",
+            "heure_fin": "11:00",
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["jour_semaine"] == "Mardi"
+        assert resp.json()["heure_debut"] == "09:00:00"
+
+    def test_modifier_seance_conflit_409(self, client, auth_headers):
+        base = _creer_base(client, auth_headers)
+        payload = {
+            "id_cours": base["cours"]["id"],
+            "id_classe": base["classe"]["id"],
+            "id_annee_scolaire": base["annee"]["id"],
+            "jour_semaine": "Lundi",
+            "heure_debut": "08:00",
+            "heure_fin": "10:00",
+        }
+        a = client.post("/api/seances/", json=payload, headers=auth_headers).json()
+        b = client.post("/api/seances/", json={**payload, "jour_semaine": "Mardi"}, headers=auth_headers).json()
+        resp = client.put(f"/api/seances/{b['id']}", json={"jour_semaine": "Lundi"}, headers=auth_headers)
+        assert resp.status_code == 409
+
+
+class TestCapacite:
+    def test_capacite_selon_inscriptions_de_l_annee(self, client, auth_headers, db_session):
+        """La capacité est vérifiée sur l'effectif de l'ANNÉE de la séance via
+        les inscriptions — pas Eleves.classe_id (effectif d'une autre année)."""
+        base = _creer_base(client, auth_headers)
+        salle_petite = client.post("/api/salles/", json={
+            "nom": "B202", "capacite": 1,
+        }, headers=auth_headers).json()
+
+        t = client.post("/api/tuteurs/", json={
+            "nom": "T", "prenom": "T", "email": "seance@ex.com",
+            "telephone": "+22376000000", "adresse": "Bamako", "profession": "M",
+        }, headers=auth_headers).json()
+        for i in range(2):
+            eleve = models.Eleves(
+                nom=f"E{i}", prenom="P", date_de_naissance=date(2012 + i, 3, 15),
+                lieu_de_naissance="Bamako", sexe="M", statut="actif",
+                tuteur_id=t["id"], classe_id=base["classe"]["id"],
+            )
+            db_session.add(eleve)
+            db_session.flush()
+            db_session.add(models.Inscriptions(
+                matricule_eleve=eleve.matricule, id_classe=base["classe"]["id"],
+                id_annee_scolaire=base["annee"]["id"], statut="Inscrit",
+            ))
+        db_session.commit()
+
+        resp = client.post("/api/seances/", json={
+            "id_cours": base["cours"]["id"],
+            "id_classe": base["classe"]["id"],
+            "id_annee_scolaire": base["annee"]["id"],
+            "id_salle": salle_petite["id"],
+            "jour_semaine": "Lundi",
+            "heure_debut": "08:00",
+            "heure_fin": "10:00",
+        }, headers=auth_headers)
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Capacité insuffisante"
 
 
 class TestSuppression:

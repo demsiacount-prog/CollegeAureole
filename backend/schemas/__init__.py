@@ -49,7 +49,8 @@ from schemas.depenses import DepenseCreate, DepenseUpdate, DepenseResponse
 from schemas.cloture import (
     CloturePreviewResponse, NouvelleAnneePayload,
     ClotureExecuterPayload, ClotureExecuterResponse,
-    CompteursPreview,ElevePreview,AnneeInfo,RapportCloture,EleveCloture
+    CompteursPreview,ElevePreview,AnneeInfo,RapportCloture,EleveCloture,EleveErreurCloture,
+    ClotureAlerteRead, ClotureAlertesReponse
 )
 from schemas.documents import DocumentResponse, DocumentRead, DocumentUpdate, DocumentListeResponse
 from schemas.rapports import (

@@ -17,8 +17,6 @@ import { formatDate, formatMontant } from '@/lib/format'
 import { fetchDepenses, fetchDepensesCompte, deleteDepense } from './api'
 import { CATEGORIES, CATEGORIE_LABELS, type Depense } from './types'
 import DepenseFormDrawer from './DepenseFormDrawer'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 const CATEGORIE_COLORS: Record<string, string> = {
   SALAIRES: 'info',
   FOURNITURES: 'neutral',
@@ -33,9 +31,8 @@ const CATEGORIE_COLORS: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function DepenseListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -149,22 +146,22 @@ export default function DepenseListPage() {
               <TableBody>
                 {depenses.map((d) => (
                   <TableRow key={d.id}>
-                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">
                       {d.code_depense ?? '—'}
                     </TableCell>
-                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">
                       {formatDate(d.date)}
                     </TableCell>
-                    <TableCell className="font-medium text-[var(--color-ink)]">{d.libelle}</TableCell>
+                    <TableCell className="font-medium text-[var(--ink)]">{d.libelle}</TableCell>
                     <TableCell>
                       <Badge tone={(CATEGORIE_COLORS[d.categorie] as 'success' | 'warning' | 'info' | 'neutral' | 'danger') ?? 'neutral'}>
                         {CATEGORIE_LABELS[d.categorie]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--color-ink)]">
+                    <TableCell className="text-right font-[var(--font-mono)] text-[15px] font-semibold text-[var(--ink)]">
                       {formatMontant(d.montant)}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--color-ink-faint)]">
+                    <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--ink-faint)]">
                       {d.description ?? '—'}
                     </TableCell>
                     <TableCell>

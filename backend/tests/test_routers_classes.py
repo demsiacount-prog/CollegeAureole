@@ -83,6 +83,34 @@ class TestModification:
         assert resp.status_code == 200
         assert resp.json()["niveau"] == "2ème Année"
 
+    def test_modifier_tarifs_apres_cloture_annee(self, client, auth_headers):
+        """Les classes sont réutilisées années après années : leurs tarifs
+        restent modifiables même une fois une année clôturée (aucune garde de
+        clôture ne doit se baser sur une « année de création de la classe »)."""
+        annee1 = client.post("/api/anneesScolaires/", json={
+            "libelle": "2025-2026", "date_debut": "2025-09-01",
+            "date_fin": "2026-06-30", "active": True,
+        }, headers=auth_headers).json()
+        # Une deuxième année active rend la première inactive (nécessaire pour
+        # pouvoir la clôturer via l'endpoint dédié).
+        client.post("/api/anneesScolaires/", json={
+            "libelle": "2026-2027", "date_debut": "2026-09-01",
+            "date_fin": "2027-06-30", "active": True,
+        }, headers=auth_headers)
+        resp = client.put(f"/api/anneesScolaires/{annee1['id']}/cloturer", headers=auth_headers)
+        assert resp.status_code == 200
+
+        created = _creer_classe(client, auth_headers).json()
+        resp = client.put(
+            f"/api/classes/{created['id']}",
+            json={"niveau": "1ère Année", "nom": "A", "frais_inscription": 75000, "mensualite": 15000},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["frais_inscription"] == 75000
+        assert body["mensualite"] == 15000
+
     def test_modifier_classe_changer_salle(self, client, auth_headers):
         salle1 = _creer_salle(client, auth_headers, nom="A101").json()
         salle2 = _creer_salle(client, auth_headers, nom="A102").json()

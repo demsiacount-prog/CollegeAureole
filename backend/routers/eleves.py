@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from typing import List, Optional
 from datetime import date
 from pydantic import BaseModel
@@ -55,7 +55,7 @@ def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -
     return annee_active.id
 
 
-def _inscrire_eleve(db: Session, matricule: str, id_classe: int, annee_scolaire_id: Optional[int]):
+def _inscrire_eleve(db: Session, matricule: str, id_classe: Optional[int], annee_scolaire_id: Optional[int]):
     """Crée l'inscription de l'année (avec échéancier) et synchronise la classe.
 
     Idempotent : si une inscription existe déjà pour (élève, année), son
@@ -73,7 +73,9 @@ def _inscrire_eleve(db: Session, matricule: str, id_classe: int, annee_scolaire_
         .first()
     )
     if existante:
-        if existante.id_classe != id_classe:
+        # Une inscription existante ne doit jamais être « écrasée » par un None :
+        # la classe actuelle de l'élève (pré-inscription) ne vide pas l'inscription.
+        if id_classe is not None and existante.id_classe != id_classe:
             existante.id_classe = id_classe
         return existante
 
@@ -94,8 +96,9 @@ def _inscrire_eleve(db: Session, matricule: str, id_classe: int, annee_scolaire_
 def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
     if not db.query(models.Tuteurs).filter(models.Tuteurs.id == eleve.tuteur_id).first():
         raise HTTPException(status_code=404, detail="Tuteur introuvable")
-    if not db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first():
-        raise HTTPException(status_code=404, detail="Classe introuvable")
+    if eleve.classe_id is not None:
+        if not db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first():
+            raise HTTPException(status_code=404, detail="Classe introuvable")
     donnees = eleve.model_dump()
     # Transitoire : utilisé par before_insert pour l'année du matricule, non persisté.
     annee_scolaire_id = donnees.pop("annee_scolaire_id", None)
@@ -104,13 +107,39 @@ def create_eleve(eleve: schemas.EleveCreate, db: Session = Depends(get_db)):
     db.add(nouveau_eleve)
     db.flush()  # before_insert génère le matricule
 
-    # Affecter une classe à la création équivaut à inscrire l'élève.
-    if donnees.get("classe_id") is not None:
-        _inscrire_eleve(db, nouveau_eleve.matricule, donnees["classe_id"], annee_scolaire_id)
+    # L'élève est toujours inscrit à sa création. Sans classe, la pré-inscription
+    # est enregistrée avec id_classe=None (visible dans les listes de l'année,
+    # affecté plus tard via Inscriptions ou l'édition).
+    _inscrire_eleve(db, nouveau_eleve.matricule, donnees.get("classe_id"), annee_scolaire_id)
 
     db.commit()
     db.refresh(nouveau_eleve)
     return nouveau_eleve
+
+
+def _attacher_contexte_annee(db: Session, eleves: list, id_annee_scolaire: int) -> None:
+    """Attribue `classe_annee` / `statut_annee` (classe et statut de l'inscription
+    de l'année consultée) à chaque élève, avant la sérialisation Pydantic.
+
+    Ne touche jamais à `Eleves.classe_id` / `Eleves.statut` (état actuel) : ces
+    champs transitoires ne servent qu'à l'affichage scopé à l'année."""
+    if not eleves:
+        return
+    matricules = [e.matricule for e in eleves]
+    inscriptions = (
+        db.query(models.Inscriptions)
+        .options(joinedload(models.Inscriptions.classe))
+        .filter(
+            models.Inscriptions.matricule_eleve.in_(matricules),
+            models.Inscriptions.id_annee_scolaire == id_annee_scolaire,
+        )
+        .all()
+    )
+    classes = {ins.matricule_eleve: ins.classe for ins in inscriptions}
+    statuts = {ins.matricule_eleve: ins.statut for ins in inscriptions}
+    for eleve in eleves:
+        eleve.classe_annee = classes.get(eleve.matricule)
+        eleve.statut_annee = statuts.get(eleve.matricule)
 
 
 @router.get("/", response_model=List[schemas.EleveResponse])
@@ -120,6 +149,7 @@ def get_all_eleves(
     q: Optional[str] = None,
     classe_id: Optional[int] = None,
     statut: Optional[str] = None,
+    id_annee_scolaire: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     # joinedload évite le N+1 : sans lui, sérialiser N élèves déclenche
@@ -135,18 +165,42 @@ def get_all_eleves(
             func.lower(models.Eleves.prenom).like(motif),
             func.lower(models.Eleves.matricule).like(motif),
         ))
-    if classe_id is not None:
-        query = query.filter(models.Eleves.classe_id == classe_id)
-    if statut and statut.strip():
-        motif = f"%{statut.strip().lower()}%"
-        query = query.filter(func.lower(models.Eleves.statut).like(motif))
-    return (
+    scope_annee = id_annee_scolaire is not None
+    if scope_annee:
+        # Liste scopée à une année scolaire précise (ex : effectif d'une année
+        # antérieure) → s'appuyer sur les INSCRIPTIONS de cette année. Le statut
+        # et la classe d'un élève sont ceux de son inscription : Eleves.statut /
+        # Eleves.classe_id reflètent l'état ACTUEL et fausseraient la lecture.
+        # Le DISTINCT évite les doublons en cas de double inscription (élève, année).
+        query = query.join(
+            models.Inscriptions,
+            and_(
+                models.Inscriptions.matricule_eleve == models.Eleves.matricule,
+                models.Inscriptions.id_annee_scolaire == id_annee_scolaire,
+            ),
+        ).distinct(models.Eleves.matricule)
+        if classe_id is not None:
+            query = query.filter(models.Inscriptions.id_classe == classe_id)
+        if statut and statut.strip():
+            motif = f"%{statut.strip().lower()}%"
+            query = query.filter(func.lower(models.Inscriptions.statut).like(motif))
+    else:
+        if classe_id is not None:
+            query = query.filter(models.Eleves.classe_id == classe_id)
+        if statut and statut.strip():
+            motif = f"%{statut.strip().lower()}%"
+            query = query.filter(func.lower(models.Eleves.statut).like(motif))
+
+    eleves = (
         query
         .order_by(models.Eleves.matricule)
         .offset(skip)
         .limit(limit)
         .all()
     )
+    if scope_annee:
+        _attacher_contexte_annee(db, eleves, id_annee_scolaire)
+    return eleves
 
 
 @router.get("/compte")
@@ -154,10 +208,11 @@ def compter_eleves(
     q: Optional[str] = None,
     classe_id: Optional[int] = None,
     statut: Optional[str] = None,
+    id_annee_scolaire: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
     """Total d'élèves (après filtre q) pour la pagination de la liste."""
-    query = db.query(func.count(models.Eleves.matricule))
+    query = db.query(func.count(func.distinct(models.Eleves.matricule)))
     if q and q.strip():
         motif = f"%{q.strip().lower()}%"
         query = query.filter(or_(
@@ -165,11 +220,25 @@ def compter_eleves(
             func.lower(models.Eleves.prenom).like(motif),
             func.lower(models.Eleves.matricule).like(motif),
         ))
-    if classe_id is not None:
-        query = query.filter(models.Eleves.classe_id == classe_id)
-    if statut and statut.strip():
-        motif = f"%{statut.strip().lower()}%"
-        query = query.filter(func.lower(models.Eleves.statut).like(motif))
+    if id_annee_scolaire is not None:
+        query = query.join(
+            models.Inscriptions,
+            and_(
+                models.Inscriptions.matricule_eleve == models.Eleves.matricule,
+                models.Inscriptions.id_annee_scolaire == id_annee_scolaire,
+            ),
+        )
+        if classe_id is not None:
+            query = query.filter(models.Inscriptions.id_classe == classe_id)
+        if statut and statut.strip():
+            motif = f"%{statut.strip().lower()}%"
+            query = query.filter(func.lower(models.Inscriptions.statut).like(motif))
+    else:
+        if classe_id is not None:
+            query = query.filter(models.Eleves.classe_id == classe_id)
+        if statut and statut.strip():
+            motif = f"%{statut.strip().lower()}%"
+            query = query.filter(func.lower(models.Eleves.statut).like(motif))
     return {"total": query.scalar() or 0}
 
 
@@ -274,9 +343,18 @@ def _construire_inscription_enrichie(db: Session, inscription: models.Inscriptio
 
 
 @router.get("/{matricule}/dossier", response_model=schemas.DossierEleveResponse)
-def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
-    """Fiche complète d'un élève : profil, historique d'inscriptions (avec
-    finances et moyennes), notes, absences et bulletins."""
+def get_dossier_eleve(
+    matricule: str,
+    id_annee_scolaire: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """Fiche d'un élève restreinte à l'année de consultation
+    (`id_annee_scolaire`, défaut : l'année active).
+
+    Toutes les données dépendantes de l'année — inscriptions, notes, absences,
+    bulletins et donc paiements — sont celles de l'année consultée. Le profil
+    (identité) et les documents restent intacts.
+    """
     eleve = (
         db.query(models.Eleves)
         .options(joinedload(models.Eleves.tuteur), joinedload(models.Eleves.classe_relation))
@@ -286,7 +364,27 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
     if not eleve:
         raise HTTPException(status_code=404, detail="Élève introuvable")
 
-    inscriptions = (
+    annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
+    if id_annee_scolaire is not None:
+        annee_consultation = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == id_annee_scolaire).first()
+        if not annee_consultation:
+            raise HTTPException(status_code=404, detail="Année scolaire introuvable")
+    else:
+        annee_consultation = annee_active
+
+    # Trimestres de l'année : pivot de rattachement des notes et bulletins à une
+    # année (une note/bulletin appartient à l'année de son trimestre).
+    if annee_consultation is not None:
+        trimestres_consultation = (
+            db.query(models.Trimestres)
+            .filter(models.Trimestres.annee_scolaire_id == annee_consultation.id)
+            .all()
+        )
+        trimestre_ids = [t.id for t in trimestres_consultation]
+    else:
+        trimestre_ids = []
+
+    inscriptions_query = (
         db.query(models.Inscriptions)
         .options(
             joinedload(models.Inscriptions.classe),
@@ -295,13 +393,25 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
             joinedload(models.Inscriptions.echeances),
         )
         .filter(models.Inscriptions.matricule_eleve == matricule)
-        .join(models.AnneesScolaires)
-        .order_by(models.AnneesScolaires.date_debut.desc())
-        .all()
     )
+    if annee_consultation is not None:
+        inscriptions_query = inscriptions_query.filter(
+            models.Inscriptions.id_annee_scolaire == annee_consultation.id
+        )
+    inscriptions = inscriptions_query.all()
     inscriptions_enrichies = [_construire_inscription_enrichie(db, insc) for insc in inscriptions]
 
-    notes = (
+    conditions_notes = []
+    if trimestre_ids:
+        conditions_notes.append(models.Notes.id_trimestre.in_(trimestre_ids))
+    if annee_consultation is not None and annee_consultation.date_debut and annee_consultation.date_fin:
+        # Notes saisies sans trimestre : rattachées à l'année par leur date.
+        conditions_notes.append(and_(
+            models.Notes.id_trimestre.is_(None),
+            models.Notes.date >= annee_consultation.date_debut,
+            models.Notes.date <= annee_consultation.date_fin,
+        ))
+    notes_query = (
         db.query(models.Notes)
         .options(
             joinedload(models.Notes.cours),
@@ -310,24 +420,31 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
             joinedload(models.Notes.trimestre),
         )
         .filter(models.Notes.matricule_eleve == matricule)
-        .order_by(models.Notes.date.desc())
-        .all()
     )
-    absences = (
+    if conditions_notes:
+        notes_query = notes_query.filter(or_(*conditions_notes))
+    notes = notes_query.order_by(models.Notes.date.desc()).all()
+
+    absences_query = (
         db.query(models.Absences)
         .options(joinedload(models.Absences.cours))
         .filter(models.Absences.matricule_eleve == matricule)
-        .order_by(models.Absences.date_absence.desc())
-        .all()
     )
-    bulletins = (
+    if annee_consultation is not None and annee_consultation.date_debut and annee_consultation.date_fin:
+        absences_query = absences_query.filter(
+            models.Absences.date_absence >= annee_consultation.date_debut,
+            models.Absences.date_absence <= annee_consultation.date_fin,
+        )
+    absences = absences_query.order_by(models.Absences.date_absence.desc()).all()
+
+    bulletins_query = (
         db.query(models.Bulletins)
         .options(joinedload(models.Bulletins.details))
         .filter(models.Bulletins.matricule_eleve == matricule)
-        .order_by(models.Bulletins.generated_at.desc())
-        .all()
     )
-    annee_active = db.query(models.AnneesScolaires).filter(models.AnneesScolaires.active == True).first()  # noqa: E712
+    if trimestre_ids:
+        bulletins_query = bulletins_query.filter(models.Bulletins.id_trimestre.in_(trimestre_ids))
+    bulletins = bulletins_query.order_by(models.Bulletins.generated_at.desc()).all()
 
     documents = (
         db.query(models.Documents)
@@ -336,6 +453,10 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
         .order_by(models.Documents.uploaded_at.desc())
         .all()
     )
+
+    inscription_annee = inscriptions[0] if inscriptions else None
+    classe_annee = inscription_annee.classe if inscription_annee is not None else None
+    statut_annee = inscription_annee.statut if inscription_annee is not None else None
 
     # Construit la réponse explicitement plutôt que via model_validate(eleve)
     # qui déclencherait des lazy loads sur toutes les relations (notes, bulletins,
@@ -367,10 +488,12 @@ def get_dossier_eleve(matricule: str, db: Session = Depends(get_db)):
         updated_at=eleve.updated_at,
         tuteur=schemas.TuteurResponse.model_validate(eleve.tuteur),
         classe_relation=schemas.ClasseResponse.model_validate(eleve.classe_relation) if eleve.classe_relation else None,
+        classe_annee=schemas.ClasseResponse.model_validate(classe_annee) if classe_annee else None,
+        statut_annee=statut_annee,
         inscriptions=inscriptions_enrichies,
         notes=[schemas.NoteResponse.model_validate(n) for n in notes],
         absences=[schemas.AbsenceResponse.model_validate(a) for a in absences],
         bulletins=[schemas.BulletinResponse.model_validate(b) for b in bulletins],
         documents=[schemas.DocumentResponse.model_validate(d) for d in documents],
-        annee_scolaire=schemas.AnneeScolaireResponse.model_validate(annee_active) if annee_active else None,
+        annee_scolaire=schemas.AnneeScolaireResponse.model_validate(annee_consultation) if annee_consultation else None,
     )

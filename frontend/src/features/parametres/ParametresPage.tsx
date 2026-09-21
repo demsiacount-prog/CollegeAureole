@@ -51,7 +51,7 @@ export default function ParametresPage() {
         <PageHeader
           title="Paramètres"
           subtitle={
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1 text-sm text-[var(--ink-dim)]">
               Configuration du système de gestion scolaire
             </p>
           }
@@ -69,8 +69,8 @@ export default function ParametresPage() {
                   className={clsx(
                     'flex w-full items-center gap-3 rounded-[var(--radius-sm)] border border-transparent px-3 py-2.5 text-left text-sm transition-colors',
                     active
-                      ? 'border-[var(--color-action-wash)] bg-[var(--color-action-wash)] text-[var(--color-action)]'
-                      : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]',
+                      ? 'border-[var(--action-w)] bg-[var(--action-w)] text-[var(--action)]'
+                      : 'text-[var(--ink-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
                   )}
                 >
                   <Icon size={14} strokeWidth={1.75} />
@@ -80,7 +80,7 @@ export default function ParametresPage() {
             })}
           </div>
 
-          <div className="flex-1 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+          <div className="flex-1 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6">
             {activeTab === 'fiche' && <FicheEtablissementTab />}
             {activeTab === 'annees' && <AnneesTab />}
             {activeTab === 'infrastructures' && <InfrastructuresTab />}
@@ -96,7 +96,7 @@ export default function ParametresPage() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-4 border-b border-[var(--color-border-soft)] pb-2 text-sm font-semibold text-[var(--color-ink)]">
+    <h3 className="mb-4 border-b border-[var(--border-soft)] pb-2 text-sm font-semibold text-[var(--ink)]">
       {children}
     </h3>
   )
@@ -157,7 +157,7 @@ function AnneesTab() {
 
   if (isError) {
     return (
-      <div className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger-wash)] px-4 py-3 text-sm text-[var(--color-danger)]">
+      <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger-w)] px-4 py-3 text-sm text-[var(--danger)]">
         Impossible de charger les années scolaires.
       </div>
     )
@@ -192,8 +192,8 @@ function AnneesTab() {
               <TableBody>
                 {annees.map((a) => (
                 <TableRow key={a.id}>
-                  <TableCell className="font-medium text-[var(--color-ink)]">{a.libelle}</TableCell>
-                  <TableCell className="text-[var(--color-ink-dim)]">
+                  <TableCell className="font-medium text-[var(--ink)]">{a.libelle}</TableCell>
+                  <TableCell className="text-[var(--ink-dim)]">
                     {new Date(a.date_debut).toLocaleDateString('fr-FR')} — {new Date(a.date_fin).toLocaleDateString('fr-FR')}
                   </TableCell>
                   <TableCell>
@@ -210,6 +210,7 @@ function AnneesTab() {
                           <Button
                             variant="icon"
                             size="icon"
+                            aria-label="Générer les périodes par défaut"
                             isLoading={genererMut.isPending}
                             disabled={genererMut.isPending}
                             onClick={() => genererMut.mutate(a.id)}

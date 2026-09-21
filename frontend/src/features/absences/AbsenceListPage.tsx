@@ -17,7 +17,6 @@ import { extractErrorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { fetchAbsences, fetchAbsencesTotal, createAbsence, justifierAbsence } from './api'
 import AbsenceFormDrawer from './AbsenceFormDrawer'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import type { AbsenceCreateInput } from './types'
 
 const PAGE_SIZE = 50
@@ -29,8 +28,7 @@ const justifieeParam = (f: 'tous' | 'justifiees' | 'non-justifiees'): boolean | 
 }
 
 export default function AbsenceListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -101,19 +99,19 @@ export default function AbsenceListPage() {
       <div className="flex flex-col gap-[10px]">
         <PageHeader
           title="Absences"
-          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Suivi des absences et justifications</p>}
+          subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">Suivi des absences et justifications</p>}
           actionLabel={canWrite ? 'Nouvelle absence' : undefined}
           onAction={canWrite ? () => setDrawerOpen(true) : undefined}
         />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--color-mod-ress)' }}>
-            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">Total absences</p>
-            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--color-ink)]">{stats.total}</p>
+          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--mod-res)' }}>
+            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--ink-faint)]">Total absences</p>
+            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--ink)]">{stats.total}</p>
           </Card>
-          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--color-warning)' }}>
-            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">Non justifiées</p>
-            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--color-warning)]">{stats.nonJust}</p>
+          <Card className="flex flex-col justify-between border-t-2 p-3.5" style={{ borderTopColor: 'var(--warning)' }}>
+            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--ink-faint)]">Non justifiées</p>
+            <p className="mt-1 text-[26px] font-bold leading-none text-[var(--warning)]">{stats.nonJust}</p>
           </Card>
         </div>
 
@@ -171,20 +169,20 @@ export default function AbsenceListPage() {
               <TableBody>
                 {absences.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="text-[var(--color-ink)]">
+                    <TableCell className="text-[var(--ink)]">
                       {a.eleve ? (
-                        <Link to={`/app/eleves/${a.matricule_eleve}`} className="hover:text-[var(--color-action-bright)]">
+                        <Link to={`/app/eleves/${a.matricule_eleve}`} className="hover:text-[var(--action-bright)]">
                           {a.eleve.prenom} {a.eleve.nom}
                         </Link>
                       ) : (
-                        <span className="text-[var(--color-ink-faint)]">—</span>
+                        <span className="text-[var(--ink-faint)]">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">
+                    <TableCell className="text-[var(--ink-dim)]">
                       {a.eleve?.classe ? `${a.eleve.classe.niveau} ${a.eleve.classe.nom}` : '—'}
                     </TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{a.cours?.nom ?? '—'}</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{a.cours?.nom ?? '—'}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{formatDate(a.date_absence)}</TableCell>
                     <TableCell className="text-center">
                       {a.justifiee ? (
                         <Badge tone="success">Justifiée</Badge>
@@ -192,12 +190,12 @@ export default function AbsenceListPage() {
                         <Badge tone="danger">Non justifiée</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{a.motif ?? '—'}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{a.motif ?? '—'}</TableCell>
                     <TableCell className="text-right">
                       {!a.justifiee && canWrite && (
                         <button
                           onClick={() => setJustifying({ id: a.id, label: `${a.eleve?.prenom} ${a.eleve?.nom}` })}
-                          className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-success-wash)] hover:text-[var(--color-success)]"
+                          className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--success-w)] hover:text-[var(--success)]"
                           aria-label={`Justifier l'absence de ${a.eleve?.prenom} ${a.eleve?.nom}`}
                         >
                           <Check size={14} strokeWidth={1.75} />

@@ -87,8 +87,8 @@ export function PhotoPicker({ nom, prenom, value, onChange }: PhotoPickerProps) 
             </Button>
           )}
         </div>
-        <p className="text-[11px] text-[var(--color-ink-faint)]">JPG ou PNG, 2 Mo maximum.</p>
-        {error && <p className="text-[11px] text-[var(--color-danger)]">{error}</p>}
+        <p className="text-[11px] text-[var(--ink-faint)]">JPG ou PNG, 2 Mo maximum.</p>
+        {error && <p className="text-[11px] text-[var(--danger)]">{error}</p>}
       </div>
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />

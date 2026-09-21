@@ -62,16 +62,16 @@ export function SplashScreen({
 
   if (erreur) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-base)] px-6 text-center">
-        <span className="flex size-16 items-center justify-center rounded-full bg-[var(--color-danger-wash)]">
-          <span className="font-[var(--font-mono)] text-2xl text-[var(--color-danger)]">✕</span>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--base)] px-6 text-center">
+        <span className="flex size-16 items-center justify-center rounded-full bg-[var(--danger-w)]">
+          <span className="font-[var(--font-mono)] text-2xl text-[var(--danger)]">✕</span>
         </span>
-        <h1 className="mt-6 text-xl font-semibold text-[var(--color-danger)]">{erreur.titre}</h1>
-        <p className="mt-2 max-w-md text-sm text-[var(--color-ink-dim)]">{erreur.message}</p>
+        <h1 className="mt-6 text-xl font-semibold text-[var(--danger)]">{erreur.titre}</h1>
+        <p className="mt-2 max-w-md text-sm text-[var(--ink-dim)]">{erreur.message}</p>
         {erreur.details && (
           <div className="mt-6 w-full max-w-lg text-left">
-            <p className="mb-1 text-xs font-semibold text-[var(--color-ink)]">Détails techniques</p>
-            <pre className="max-h-48 overflow-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 font-[var(--font-mono)] text-[11px] leading-relaxed text-[var(--color-ink-faint)]">
+            <p className="mb-1 text-xs font-semibold text-[var(--ink)]">Détails techniques</p>
+            <pre className="max-h-48 overflow-auto rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] p-3 font-[var(--font-mono)] text-[11px] leading-relaxed text-[var(--ink-faint)]">
               {erreur.details}
             </pre>
           </div>
@@ -81,12 +81,12 @@ export function SplashScreen({
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--color-base)] px-6">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--base)] px-6">
       {/* Glow radial subtil derrière le halo — l'élément mémorable */}
       <motion.div
         className="pointer-events-none absolute size-64 rounded-full"
         style={{
-          background: 'radial-gradient(circle, var(--color-halo) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--halo) 0%, transparent 70%)',
         }}
         initial={reduce ? { opacity: 0.12 } : { opacity: 0, scale: 0.8 }}
         animate={reduce ? { opacity: 0.12 } : { opacity: 0.12, scale: 1 }}
@@ -102,14 +102,14 @@ export function SplashScreen({
           transition={{ duration: 0.6, ease: 'easeOut' }}
         >
           <span className="absolute inset-0 rounded-full halo-ring" />
-          <span className="flex size-16 items-center justify-center rounded-full border border-[var(--color-halo-dim)] bg-[var(--color-surface)]">
-            <GraduationCap className="size-8 text-[var(--color-halo)]" strokeWidth={1.5} />
+          <span className="flex size-16 items-center justify-center rounded-full border border-[var(--halo-dim)] bg-[var(--surface)]">
+            <GraduationCap className="size-8 text-[var(--halo)]" strokeWidth={1.5} />
           </span>
         </motion.span>
 
         {/* Nom : fondu simple, pas de stagger */}
         <motion.h1
-          className="mt-6 font-[var(--font-serif)] text-[32px] font-semibold text-[var(--color-ink)]"
+          className="mt-6 font-[var(--font-serif)] text-[32px] font-semibold text-[var(--ink)]"
           initial={reduce ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -119,7 +119,7 @@ export function SplashScreen({
 
         {devise && (
           <motion.p
-            className="mt-1 font-[var(--font-serif)] text-[13px] italic text-[var(--color-halo-dim)]"
+            className="mt-1 font-[var(--font-serif)] text-[13px] italic text-[var(--halo-dim)]"
             initial={reduce ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.45 }}
@@ -130,14 +130,14 @@ export function SplashScreen({
       </div>
 
       <div className="absolute inset-x-0 bottom-0">
-        <p className="mb-6 text-center font-[var(--font-mono)] text-xs text-[var(--color-ink-faint)]">
+        <p className="mb-6 text-center font-[var(--font-mono)] text-xs text-[var(--ink-faint)]">
           <MessageEnFondu message={message} />
         </p>
         <ProgressBar variant="splash" value={progress} />
       </div>
 
       {version && (
-        <p className="absolute bottom-4 right-4 text-[10px] text-[var(--color-ink-faint)]">v{version}</p>
+        <p className="absolute bottom-4 right-4 text-[10px] text-[var(--ink-faint)]">v{version}</p>
       )}
     </div>
   )

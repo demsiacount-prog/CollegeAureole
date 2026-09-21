@@ -20,7 +20,7 @@ async function creerApiContexte(): Promise<APIRequestContext> {
 
 async function creerAnnee(api: APIRequestContext, libelle?: string): Promise<{ anneeId: number; trimestreId: number }> {
   const anneeRes = await api.post('/api/anneesScolaires/', {
-    data: { libelle: libelle ?? `${PREFIX} — Année`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: false },
+    data: { libelle: libelle ?? `${PREFIX} — Année`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: true },
   })
   expect(anneeRes.ok(), `création année (${anneeRes.status()}): ${await anneeRes.text()}`).toBeTruthy()
   const annee = await anneeRes.json()
@@ -77,47 +77,36 @@ async function creerFixtures(api: APIRequestContext) {
       nom: 'NoteEleve', prenom: `Notes${Date.now()}`, date_de_naissance: '2010-01-01',
       lieu_de_naissance: 'Bamako', sexe: 'F', statut: 'actif',
       tuteur_id: (await tuteur.json()).id,
+      classe_id: classeId,
     },
   })
   expect(eleve.status()).toBe(201)
-  const matriculeEleve = (await eleve.json()).matricule
-
-  const annees = await (await api.get('/api/anneesScolaires/')).json()
-  const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
-  const insc = await api.post('/api/inscriptions/', {
-    data: {
-      matricule_eleve: matriculeEleve, id_classe: classeId, id_annee_scolaire: anneeActive.id,
-    },
-  })
-  expect(insc.status()).toBe(201)
 
   return { classeId, coursId, classeNom, coursNom }
 }
 
-async function nettoyer(api: APIRequestContext, anneeId: number, trimestreId: number) {
-  if (!anneeId && !trimestreId) return
+async function nettoyer(api: APIRequestContext, trimestreId: number) {
+  if (!trimestreId) return
   const notes = await (await api.get('/api/notes/', { params: { id_trimestre: trimestreId, limit: 500 } })).json()
   for (const n of notes) await api.delete(`/api/notes/${n.id}`)
-  if (trimestreId) await api.delete(`/api/trimestres/${trimestreId}`)
-  if (anneeId) await api.delete(`/api/anneesScolaires/${anneeId}`)
+  await api.delete(`/api/trimestres/${trimestreId}`)
 }
 
 test.describe('Saisie des notes', () => {
   test('une nouvelle année est directement saisissable (périodes auto-générées)', async ({ page }) => {
     const api = await creerApiContexte()
-    let anneeId = 0
     let trimestreId = 0
+    let baseAnneeId: number | null = null
     try {
+      const actif = await api.get('/api/anneesScolaires/active')
+      if (actif.ok) baseAnneeId = (await actif.json()).id
       const created = await creerAnnee(api)
-      anneeId = created.anneeId
       trimestreId = created.trimestreId
       const { classeId, coursId, classeNom, coursNom } = await creerFixtures(api)
 
       await login(page)
       await page.goto('/app/notes')
       await expect(page.getByRole('heading', { name: 'Saisie des notes' })).toBeVisible()
-
-      await page.getByLabel('Année scolaire').selectOption({ label: `${PREFIX} — Année` })
 
       await expect(page.getByLabel('Période')).toBeDisabled()
       await expect(page.getByLabel('Matière')).toBeDisabled()
@@ -140,9 +129,13 @@ test.describe('Saisie des notes', () => {
       await inputs.first().fill('7.5')
       await expect(page.locator('tbody tr').first()).toContainText('Nouveau')
 
+      // Perte de focus : l'auto-enregistrement (onBlur) sauvegarde la note.
+      await page.getByRole('heading', { name: 'Saisie des notes' }).click()
+      await expect(page.locator('tbody tr').first()).toContainText('Enregistré', { timeout: 15_000 })
+
+      // La sauvegarde manuelle reste actionnable et confirme.
       await page.getByRole('button', { name: 'Enregistrer' }).click()
-      await expect(page.getByRole('status')).toContainText('Notes enregistrées.', { timeout: 10_000 })
-      await expect(page.locator('tbody tr').first()).toContainText('Enregistré')
+      await expect(page.getByText('Notes enregistrées.').first()).toBeVisible({ timeout: 15_000 })
 
       let notes = await (
         await api.get('/api/notes/', { params: { id_classe: classeId, id_cours: coursId, id_trimestre: trimestreId } })
@@ -153,8 +146,11 @@ test.describe('Saisie des notes', () => {
       await inputs.first().fill('9')
       await expect(page.locator('tbody tr').first()).toContainText('Modifié')
 
+      await page.getByRole('heading', { name: 'Saisie des notes' }).click()
+      await expect(page.locator('tbody tr').first()).toContainText('Enregistré', { timeout: 15_000 })
+
       await page.getByRole('button', { name: 'Enregistrer' }).click()
-      await expect(page.getByRole('status')).toContainText('Notes enregistrées.', { timeout: 10_000 })
+      await expect(page.getByText('Notes enregistrées.').first()).toBeVisible({ timeout: 15_000 })
 
       notes = await (
         await api.get('/api/notes/', { params: { id_classe: classeId, id_cours: coursId, id_trimestre: trimestreId } })
@@ -162,7 +158,8 @@ test.describe('Saisie des notes', () => {
       expect(notes).toHaveLength(1)
       expect(notes[0].note).toBe(9)
     } finally {
-      await nettoyer(api, anneeId, trimestreId)
+      if (baseAnneeId != null) await api.put(`/api/anneesScolaires/${baseAnneeId}/activer`)
+      await nettoyer(api, trimestreId)
       await api.dispose()
     }
   })
@@ -170,10 +167,13 @@ test.describe('Saisie des notes', () => {
   test("année sans trimestre : message explicite au lieu d'une page vide", async ({ page }) => {
     const api = await creerApiContexte()
     let anneeId = 0
+    let baseAnneeId: number | null = null
     try {
+      const actif = await api.get('/api/anneesScolaires/active')
+      if (actif.ok) baseAnneeId = (await actif.json()).id
       const { classeNom } = await creerFixtures(api)
       const anneeRes = await api.post('/api/anneesScolaires/', {
-        data: { libelle: `${PREFIX} — Sans période`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: false },
+        data: { libelle: `${PREFIX} — Sans période`, date_debut: '2026-01-05', date_fin: '2026-12-20', active: true },
       })
       expect(anneeRes.ok(), `création année (${anneeRes.status()}): ${await anneeRes.text()}`).toBeTruthy()
       anneeId = (await anneeRes.json()).id
@@ -185,12 +185,11 @@ test.describe('Saisie des notes', () => {
 
       await login(page)
       await page.goto('/app/notes')
-      await page.getByLabel('Année scolaire').selectOption({ label: `${PREFIX} — Sans période` })
       await page.getByLabel('Classe').selectOption({ label: classeNom })
 
       await expect(page.getByText('Aucune période pour cette année')).toBeVisible({ timeout: 10_000 })
     } finally {
-      if (anneeId) await api.delete(`/api/anneesScolaires/${anneeId}`)
+      if (baseAnneeId != null) await api.put(`/api/anneesScolaires/${baseAnneeId}/activer`)
       await api.dispose()
     }
   })

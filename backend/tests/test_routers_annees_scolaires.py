@@ -91,15 +91,12 @@ class TestActivation:
         detail = client.get(f"/api/anneesScolaires/{a1['id']}", headers=auth_headers)
         assert detail.json()["active"] is False
 
-    def test_activer_annee_cloturee_consulte_en_lecture_seule(self, client, auth_headers):
-        """Une année clôturée reste sélectionnable pour consultation (lecture seule)."""
+    def test_activer_annee_cloturee_refuse(self, client, auth_headers):
+        """Une année clôturée ne peut plus être (ré)activée : plus de consultation d'une année archivée."""
         annee = _creer_annee(client, auth_headers, active=False).json()
         client.put(f"/api/anneesScolaires/{annee['id']}/cloturer", headers=auth_headers)
         resp = client.put(f"/api/anneesScolaires/{annee['id']}/activer", headers=auth_headers)
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["active"] is True
-        assert body["cloturee"] is True
+        assert resp.status_code == 409
 
 
 class TestCloture:

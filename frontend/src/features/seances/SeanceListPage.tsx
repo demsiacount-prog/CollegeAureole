@@ -9,8 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
-import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 import { fetchClasses } from '@/features/classes/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
 import { fetchSeances, createSeance, updateSeance, deleteSeance } from './api'
@@ -26,22 +25,20 @@ function hhmm(t: string) {
 
 
 export default function SeanceListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
-  const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
+  const { data: activeAnnee } = useAnneeActive()
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
   const { data: enseignants = [] } = useQuery({ queryKey: ['enseignants'], queryFn: () => fetchEnseignants() })
 
   const [filterAnnee, setFilterAnnee] = useState('')
   useEffect(() => {
-    if (!filterAnnee && annees.length > 0) {
-      const active = annees.find((a) => a.active) ?? annees[0]
-      setFilterAnnee(active.id.toString())
+    if (activeAnnee && String(activeAnnee.id) !== filterAnnee) {
+      setFilterAnnee(String(activeAnnee.id))
     }
-  }, [annees, filterAnnee])
+  }, [activeAnnee])
   const [filterClasse, setFilterClasse] = useState('')
   const [filterEnseignant, setFilterEnseignant] = useState('')
 
@@ -120,7 +117,7 @@ export default function SeanceListPage() {
         <PageHeader
           title="Emploi du temps"
           subtitle={
-            <p className="mt-1 text-sm text-[var(--color-ink-dim)]">
+            <p className="mt-1 text-sm text-[var(--ink-dim)]">
               {filtered.length} séance{filtered.length > 1 ? 's' : ''}
               {filterClasse && classes.find((c) => c.id === Number(filterClasse)) && (
                 <> — {classes.find((c) => c.id === Number(filterClasse))?.niveau} {classes.find((c) => c.id === Number(filterClasse))?.nom}</>
@@ -135,17 +132,6 @@ export default function SeanceListPage() {
         />
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={filterAnnee}
-            onChange={(e) => setFilterAnnee(e.target.value)}
-            disabled={!annees.length}
-            className="w-48"
-          >
-            {!annees.length && <option value="">—</option>}
-            {annees.map((a) => (
-              <option key={a.id} value={a.id}>{a.libelle}</option>
-            ))}
-          </Select>
           <Select
             value={filterClasse}
             onChange={(e) => { setFilterClasse(e.target.value); setFilterEnseignant('') }}
@@ -185,15 +171,15 @@ export default function SeanceListPage() {
             <EmptyState message="Aucune séance pour ce filtre." />
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)]">
+          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)]">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="w-28 border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-[9px] text-left text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--color-ink-faint)]">
+                  <th className="w-28 border-b border-r border-[var(--border)] bg-[var(--surface)] px-3 py-[9px] text-left text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--ink-faint)]">
                     Horaire
                   </th>
                   {JOURS.map((j) => (
-                    <th key={j} className="border-b border-r border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-[9px] text-center text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--color-ink)] last:border-r-0">
+                    <th key={j} className="border-b border-r border-[var(--border)] bg-[var(--surface)] px-3 py-[9px] text-center text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--ink)] last:border-r-0">
                       {j}
                     </th>
                   ))}
@@ -202,30 +188,30 @@ export default function SeanceListPage() {
               <tbody>
                 {creneaux.map((cr) => (
                   <tr key={cr.debut}>
-                    <td className="border-b border-r border-[var(--color-border)] px-3 py-2 align-top font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">
+                    <td className="border-b border-r border-[var(--border)] px-3 py-2 align-top font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">
                       {hhmm(cr.debut)}<br />{hhmm(cr.fin)}
                     </td>
                     {JOURS.map((jour) => {
                       const cases = seancesDansCase(jour, cr.debut)
                       return (
-                        <td key={jour} className="min-w-[180px] border-b border-r border-[var(--color-border)] p-2 align-top last:border-r-0">
+                        <td key={jour} className="min-w-[180px] border-b border-r border-[var(--border)] p-2 align-top last:border-r-0">
                           <div className="flex flex-col gap-1.5">
                             {cases.map((s) => (
                                 <div
                                   key={s.id}
-                                  className="group relative flex-1 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-3 py-2"
+                                  className="group relative flex-1 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface)] px-3 py-2"
                                 >
-                                  <p className="text-xs font-semibold leading-tight text-[var(--color-ink)]">
+                                  <p className="text-xs font-semibold leading-tight text-[var(--ink)]">
                                     {s.cours?.nom ?? '—'}
                                   </p>
                                   {!filterClasse && s.classe && (
-                                    <p className="mt-0.5 text-[11px] text-[var(--color-ink-dim)]">{s.classe.niveau} {s.classe.nom}</p>
+                                    <p className="mt-0.5 text-[11px] text-[var(--ink-dim)]">{s.classe.niveau} {s.classe.nom}</p>
                                   )}
                                   {!filterEnseignant && s.cours?.enseignant && (
-                                    <p className="text-[11px] text-[var(--color-ink-dim)]">{s.cours.enseignant.prenom} {s.cours.enseignant.nom}</p>
+                                    <p className="text-[11px] text-[var(--ink-dim)]">{s.cours.enseignant.prenom} {s.cours.enseignant.nom}</p>
                                   )}
                                   {s.salle && (
-                                    <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--color-ink-faint)]">
+                                    <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--ink-faint)]">
                                       <MapPin size={9} strokeWidth={1.75} /> {s.salle.nom}
                                     </p>
                                   )}
@@ -234,7 +220,7 @@ export default function SeanceListPage() {
                                       <button
                                         onClick={() => handleEdit(s)}
                                         aria-label="Modifier"
-                                        className="rounded-[var(--radius-sm)] bg-[var(--color-surface)] p-1 text-[var(--color-ink-dim)] shadow-sm transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                                        className="rounded-[var(--radius-sm)] bg-[var(--surface)] p-1 text-[var(--ink-dim)] shadow-sm transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                                       >
                                         <Pencil size={12} strokeWidth={1.75} />
                                       </button>
@@ -242,7 +228,7 @@ export default function SeanceListPage() {
                                         <button
                                           onClick={() => setDeleting(s)}
                                           aria-label="Supprimer"
-                                          className="rounded-[var(--radius-sm)] bg-[var(--color-surface)] p-1 text-[var(--color-ink-dim)] shadow-sm transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                                          className="rounded-[var(--radius-sm)] bg-[var(--surface)] p-1 text-[var(--ink-dim)] shadow-sm transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                                         >
                                           <Trash2 size={12} strokeWidth={1.75} />
                                         </button>

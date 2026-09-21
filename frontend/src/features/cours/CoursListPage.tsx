@@ -15,12 +15,9 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchCours, createCours, updateCours, deleteCours } from './api'
 import CoursFormDrawer from './CoursFormDrawer'
 import type { Cours, CoursCreateInput } from './types'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 export default function CoursListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: cours = [], isLoading, isError } = useQuery({ queryKey: ['cours'], queryFn: fetchCours })
 
@@ -107,16 +104,16 @@ export default function CoursListPage() {
               <TableBody>
                 {filtered.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium text-[var(--color-ink)]">{c.nom}</TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">{c.description}</TableCell>
+                    <TableCell className="font-medium text-[var(--ink)]">{c.nom}</TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{c.description}</TableCell>
                     <TableCell><Badge tone="neutral">{c.volume_horaire}h</Badge></TableCell>
-                    <TableCell className="text-[var(--color-ink-dim)]">
+                    <TableCell className="text-[var(--ink-dim)]">
                       {c.enseignant ? `${c.enseignant.prenom} ${c.enseignant.nom}` : '—'}
                     </TableCell>
                     <TableCell>
                       <button
                         onClick={() => setClassesCours(c)}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-sm text-[var(--color-action-bright)] transition-colors hover:bg-[var(--color-action-wash)]"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-sm text-[var(--action-bright)] transition-colors hover:bg-[var(--action-w)]"
                       >
                         <Users size={14} strokeWidth={1.75} />
                         {c.classes.length} classe{c.classes.length > 1 ? 's' : ''}
@@ -127,7 +124,7 @@ export default function CoursListPage() {
                         {canWrite && (
                           <button
                             onClick={() => { setEditing(c); setDrawerOpen(true) }}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label={`Modifier ${c.nom}`}
                           >
                             <Pencil size={14} strokeWidth={1.75} />
@@ -136,7 +133,7 @@ export default function CoursListPage() {
                         {canDelete && (
                           <button
                             onClick={() => setDeleting(c)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             aria-label={`Supprimer ${c.nom}`}
                           >
                             <Trash2 size={14} strokeWidth={1.75} />
@@ -180,14 +177,14 @@ export default function CoursListPage() {
         title={`Classes — ${classesCours?.nom ?? ''}`}
       >
         {classesCours && classesCours.classes.length === 0 ? (
-          <p className="text-sm text-[var(--color-ink-faint)]">Aucune classe associée.</p>
+          <p className="text-sm text-[var(--ink-faint)]">Aucune classe associée.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {classesCours?.classes.map((cl) => (
-              <div key={cl.id} className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] px-4 py-3">
+              <div key={cl.id} className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border-soft)] px-4 py-3">
                 <div>
-                  <p className="font-medium text-[var(--color-ink)]">{cl.niveau} — {cl.nom}</p>
-                  {cl.salle && <p className="mt-0.5 text-xs text-[var(--color-ink-faint)]">Salle : {cl.salle.nom}</p>}
+                  <p className="font-medium text-[var(--ink)]">{cl.niveau} — {cl.nom}</p>
+                  {cl.salle && <p className="mt-0.5 text-xs text-[var(--ink-faint)]">Salle : {cl.salle.nom}</p>}
                 </div>
                 <Badge tone="info">{cl.niveau}</Badge>
               </div>

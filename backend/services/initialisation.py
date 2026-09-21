@@ -69,15 +69,13 @@ def _echouer(erreur: str) -> None:
 def _nettoyer() -> None:
     """Meilleur effort : revient à un état non configuré pour relancer proprement."""
     try:
-        db = SessionLocal()
-        db.query(models.Etablissement).delete()
-        db.query(models.Utilisateurs).delete()
-        db.query(models.AnneesScolaires).delete()
-        db.commit()
+        with SessionLocal() as db:
+            db.query(models.Etablissement).delete()
+            db.query(models.Utilisateurs).delete()
+            db.query(models.AnneesScolaires).delete()
+            db.commit()
     except Exception:
         logger.exception("Nettoyage après échec de l'initialisation impossible")
-    finally:
-        db.close()
 
 
 def _etape(etape: int, message: str, pourcent: int) -> None:
@@ -131,8 +129,7 @@ def executer_initialisation(payload) -> None:
 
         # 1. Fiche établissement (marqueur de configuration)
         _etape(1, "Enregistrement de la fiche établissement…", 8)
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             db.add(models.Etablissement(
                 id=1,
                 nom=etablissement.nom,
@@ -147,14 +144,11 @@ def executer_initialisation(payload) -> None:
                 date_initialisation=date.today(),
             ))
             db.commit()
-        finally:
-            db.close()
 
         # 2. Année scolaire + périodes (trimestres/compositions).
         _etape(2, "Création de l'année scolaire…", 20)
         annee_id = None
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             annee = models.AnneesScolaires(
                 libelle=libelle_annee(annee_debut, annee_fin),
                 date_debut=annee_debut,
@@ -167,13 +161,10 @@ def executer_initialisation(payload) -> None:
             annee_id = annee.id
             generer_periodes_par_defaut(db, annee.id, annee_debut, annee_fin)
             db.commit()
-        finally:
-            db.close()
 
         # 3. Compte administrateur personnalisé.
         _etape(3, "Création du compte administrateur…", 50)
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             db.add(models.Utilisateurs(
                 nom=admin.nom,
                 prenom=admin.prenom,
@@ -181,8 +172,6 @@ def executer_initialisation(payload) -> None:
                 mot_de_passe=hash_password(admin.mot_de_passe),
             ))
             db.commit()
-        finally:
-            db.close()
 
         _etape(4, "Configuration de l'application…", 90)
         _finir()

@@ -19,10 +19,10 @@ export function DocumentActionRow({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded border border-[var(--color-border-soft)] px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded border border-[var(--border-soft)] px-3 py-2">
       <div className="flex min-w-0 items-center gap-2">
-        <FileText size={14} strokeWidth={1.75} className="shrink-0 text-[var(--color-ink-faint)]" />
-        <span className="truncate text-xs text-[var(--color-ink)]">{label}</span>
+        <FileText size={14} strokeWidth={1.75} className="shrink-0 text-[var(--ink-faint)]" />
+        <span className="truncate text-xs text-[var(--ink)]">{label}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <Button size="sm" variant="secondary" onClick={onApercu}>

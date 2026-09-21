@@ -66,7 +66,7 @@ export default function ReinitialiserMotDePasseDrawer({ utilisateur, onClose, on
           />
         </div>
 
-        <div className="border-t border-[var(--color-border)] p-4">
+        <div className="border-t border-[var(--border)] p-4">
           <Button type="submit" variant="primary" className="w-full">
             Réinitialiser le mot de passe
           </Button>

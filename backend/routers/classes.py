@@ -7,6 +7,20 @@ import schemas
 from security import get_current_user
 from services.protections import verifier_classe
 
+# INVARIANT MÉTIER — classes hors année scolaire.
+# Une classe (et ses montants frais_inscription / mensualite) est un objet
+# GLOBAL, réutilisé d'année en année : la clôture d'année (routers/cloture.py
+# ::_classe_suivante) déplace les inscriptions vers une classe existante, jamais
+# vers une classe nouvelle. Les montants sont figés dans l'échéancier de chaque
+# inscription à sa création (_generer_echeances) ; leur modification reste donc
+# toujours autorisée, quel que soit l'état de clôture des années.
+#
+# CONSÉQUENCE : aucune garde d'écriture de type « classe clôturée » basée sur une
+# année de création de la classe ne doit être ajoutée ici — elle verrouillerait
+# dès l'année suivante la modification des tarifs d'une classe pourtant encore
+# utilisée. La fermeture des écritures se gère PAR ANNÉE (drapeau
+# AnneesScolaires.cloturee), jamais par classe.
+
 router = APIRouter(prefix="/api/classes", tags=["Classes"], dependencies=[Depends(get_current_user)])
 
 def _verifier_salle_disponible(db: Session, id_salle: Optional[int], classe_exclue_id: Optional[int] = None):
@@ -30,6 +44,8 @@ def _verifier_salle_disponible(db: Session, id_salle: Optional[int], classe_excl
 
 @router.post("/", response_model=schemas.ClasseResponse, status_code=status.HTTP_201_CREATED)
 def create_classe(classe: schemas.ClasseCreate, db: Session = Depends(get_db)):
+    """Crée une classe (hors année scolaire) : elle sera réutilisée pour toutes
+    les années puisqu'il n'existe pas de Classes.annee_scolaire_id."""
     _verifier_salle_disponible(db, classe.id_salle)
     nouveau_classe = models.Classes(**classe.model_dump())
     db.add(nouveau_classe)
@@ -50,6 +66,13 @@ def get_classe_detail(classe_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{classe_id}", response_model=schemas.ClasseResponse)
 def update_classe(classe_id: int, classe_update: schemas.ClasseCreate, db: Session = Depends(get_db)):
+    """Met à jour la classe (dont frais_inscription / mensualite).
+
+    Les tarifs sont globaux par classe et restent modifiables à tout moment,
+    y compris après clôture d'une année : les montants déjà engagés sont figés
+    dans les échéanciers des inscriptions existantes (_generer_echeances), seules
+    les prochaines inscriptions prennent les nouveaux montants.
+    """
     db_classe = db.query(models.Classes).filter(models.Classes.id == classe_id).first()
     if not db_classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")

@@ -40,12 +40,27 @@ from exceptions import AureoleException
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("college_aureole")
 
-# En production, la création/évolution du schéma doit passer par Alembic
-# (voir /alembic), jamais par create_all() qui ne migre pas un schéma existant
-# et peut masquer des migrations manquantes. Ce comportement reste activé par
-# défaut pour ne pas casser un usage local/démo simple, mais on peut le
-# désactiver explicitement en production avec AUTO_CREATE_TABLES=false.
-AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "true").strip().lower() not in ("false", "0", "no")
+# FIX RISQUE CRITIQUE (migrations masquantes) : la création/évolution du
+# schéma doit passer par Alembic (voir /alembic), jamais par create_all() qui
+# ne migre pas un schéma existant et peut tamponner des migrations non
+# appliquées. Le boot auto reste activé en dev uniquement s'il est demandé
+# explicitement (AUTO_CREATE_TABLES=true, cf. .env.example) ; en l'absence de
+# la variable, on le DESACTIVE par défaut (comportement sûr en production).
+AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "false").strip().lower() not in ("false", "0", "no")
+
+
+def _auto_create_tables_actif() -> bool:
+    """Défaut SÛR en production : false. S'active uniquement explicitement
+    (AUTO_CREATE_TABLES=true, cf. .env.example), jamais par défaut."""
+    return os.getenv("AUTO_CREATE_TABLES", "false").strip().lower() not in ("false", "0", "no")
+
+if AUTO_CREATE_TABLES:
+    logger.warning(
+        "AUTO_CREATE_TABLES=true : le bootstrap du schéma (Alembic) est exécuté au "
+        "démarrage. En production, désactivez-le explicitement (AUTO_CREATE_TABLES=false) "
+        "et appliquez les migrations par `alembic upgrade head` afin d'éviter des "
+        "migrations tamponnées sans avoir été appliquées sur une base héritée."
+    )
 
 
 @asynccontextmanager
@@ -57,6 +72,16 @@ async def lifespan(app: FastAPI):
         migrer_schema()
     else:
         logger.info("AUTO_CREATE_TABLES=false : bootstrap des migrations ignoré.")
+
+    # FIX (archive uniquement à la clôture) : plus aucune sauvegarde
+    # automatique au démarrage du serveur. L'archive complète des données
+    # n'est désormais créée qu'à la clôture d'année
+    # (routers/cloture.py → sauvegardes.sauvegarde_cloture), plus à chaque
+    # redémarrage, ni par aucune autre source automatique.
+    logger.info(
+        "Aucune sauvegarde au démarrage : l'archive complète est créée uniquement "
+        "à la clôture d'année (et manuellement via Paramètres → Sauvegardes)."
+    )
     yield
 
 

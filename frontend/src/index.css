@@ -243,6 +243,7 @@
     --halo-wash: var(--color-halo-wash);
 
     --action: var(--color-action);
+    --action-bright: var(--color-action-bright);
     --action-dk: var(--color-action-dark);
     --action-w: var(--color-action-wash);
     --action-ring: var(--color-action-ring);
@@ -257,9 +258,13 @@
     --info-w: var(--color-info-wash);
 
     --mod-ped: var(--color-mod-peda);
+    --mod-ped-w: var(--color-mod-peda-wash);
     --mod-vie: var(--color-mod-vie);
+    --mod-vie-w: var(--color-mod-vie-wash);
     --mod-fin: var(--color-mod-fin);
+    --mod-fin-w: var(--color-mod-fin-wash);
     --mod-res: var(--color-mod-ress);
+    --mod-res-w: var(--color-mod-ress-wash);
 
     --border: var(--color-border);
     --border-soft: var(--color-border-soft);

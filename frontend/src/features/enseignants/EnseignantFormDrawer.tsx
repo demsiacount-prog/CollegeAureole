@@ -195,8 +195,8 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
             if (errors.adresse) setErrors((prev) => ({ ...prev, adresse: undefined }))
           }} error={errors.adresse} />
 
-          <div className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-            <div className="col-span-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-dim)]">
+          <div className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="col-span-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--ink-dim)]">
               Renseignements administratifs
             </div>
             <Select
@@ -317,7 +317,7 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
           </div>
 
           {error && (
-            <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+            <p className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
               {error}
             </p>
           )}

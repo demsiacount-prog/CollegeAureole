@@ -85,42 +85,42 @@ export default function RemiseDrawer({ open, onClose, echeance }: {
       <Drawer open={open} onClose={onClose} title="Remises">
         <div className="flex flex-col h-full">
           <div className="space-y-4">
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-3">
-              <p className="text-sm font-medium text-[var(--color-ink)]">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface-2)] p-3">
+              <p className="text-sm font-medium text-[var(--ink)]">
                 {echeance.type_echeance === 'INSCRIPTION' ? 'Inscription' : echeance.mois}
               </p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
                 <div>
-                  <p className="text-xs text-[var(--color-ink-faint)]">Montant dû</p>
-                  <p className="font-medium text-[var(--color-ink)]">{formatMontant(echeance.montant_du)}</p>
+                  <p className="text-xs text-[var(--ink-faint)]">Montant dû</p>
+                  <p className="font-medium text-[var(--ink)]">{formatMontant(echeance.montant_du)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--color-ink-faint)]">Payé</p>
-                  <p className="font-medium text-[var(--color-ink)]">{formatMontant(echeance.montant_paye)}</p>
+                  <p className="text-xs text-[var(--ink-faint)]">Payé</p>
+                  <p className="font-medium text-[var(--ink)]">{formatMontant(echeance.montant_paye)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--color-ink-faint)]">Reste</p>
-                  <p className="font-medium text-[var(--color-ink)]">{formatMontant(echeance.reste_a_payer)}</p>
+                  <p className="text-xs text-[var(--ink-faint)]">Reste</p>
+                  <p className="font-medium text-[var(--ink)]">{formatMontant(echeance.reste_a_payer)}</p>
                 </div>
               </div>
               {totalRemises > 0 && (
-                <div className="mt-2 border-t border-[var(--color-border-soft)] pt-2">
-                  <p className="text-xs text-[var(--color-ink-faint)]">Total remises</p>
-                  <p className="font-medium text-[var(--color-danger)]">-{formatMontant(totalRemises)}</p>
+                <div className="mt-2 border-t border-[var(--border-soft)] pt-2">
+                  <p className="text-xs text-[var(--ink-faint)]">Total remises</p>
+                  <p className="font-medium text-[var(--danger)]">-{formatMontant(totalRemises)}</p>
                 </div>
               )}
             </div>
 
             {remises.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-[var(--color-ink-dim)]">Remises appliquées</p>
+                <p className="text-sm font-medium text-[var(--ink-dim)]">Remises appliquées</p>
                 <ul className="mt-2 space-y-2">
                   {remises.map((r) => (
-                    <li key={r.id} className="flex items-start justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-2">
+                    <li key={r.id} className="flex items-start justify-between rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface-2)] p-2">
                       <div>
-                        <p className="text-sm font-medium text-[var(--color-danger)]">-{formatMontant(r.montant)}</p>
-                        {r.motif && <p className="text-xs text-[var(--color-ink-faint)]">{r.motif}</p>}
-                        <p className="text-xs text-[var(--color-ink-faint)]">{formatDate(r.date)}</p>
+                        <p className="text-sm font-medium text-[var(--danger)]">-{formatMontant(r.montant)}</p>
+                        {r.motif && <p className="text-xs text-[var(--ink-faint)]">{r.motif}</p>}
+                        <p className="text-xs text-[var(--ink-faint)]">{formatDate(r.date)}</p>
                       </div>
                       <Button
                         variant="icon"
@@ -137,8 +137,8 @@ export default function RemiseDrawer({ open, onClose, echeance }: {
               </div>
             )}
 
-            <div className="border-t border-[var(--color-border-soft)] pt-4">
-              <p className="text-sm font-medium text-[var(--color-ink-dim)]">Nouvelle remise</p>
+            <div className="border-t border-[var(--border-soft)] pt-4">
+              <p className="text-sm font-medium text-[var(--ink-dim)]">Nouvelle remise</p>
               <div className="mt-2 space-y-3">
                 <Input
                   label="Montant (FCFA)"
@@ -173,7 +173,7 @@ export default function RemiseDrawer({ open, onClose, echeance }: {
                   error={errors.date}
                 />
                 {error && (
-                  <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 text-sm text-[var(--color-danger)]">
+                  <p className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">
                     {error}
                   </p>
                 )}

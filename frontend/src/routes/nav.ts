@@ -30,17 +30,17 @@ export interface NavItem {
 export interface NavSection {
   /** Label de groupe affiché dans la sidebar. null = item standalone (pas de label). */
   title: string | null
-  /** Token CSS de couleur module (var(--color-mod-*)). null → aucune identité de module. */
+  /** Token CSS de couleur module (var(--mod-*)). null → aucune identité de module. */
   moduleColor?: string | null
   items: NavItem[]
 }
 
 /** Module identity colors (v4.1) */
 export const MOD_COLORS = {
-  vie: 'var(--color-mod-vie)',
-  peda: 'var(--color-mod-peda)',
-  ress: 'var(--color-mod-ress)',
-  fin: 'var(--color-mod-fin)',
+  vie: 'var(--mod-vie)',
+  peda: 'var(--mod-ped)',
+  ress: 'var(--mod-res)',
+  fin: 'var(--mod-fin)',
 } as const
 
 /** Design system §31 — Architecture de navigation : 5 groupes + item standalone. */

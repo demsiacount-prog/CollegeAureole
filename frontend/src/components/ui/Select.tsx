@@ -17,10 +17,16 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-[5px]">
         {label && (
-          <label htmlFor={selectId} className="text-[12px] font-medium text-[var(--ink-dim)]">
-            {label}
-            {rest.required && <span className="ml-[2px] text-[var(--danger)]">*</span>}
-          </label>
+          <div className="flex items-start gap-[2px]">
+            <label htmlFor={selectId} className="text-[12px] font-medium text-[var(--ink-dim)]">
+              {label}
+            </label>
+            {rest.required && (
+              <span aria-hidden="true" className="translate-y-[-1px] text-[12px] leading-[150%] text-[var(--danger)]">
+                *
+              </span>
+            )}
+          </div>
         )}
         <div className="relative">
           <select

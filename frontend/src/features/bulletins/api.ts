@@ -13,6 +13,7 @@ export async function fetchBulletins(params?: {
   id_classe?: number
   id_trimestre?: number
   matricule_eleve?: string
+  annee_id?: number
 }): Promise<Bulletin[]> {
   const res = await api.get<Bulletin[]>('/api/bulletins/', { params: { ...params, limit: 500 } })
   return res.data

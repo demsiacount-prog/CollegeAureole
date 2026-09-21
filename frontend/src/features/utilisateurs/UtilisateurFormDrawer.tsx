@@ -97,7 +97,7 @@ export default function UtilisateurFormDrawer({ open, onClose, onSubmit }: Props
           />
         </div>
 
-        <div className="border-t border-[var(--color-border)] p-4">
+        <div className="border-t border-[var(--border)] p-4">
           <Button type="submit" variant="primary" className="w-full">
             Créer l'utilisateur
           </Button>

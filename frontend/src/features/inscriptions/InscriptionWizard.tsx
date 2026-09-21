@@ -180,20 +180,20 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
   return (
     <div className="flex gap-6">
       <div className="w-52 shrink-0">
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
           <div className="px-4 py-4">
-            <p className="text-[13px] font-semibold text-[var(--color-ink)]">Nouvelle inscription</p>
-            <p className="mb-3 text-[11px] text-[var(--color-ink-faint)]">
+            <p className="text-[13px] font-semibold text-[var(--ink)]">Nouvelle inscription</p>
+            <p className="mb-3 text-[11px] text-[var(--ink-faint)]">
               {anneeActive?.libelle ?? 'Année scolaire'}
             </p>
             <div className="mb-4">
               <div className="mb-1 flex justify-between">
-                <span className="text-[10px] text-[var(--color-ink-faint)]">Progression</span>
-                <span className="text-[10px] text-[var(--color-ink-faint)]">{pct}%</span>
+                <span className="text-[10px] text-[var(--ink-faint)]">Progression</span>
+                <span className="text-[10px] text-[var(--ink-faint)]">{pct}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-[var(--color-border-soft)]">
+              <div className="h-1.5 rounded-full bg-[var(--border-soft)]">
                 <div
-                  className="h-1.5 rounded-full bg-[var(--color-action)] transition-all duration-500"
+                  className="h-1.5 rounded-full bg-[var(--action)] transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -209,27 +209,27 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                     onClick={() => done && setStep(s.id)}
                     className="flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-all"
                     style={{
-                      background: active ? 'var(--color-surface-2)' : 'transparent',
+                      background: active ? 'var(--surface-2)' : 'transparent',
                       cursor: done ? 'pointer' : 'default',
                     }}
                   >
                     <div
                       className="flex size-6 shrink-0 items-center justify-center rounded-full"
                       style={{
-                        background: done ? 'var(--color-action)' : active ? 'var(--color-surface)' : 'var(--color-border-soft)',
+                        background: done ? 'var(--action)' : active ? 'var(--surface)' : 'var(--border-soft)',
                       }}
                     >
                       {done ? (
-                        <CheckCircle size={13} className="text-[var(--color-ink)]" />
+                        <CheckCircle size={13} className="text-[var(--ink)]" />
                       ) : (
-                        <Icon size={13} className={active ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-faint)]'} />
+                        <Icon size={13} className={active ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]'} />
                       )}
                     </div>
                     <span
                       className="text-xs"
                       style={{
                         fontWeight: active ? 600 : 400,
-                        color: active ? 'var(--color-ink)' : done ? 'var(--color-ink-dim)' : 'var(--color-ink-faint)',
+                        color: active ? 'var(--ink)' : done ? 'var(--ink-dim)' : 'var(--ink-faint)',
                       }}
                     >
                       {s.label}
@@ -242,15 +242,15 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <div className="border-b border-[var(--color-border)] px-6 py-4">
-          <p className="text-[15px] font-semibold text-[var(--color-ink)]">{STEPS[step - 1].label}</p>
-          <p className="text-xs text-[var(--color-ink-dim)]">Étape {step} sur {STEPS.length}</p>
+      <div className="flex-1 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+        <div className="border-b border-[var(--border)] px-6 py-4">
+          <p className="text-[15px] font-semibold text-[var(--ink)]">{STEPS[step - 1].label}</p>
+          <p className="text-xs text-[var(--ink-dim)]">Étape {step} sur {STEPS.length}</p>
         </div>
 
         <div className="px-6 py-6">
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-sm text-[var(--color-danger)]">
+            <div className="mb-4 flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-w)] px-3 py-2 text-sm text-[var(--danger)]">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               {error}
             </div>
@@ -258,14 +258,14 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
           {submitted ? (
             <div className="flex flex-col items-center justify-center gap-4 py-12">
-              <div className="flex size-16 items-center justify-center rounded-full bg-[var(--color-success-wash)]">
-                <CheckCircle size={36} className="text-[var(--color-success)]" />
+              <div className="flex size-16 items-center justify-center rounded-full bg-[var(--success-w)]">
+                <CheckCircle size={36} className="text-[var(--success)]" />
               </div>
-              <p className="text-lg font-semibold text-[var(--color-ink)]">Inscription enregistrée.</p>
+              <p className="text-lg font-semibold text-[var(--ink)]">Inscription enregistrée.</p>
               {codeInscription && (
-                <p className="font-[var(--font-mono)] text-sm text-[var(--color-mod-ress)]">{codeInscription}</p>
+                <p className="font-[var(--font-mono)] text-sm text-[var(--mod-res)]">{codeInscription}</p>
               )}
-              <p className="text-center text-sm text-[var(--color-ink-dim)]">
+              <p className="text-center text-sm text-[var(--ink-dim)]">
                 Le dossier de {form.prenom} {form.nom} a été créé. Redirection...
               </p>
             </div>
@@ -357,9 +357,9 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                       onChange={(e) => set('fonctionMere', e.target.value)}
                     />
                   </div>
-                  <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-info)]/30 bg-[var(--color-info-wash)] px-3 py-2">
-                    <AlertCircle size={14} className="mt-0.5 shrink-0 text-[var(--color-info)]" />
-                    <span className="text-xs text-[var(--color-info)]">
+                  <div className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--info)]/30 bg-[var(--info-w)] px-3 py-2">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0 text-[var(--info)]" />
+                    <span className="text-xs text-[var(--info)]">
                       Les champs marqués * sont obligatoires.
                     </span>
                   </div>
@@ -368,14 +368,14 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
               {step === 2 && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] bg-[var(--color-surface-2)] p-3">
+                  <div className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--border-soft)] bg-[var(--surface-2)] p-3">
                     <button
                       type="button"
                       onClick={() => { setTuteurMode('select'); setTuteurId('') }}
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
-                        background: tuteurMode === 'select' ? 'var(--color-action)' : 'var(--color-surface)',
-                        color: tuteurMode === 'select' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
+                        background: tuteurMode === 'select' ? 'var(--action)' : 'var(--surface)',
+                        color: tuteurMode === 'select' ? 'var(--ink)' : 'var(--ink-dim)',
                       }}
                     >
                       Tuteur existant
@@ -385,8 +385,8 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                       onClick={() => setTuteurMode('create')}
                       className="rounded px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
-                        background: tuteurMode === 'create' ? 'var(--color-action)' : 'var(--color-surface)',
-                        color: tuteurMode === 'create' ? 'var(--color-ink)' : 'var(--color-ink-dim)',
+                        background: tuteurMode === 'create' ? 'var(--action)' : 'var(--surface)',
+                        color: tuteurMode === 'create' ? 'var(--ink)' : 'var(--ink-dim)',
                       }}
                     >
                       Nouveau tuteur
@@ -513,7 +513,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
                   {classesDuNiveau.length > 0 && (
                     <div>
-                      <p className="mb-2 text-xs font-semibold text-[var(--color-ink)]">
+                      <p className="mb-2 text-xs font-semibold text-[var(--ink)]">
                         Classes disponibles {form.niveauId ? `— Niveau ${form.niveauId}` : ''}
                       </p>
                       <div className="grid grid-cols-3 gap-3">
@@ -524,14 +524,14 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                             onClick={() => set('classeId', String(c.id))}
                             className="rounded-[var(--radius-sm)] border p-3 text-center transition-all"
                             style={{
-                              background: Number(form.classeId) === c.id ? 'var(--color-info-wash)' : 'var(--color-surface)',
-                              borderColor: Number(form.classeId) === c.id ? 'var(--color-info)' : 'var(--color-border)',
+                              background: Number(form.classeId) === c.id ? 'var(--info-w)' : 'var(--surface)',
+                              borderColor: Number(form.classeId) === c.id ? 'var(--info)' : 'var(--border)',
                             }}
                           >
-                            <p className="text-sm font-semibold" style={{ color: Number(form.classeId) === c.id ? 'var(--color-info)' : 'var(--color-ink)' }}>
+                            <p className="text-sm font-semibold" style={{ color: Number(form.classeId) === c.id ? 'var(--info)' : 'var(--ink)' }}>
                               {c.niveau} — {c.nom}
                             </p>
-                            <p className="text-[11px] text-[var(--color-ink-faint)]">
+                            <p className="text-[11px] text-[var(--ink-faint)]">
                               Salle
                             </p>
                           </button>
@@ -541,7 +541,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                   )}
 
                   {!loadingClasses && classesDuNiveau.length === 0 && form.niveauId && (
-                    <p className="text-xs text-[var(--color-ink-faint)]">Aucune classe pour ce niveau.</p>
+                    <p className="text-xs text-[var(--ink-faint)]">Aucune classe pour ce niveau.</p>
                   )}
                   <Input
                     label="Observations"
@@ -554,7 +554,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
               {step === 4 && (
                 <div className="space-y-3">
-                  <p className="mb-2 text-xs text-[var(--color-ink-dim)]">
+                  <p className="mb-2 text-xs text-[var(--ink-dim)]">
                     Cochez les documents fournis par la famille et importez les fichiers scannés.
                   </p>
                   {Object.entries(DOCS_LABELS).map(([field, label]) => {
@@ -571,28 +571,28 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                         key={field}
                         className="rounded-[var(--radius-sm)] border p-4 transition-all"
                         style={{
-                          borderColor: checked ? 'var(--color-success)' : 'var(--color-border)',
-                          background: checked ? 'var(--color-success-wash)' : 'var(--color-surface)',
+                          borderColor: checked ? 'var(--success)' : 'var(--border)',
+                          background: checked ? 'var(--success-w)' : 'var(--surface)',
                         }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div
                               className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)]"
-                              style={{ background: checked ? 'var(--color-success-wash)' : 'var(--color-surface-2)' }}
+                              style={{ background: checked ? 'var(--success-w)' : 'var(--surface-2)' }}
                             >
                               {checked ? (
-                                <CheckCircle size={18} className="text-[var(--color-success)]" />
+                                <CheckCircle size={18} className="text-[var(--success)]" />
                               ) : (
-                                <FileText size={18} className="text-[var(--color-ink-faint)]" />
+                                <FileText size={18} className="text-[var(--ink-faint)]" />
                               )}
                             </div>
                             <div>
-                              <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                              <p className="text-[13px] font-medium text-[var(--ink)]">
                                 {label}
-                                <span className="ml-1 text-[var(--color-danger)]">*</span>
+                                <span aria-hidden="true" className="ml-1 text-[var(--danger)]">*</span>
                               </p>
-                              <p className="text-[11px] text-[var(--color-ink-faint)]">
+                              <p className="text-[11px] text-[var(--ink-faint)]">
                                 {checked ? 'Document reçu' : 'En attente de réception'}
                               </p>
                             </div>
@@ -603,9 +603,9 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                             disabled={isActe && !acteCivilValide && !checked}
                             className="rounded-[var(--radius-sm)] border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
                             style={{
-                              background: checked ? 'var(--color-success-wash)' : 'var(--color-surface)',
-                              color: checked ? 'var(--color-success)' : 'var(--color-ink-dim)',
-                              borderColor: checked ? 'var(--color-success)' : 'var(--color-border)',
+                              background: checked ? 'var(--success-w)' : 'var(--surface)',
+                              color: checked ? 'var(--success)' : 'var(--ink-dim)',
+                              borderColor: checked ? 'var(--success)' : 'var(--border)',
                             }}
                           >
                             {checked ? 'Reçu' : 'Marquer reçu'}
@@ -614,7 +614,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
                         {isActe && !checked && (
                           <div className="mt-4 space-y-3">
-                            <p className="text-[11px] font-semibold text-[var(--color-ink-dim)]">
+                            <p className="text-[11px] font-semibold text-[var(--ink-dim)]">
                               État civil à renseigner avant de marquer reçu :
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -646,7 +646,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                               />
                             </div>
                             {!acteCivilValide && (
-                              <p className="flex items-center gap-1.5 text-[11px] text-[var(--color-info)]">
+                              <p className="flex items-center gap-1.5 text-[11px] text-[var(--info)]">
                                 <AlertCircle size={12} strokeWidth={1.75} />
                                 Renseignez un N° d'acte ou de jugement, la date et le délivrant pour activer « Marquer reçu ».
                               </p>
@@ -656,7 +656,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
 
                         {canImport ? (
                           <div className="mt-3 flex items-center gap-3">
-                            <label className="flex cursor-pointer items-center gap-2 rounded border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-2)]">
+                            <label className="flex cursor-pointer items-center gap-2 rounded border border-[var(--border)] px-3 py-2 text-xs text-[var(--ink-dim)] hover:bg-[var(--surface-2)]">
                               <Upload size={14} strokeWidth={1.75} />
                               {file ? file.name : 'Importer le fichier…'}
                               <input
@@ -673,14 +673,14 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                               <button
                                 type="button"
                                 onClick={() => setDocFiles((prev) => ({ ...prev, [field]: null }))}
-                                className="text-xs text-[var(--color-danger)] hover:underline"
+                                className="text-xs text-[var(--danger)] hover:underline"
                               >
                                 Retirer
                               </button>
                             )}
                           </div>
                         ) : (
-                          <p className="mt-3 text-[11px] text-[var(--color-ink-faint)]">
+                          <p className="mt-3 text-[11px] text-[var(--ink-faint)]">
                             Les fichiers seront ajoutés par l'administrateur après la création de l'élève.
                           </p>
                         )}
@@ -688,7 +688,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                     )
                   })}
                   {uploadProgress && (
-                    <div className="flex items-center gap-2 text-sm text-[var(--color-info)]">
+                    <div className="flex items-center gap-2 text-sm text-[var(--info)]">
                       <Upload size={14} strokeWidth={1.75} className="animate-pulse" />
                       {uploadProgress}
                     </div>
@@ -699,66 +699,66 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
               {step === 5 && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">Élève</p>
-                      <p className="text-[15px] font-semibold text-[var(--color-ink)]">{form.prenom} {form.nom}</p>
-                      <p className="mt-1 text-xs text-[var(--color-ink-dim)]">Né(e) le {form.dateNaissance || '—'}</p>
-                      <p className="text-xs text-[var(--color-ink-dim)]">{form.lieuNaissance || '—'}</p>
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-4">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-faint)]">Élève</p>
+                      <p className="text-[15px] font-semibold text-[var(--ink)]">{form.prenom} {form.nom}</p>
+                      <p className="mt-1 text-xs text-[var(--ink-dim)]">Né(e) le {form.dateNaissance || '—'}</p>
+                      <p className="text-xs text-[var(--ink-dim)]">{form.lieuNaissance || '—'}</p>
                     </div>
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">Tuteur légal</p>
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-4">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-faint)]">Tuteur légal</p>
                       {tuteurMode === 'select' && tuteurId ? (
-                        <p className="text-sm font-semibold text-[var(--color-ink)]">
+                        <p className="text-sm font-semibold text-[var(--ink)]">
                           {tuteurs.find((t) => t.id === Number(tuteurId))?.prenom}{' '}
                           {tuteurs.find((t) => t.id === Number(tuteurId))?.nom}
                         </p>
                       ) : (
                         <>
-                          <p className="text-sm font-semibold text-[var(--color-ink)]">{form.tuteurPrenom} {form.tuteurNom}</p>
-                          <p className="mt-1 text-xs text-[var(--color-ink-dim)]">{form.tuteurEmail || '—'}</p>
-                          <p className="text-xs text-[var(--color-ink-dim)]">{form.tuteurTelephone || '—'}</p>
-                          <p className="text-xs text-[var(--color-ink-dim)]">{form.tuteurAdresse || '—'}</p>
+                          <p className="text-sm font-semibold text-[var(--ink)]">{form.tuteurPrenom} {form.tuteurNom}</p>
+                          <p className="mt-1 text-xs text-[var(--ink-dim)]">{form.tuteurEmail || '—'}</p>
+                          <p className="text-xs text-[var(--ink-dim)]">{form.tuteurTelephone || '—'}</p>
+                          <p className="text-xs text-[var(--ink-dim)]">{form.tuteurAdresse || '—'}</p>
                         </>
                       )}
                     </div>
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">Scolarité</p>
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-4">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-faint)]">Scolarité</p>
+                      <p className="text-sm font-semibold text-[var(--ink)]">
                         {form.niveauId || 'Niveau non choisi'}
                         {form.classeId ? ` · ${classesDuNiveau.find((c) => c.id === Number(form.classeId))?.nom || ''}` : ' · À attribuer'}
                       </p>
                     </div>
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">Documents</p>
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-4">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-faint)]">Documents</p>
                       <div className="space-y-1.5">
                         {Object.entries(DOCS_LABELS).map(([f, l]) => (
                           <div key={f} className="flex items-center gap-2">
                             {form[f as keyof typeof form] as boolean ? (
-                              <Check className="size-3.5 text-[var(--color-success)]" strokeWidth={1.75} />
+                              <Check className="size-3.5 text-[var(--success)]" strokeWidth={1.75} />
                             ) : (
-                              <X className="size-3.5 text-[var(--color-danger)]" strokeWidth={1.75} />
+                              <X className="size-3.5 text-[var(--danger)]" strokeWidth={1.75} />
                             )}
-                            <span className="text-xs text-[var(--color-ink-dim)]">{l}</span>
+                            <span className="text-xs text-[var(--ink-dim)]">{l}</span>
                           </div>
                         ))}
                       </div>
                       {form.acte_naissance && (
-                        <div className="mt-3 space-y-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">État civil</p>
-                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
-                            <span className="text-[var(--color-ink-faint)]">N° acte : </span>
+                        <div className="mt-3 space-y-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-faint)]">État civil</p>
+                          <p className="text-[11.5px] text-[var(--ink-dim)]">
+                            <span className="text-[var(--ink-faint)]">N° acte : </span>
                             {form.numero_acte || '—'}
                           </p>
-                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
-                            <span className="text-[var(--color-ink-faint)]">Jugement supplétif : </span>
+                          <p className="text-[11.5px] text-[var(--ink-dim)]">
+                            <span className="text-[var(--ink-faint)]">Jugement supplétif : </span>
                             {form.jugement_suppletif || '—'}
                           </p>
-                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
-                            <span className="text-[var(--color-ink-faint)]">Date de l'acte : </span>
+                          <p className="text-[11.5px] text-[var(--ink-dim)]">
+                            <span className="text-[var(--ink-faint)]">Date de l'acte : </span>
                             {form.date_acte || '—'}
                           </p>
-                          <p className="text-[11.5px] text-[var(--color-ink-dim)]">
-                            <span className="text-[var(--color-ink-faint)]">Délivré par : </span>
+                          <p className="text-[11.5px] text-[var(--ink-dim)]">
+                            <span className="text-[var(--ink-faint)]">Délivré par : </span>
                             {form.delivre_par || '—'}
                           </p>
                         </div>
@@ -766,9 +766,9 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                     </div>
                   </div>
                   {form.observation && (
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-3 py-2">
-                      <p className="mb-1 text-[11px] font-semibold text-[var(--color-warning)]">OBSERVATIONS</p>
-                      <p className="text-xs text-[var(--color-ink)]">{form.observation}</p>
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--warning)]/30 bg-[var(--warning-w)] px-3 py-2">
+                      <p className="mb-1 text-[11px] font-semibold text-[var(--warning)]">OBSERVATIONS</p>
+                      <p className="text-xs text-[var(--ink)]">{form.observation}</p>
                     </div>
                   )}
                 </div>
@@ -778,8 +778,8 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
         </div>
 
         {!submitted && (
-          <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-surface-2)] px-6 py-4">
-            <p className="text-xs text-[var(--color-ink-faint)]">Étape {step} / {STEPS.length}</p>
+          <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--surface-2)] px-6 py-4">
+            <p className="text-xs text-[var(--ink-faint)]">Étape {step} / {STEPS.length}</p>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={onCancel}>Annuler</Button>
               {step > 1 && (

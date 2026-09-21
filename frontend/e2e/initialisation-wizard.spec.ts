@@ -142,10 +142,9 @@ test.describe('Assistant d’initialisation', () => {
   test('parcours complet : chaque module se charge sans erreur', async ({ page }) => {
     await loginInit(page)
 
-    // L'application reprend l'identité saisie dans l'assistant (nom + devise).
+    // L'application reprend l'identité saisie dans l'assistant (nom).
     const aside = page.locator('aside')
     await expect(aside.getByText('Collège Auréole e2e').first()).toBeVisible()
-    await expect(aside.getByText(DEVISE).first()).toBeVisible()
 
     const pageErrors: string[] = []
     page.on('pageerror', (err) => pageErrors.push(String(err)))
@@ -163,17 +162,16 @@ test.describe('Assistant d’initialisation', () => {
   })
 
 
-  test('la fiche établissement pilote l’application : devise et logo dans la sidebar', async ({ page }) => {
+  test('la fiche établissement pilote l’application : devise enregistrée et logo dans la sidebar', async ({ page }) => {
     await loginInit(page)
     await page.goto('/app/parametres')
     await page.getByRole('button', { name: 'Fiche établissement' }).click()
     await expect(page.getByLabel('Devise')).toBeVisible()
 
-    // La devise saisie dans la fiche s'affiche sous le nom, dans la sidebar.
+    // La devise reste modifiable/enregistrable dans la fiche établissement.
     await page.getByLabel('Devise').fill('Éduquer, c’est révéler')
     await page.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(page.getByText('Fiche établissement mise à jour.')).toBeVisible()
-    await expect(page.locator('aside').getByText('Éduquer, c’est révéler').first()).toBeVisible()
 
     // Le logo importé remplace l'emblème par défaut dans la sidebar (après enregistrement).
     await page.locator('input[type="file"]').setInputFiles({

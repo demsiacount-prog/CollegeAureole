@@ -32,7 +32,9 @@ class EleveBase(BaseModel):
 
 class EleveCreate(EleveBase):
     tuteur_id: int
-    classe_id: int
+    # Classe optionnelle : un élève peut être inscrit sans classe (pré-inscription
+    # en attente d'affectation) ; l'inscription est alors créée avec id_classe=None.
+    classe_id: Optional[int] = None
     # Année scolaire d'inscription : sert au matricule AU{année}. Non persistée
     # sur l'élève (l'inscription reste la source). Repli : année active.
     annee_scolaire_id: Optional[int] = None
@@ -47,6 +49,13 @@ class EleveResponse(EleveBase):
 
     # Pydantic lit 'classe_relation' dans l'objet SQLAlchemy
     classe: Optional["ClasseResponse"] = Field(None, validation_alias="classe_relation")
+
+    # Classe et statut de l'INSCRIPTION de l'année demandée (GET /api/eleves/
+    # avec id_annee_scolaire, ou dossier avec année). Nuls sinon : signale que
+    # l'élève n'est pas inscrit dans l'année consultée / qu'aucune année n'est
+    # demandée. Ne reflète PAS l'état actuel (Eleves.classe_id / statut).
+    classe_annee: Optional["ClasseResponse"] = None
+    statut_annee: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

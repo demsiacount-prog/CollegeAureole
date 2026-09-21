@@ -4,12 +4,13 @@ interface SwitchProps {
   checked: boolean
   onChange: (checked: boolean) => void
   label?: string
+  ariaLabel?: string
   disabled?: boolean
   className?: string
 }
 
 /** Design system §34 — Switch (toggle) 36×20, thumb 16px, fond action quand activé. */
-export function Switch({ checked, onChange, label, disabled, className }: SwitchProps) {
+export function Switch({ checked, onChange, label, ariaLabel, disabled, className }: SwitchProps) {
   return (
     <label className={clsx('flex cursor-pointer items-center gap-2 select-none', disabled && 'cursor-not-allowed opacity-50', className)}>
       <span className="relative inline-block h-5 w-9 shrink-0">
@@ -17,6 +18,7 @@ export function Switch({ checked, onChange, label, disabled, className }: Switch
           type="checkbox"
           checked={checked}
           disabled={disabled}
+          aria-label={ariaLabel}
           onChange={(e) => onChange(e.target.checked)}
           className="sr-only"
         />

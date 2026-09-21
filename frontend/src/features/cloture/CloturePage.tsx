@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, GraduationCap, Repeat, Ban, Clock, Lock } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Ban, CalendarClock, Check, CheckCircle2, Clock, GraduationCap, Lock, Repeat } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
@@ -14,8 +14,8 @@ import { Tabs } from '@/components/ui/Tabs'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
-import { executerCloture, fetchCloturePreview } from './api'
-import type { ClotureExecuterResponse, EleveCloture } from './types'
+import { executerCloture, fetchClotureAlertes, fetchCloturePreview, resoudreAlerteCloture } from './api'
+import type { ClotureExecuterResponse, EleveCloture, EleveErreurCloture } from './types'
 
 const COMPTEUR_CARDS: { key: keyof import('./types').CompteursPreview; label: string; icon: typeof CheckCircle2 }[] = [
   { key: 'ADMIS_PASSAGE', label: 'Admis — passage', icon: ArrowRight },
@@ -50,12 +50,22 @@ export default function CloturePage() {
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 
+  const { data: alertesDonnees } = useQuery({ queryKey: ['cloture-alertes'], queryFn: fetchClotureAlertes, retry: false })
+  const resoudreAlerteMutation = useMutation({
+    mutationFn: resoudreAlerteCloture,
+    onSuccess: () => {
+      toast('Alerte de rattrapage marquée comme résolue.')
+      qc.invalidateQueries({ queryKey: ['cloture-alertes'] })
+    },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
+  })
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-5">
         <PageHeader
           title="Clôture d'année scolaire"
-          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+          subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
         />
         <Card>
           <TableSkeleton rows={8} columns={5} />
@@ -69,7 +79,7 @@ export default function CloturePage() {
       <div className="flex flex-col gap-5">
         <PageHeader
           title="Clôture d'année scolaire"
-          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+          subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
         />
         <div className="py-16">
           <EmptyState
@@ -125,24 +135,43 @@ export default function CloturePage() {
           <ElevesClotureTable eleves={rapport.rapport.eleves_exclus} vide="Aucun élève exclu." />
         ),
       },
+      ...(rapport.rapport.nb_erreurs > 0
+        ? [
+            {
+              key: 'erreurs',
+              label: 'À rattraper',
+              icon: AlertTriangle,
+              count: rapport.rapport.nb_erreurs,
+              content: <ErreursClotureTable erreurs={rapport.rapport.erreurs} />,
+            },
+          ]
+        : []),
     ]
 
     return (
       <div className="flex flex-col gap-5">
         <PageHeader
           title="Clôture d'année scolaire"
-          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
+          subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">Clôturer l'année active et créer l'année suivante.</p>}
         />
         <Card className="mx-auto max-w-lg p-8 text-center">
-        <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[var(--color-success-wash)]">
-          <CheckCircle2 className="size-7 text-[var(--color-success)]" strokeWidth={1.75} />
+        <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[var(--success-w)]">
+          <CheckCircle2 className="size-7 text-[var(--success)]" strokeWidth={1.75} />
         </span>
-        <h2 className="mt-4 text-xl font-medium text-[var(--color-ink)]">
+        <h2 className="mt-4 text-xl font-medium text-[var(--ink)]">
           Clôture effectuée
         </h2>
-        <p className="mt-1.5 text-sm text-[var(--color-ink-dim)]">
+        <p className="mt-1.5 text-sm text-[var(--ink-dim)]">
           {rapport.ancienne_annee.libelle} est clôturée. {rapport.nouvelle_annee.libelle} est maintenant l'année active.
         </p>
+        {rapport.rapport.nb_erreurs > 0 && (
+          <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--danger)]/30 bg-[var(--danger-w)] px-3 py-2.5 text-left text-sm text-[var(--danger)]">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {`${rapport.rapport.nb_erreurs} élève(s) n'ont pas pu être réinscrits automatiquement — traitez-les dans l'onglet « À rattraper ».`}
+            </span>
+          </div>
+        )}
         </Card>
 
         <Tabs tabs={rapportTabs} defaultKey="admis" />
@@ -154,8 +183,53 @@ export default function CloturePage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Clôture d'année scolaire"
-        subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">{preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}</p>}
+        subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">{preview.annee_active ? `Année active : ${preview.annee_active.libelle}` : 'Aucune année active.'}</p>}
       />
+
+      {(alertesDonnees?.nb_en_attente ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-[var(--warning)]" />
+              Réinscriptions à traiter ({alertesDonnees!.nb_en_attente})
+            </CardTitle>
+          </CardHeader>
+          <TableContainer className="rounded-none border-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Élève</TableHead>
+                  <TableHead>Motif</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alertesDonnees!.alertes.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium text-[var(--ink)]">
+                      <Link to={`/app/eleves/${a.matricule}`} className="hover:text-[var(--action-bright)]">
+                        {a.prenom} {a.nom}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-[var(--ink-dim)]">{a.motif}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost-danger"
+                        size="sm"
+                        isLoading={resoudreAlerteMutation.isPending && resoudreAlerteMutation.variables === a.id}
+                        onClick={() => resoudreAlerteMutation.mutate(a.id)}
+                      >
+                        <Check size={14} strokeWidth={2} className="mr-1" />
+                        Résolue
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
 
       {preview.total_eleves === 0 ? (
         <div className="py-16">
@@ -164,27 +238,36 @@ export default function CloturePage() {
       ) : (
         <>
           {preview.cloturee ? (
-            <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-4 py-3 text-sm text-[var(--color-warning)]">
+            <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--warning)]/30 bg-[var(--warning-w)] px-4 py-3 text-sm text-[var(--warning)]">
               <Lock className="size-4 shrink-0" />
               {`${preview.annee_active?.libelle ?? "Cette année"} est clôturée et verrouillée — consultation des résultats de passage en lecture seule.`}
             </div>
           ) : (
             !preview.peut_executer && (
-              <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-warning)]/30 bg-[var(--color-warning-wash)] px-4 py-3 text-sm text-[var(--color-warning)]">
+              <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--warning)]/30 bg-[var(--warning-w)] px-4 py-3 text-sm text-[var(--warning)]">
                 <AlertTriangle className="size-4 shrink-0" />
                 {`${preview.blocants} élève(s) encore en attente d'une décision. Réglez-le dans le module Résultats avant de pouvoir exécuter la clôture.`}
               </div>
             )
           )}
 
+          {preview.nb_classes_manquantes > 0 && (
+            <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--warning)]/30 bg-[var(--warning-w)] px-4 py-3 text-sm text-[var(--warning)]">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {`${preview.nb_classes_manquantes} élève(s) admis n'ont pas de classe de destination (niveau suivant non créé) : créez la classe manquante avant de clôturer, sinon ils devront être réinscrits manuellement après la clôture.`}
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {COMPTEUR_CARDS.map(({ key, label, icon: Icon }) => (
-              <Card key={key} className={key === 'EN_ATTENTE' && preview.blocants > 0 ? 'border-[var(--color-danger)]/40 p-4' : 'p-4'}>
+              <Card key={key} className={key === 'EN_ATTENTE' && preview.blocants > 0 ? 'border-[var(--danger)]/40 p-4' : 'p-4'}>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-[var(--color-ink-dim)]">{label}</p>
-                  <Icon className="size-4 text-[var(--color-action)]" strokeWidth={1.75} />
+                  <p className="text-xs text-[var(--ink-dim)]">{label}</p>
+                  <Icon className="size-4 text-[var(--action)]" strokeWidth={1.75} />
                 </div>
-                <p className="mt-2 text-2xl font-medium text-[var(--color-ink)]">
+                <p className="mt-2 text-2xl font-medium text-[var(--ink)]">
                   {preview.compteurs[key]}
                 </p>
               </Card>
@@ -208,12 +291,12 @@ export default function CloturePage() {
                 <TableBody>
                   {preview.eleves.map((e) => (
                     <TableRow key={e.inscription_id}>
-                      <TableCell className="font-medium text-[var(--color-ink)]">
-                        <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--color-action-bright)]">
+                      <TableCell className="font-medium text-[var(--ink)]">
+                        <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--action-bright)]">
                           {e.prenom} {e.nom}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-[var(--color-ink-dim)]">
+                      <TableCell className="text-[var(--ink-dim)]">
                         {e.classe_nom ? `${e.niveau} — ${e.classe_nom}` : '—'}
                       </TableCell>
                       <TableCell>
@@ -221,7 +304,12 @@ export default function CloturePage() {
                           {e.statut_passage}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-[var(--color-ink-dim)]">{e.action_prevue}</TableCell>
+                      <TableCell className="text-[var(--ink-dim)]">
+                        {e.action_prevue}
+                        {e.classe_manquante && (
+                          <Badge tone="warning" className="ml-2">Classe manquante</Badge>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -232,7 +320,7 @@ export default function CloturePage() {
           {!preview.cloturee && (
             <Card className="p-5">
               <CardTitle className="mb-4 flex items-center gap-2">
-                <CalendarClock className="size-4 text-[var(--color-action)]" />
+                <CalendarClock className="size-4 text-[var(--action)]" />
                 Nouvelle année scolaire
               </CardTitle>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -271,6 +359,41 @@ export default function CloturePage() {
   )
 }
 
+function ErreursClotureTable({ erreurs }: { erreurs: EleveErreurCloture[] }) {
+  if (erreurs.length === 0) {
+    return <EmptyState message="Aucun rattrapage nécessaire." />
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Élèves à réinscrire manuellement ({erreurs.length})</CardTitle>
+      </CardHeader>
+      <TableContainer className="rounded-none border-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Élève</TableHead>
+              <TableHead>Motif</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {erreurs.map((e) => (
+              <TableRow key={`${e.matricule}-${e.motif.slice(0, 32)}`}>
+                <TableCell className="font-medium text-[var(--ink)]">
+                  <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--action-bright)]">
+                    {e.prenom} {e.nom}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-[var(--ink-dim)]">{e.motif}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
+  )
+}
+
 function ElevesClotureTable({ eleves, vide }: { eleves: EleveCloture[]; vide: string }) {
   if (eleves.length === 0) {
     return <EmptyState message={vide} />
@@ -292,15 +415,15 @@ function ElevesClotureTable({ eleves, vide }: { eleves: EleveCloture[]; vide: st
           <TableBody>
             {eleves.map((e) => (
               <TableRow key={e.matricule}>
-                <TableCell className="font-medium text-[var(--color-ink)]">
-                  <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--color-action-bright)]">
+                <TableCell className="font-medium text-[var(--ink)]">
+                  <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--action-bright)]">
                     {e.prenom} {e.nom}
                   </Link>
                 </TableCell>
-                <TableCell className="text-[var(--color-ink-dim)]">
+                <TableCell className="text-[var(--ink-dim)]">
                   {e.classe_nom ?? '—'}
                 </TableCell>
-                <TableCell className="text-[var(--color-ink-dim)]">
+                <TableCell className="text-[var(--ink-dim)]">
                   {e.niveau ?? '—'}
                 </TableCell>
               </TableRow>

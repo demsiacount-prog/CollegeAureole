@@ -7,6 +7,7 @@ import models
 import schemas
 from security import get_current_user
 from bareme import bareme_niveau, est_jardin
+from helpers import get_annee_ou_active
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"], dependencies=[Depends(get_current_user)])
 
@@ -84,22 +85,55 @@ def _valider_bareme(classe, note: float, note_classe: Optional[float]):
         raise HTTPException(status_code=422, detail="Note de classe dépasse le barème")
 
 
-def _creer_note(note: schemas.NoteCreate, db: Session):
+def _creer_note(note: schemas.NoteCreate, db: Session, commit: bool = True):
+    """Création idempotente (upsert).
+
+    Si une note existe déjà pour le même (élève, cours, trimestre), elle est
+    mise à jour au lieu de lever un conflit. Règle la course entre
+    l'auto-enregistrement au perte de focus et la sauvegarde manuelle
+    (double soumission → double création → 409).
+    """
     _verifier_references(note, db)
     classe = _trouver_classe(db, note.id_classe)
     _valider_bareme(classe, note.note, note.note_classe)
-    _verifier_doublon(note, db)
+
+    query = db.query(models.Notes).filter(
+        models.Notes.matricule_eleve == note.matricule_eleve,
+        models.Notes.id_cours == note.id_cours,
+    )
+    if note.id_trimestre is not None:
+        query = query.filter(models.Notes.id_trimestre == note.id_trimestre)
+    else:
+        query = query.filter(models.Notes.id_trimestre.is_(None))
+    existante = query.first()
+
+    if existante is not None:
+        for key, value in note.model_dump().items():
+            if key == "id":
+                continue
+            setattr(existante, key, value)
+        existante.updated_at = now_utc()
+        if commit:
+            db.commit()
+            db.refresh(existante)
+        else:
+            db.flush()  # rend l'objet exploitable (id, etc.) sans valider la transaction
+        return existante, False
+
     data = note.model_dump()
     data.pop("id", None)  # NoteBulkItem transporte un `id` optionnel à ignorer à la création
     data["date"] = now_utc().date()
     nouvelle_note = models.Notes(**data)
     db.add(nouvelle_note)
-    db.commit()
-    db.refresh(nouvelle_note)
-    return nouvelle_note
+    if commit:
+        db.commit()
+        db.refresh(nouvelle_note)
+    else:
+        db.flush()  # rend l'objet exploitable (id, etc.) sans valider la transaction
+    return nouvelle_note, True
 
 
-def _modifier_note(note_id: int, note: schemas.NoteCreate, db: Session):
+def _modifier_note(note_id: int, note: schemas.NoteCreate, db: Session, commit: bool = True):
     db_note = db.query(models.Notes).filter(models.Notes.id == note_id).first()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note introuvable")
@@ -112,8 +146,11 @@ def _modifier_note(note_id: int, note: schemas.NoteCreate, db: Session):
     for key, value in note.model_dump().items():
         setattr(db_note, key, value)
     db_note.updated_at = now_utc()
-    db.commit()
-    db.refresh(db_note)
+    if commit:
+        db.commit()
+        db.refresh(db_note)
+    else:
+        db.flush()
     return db_note
 
 
@@ -129,7 +166,8 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
                     "Rouvrez l'année pour pouvoir enregistrer."
                 ),
             )
-    return _creer_note(note, db)
+    nouvelle_note, _ = _creer_note(note, db)
+    return nouvelle_note
 
 
 @router.get("/", response_model=List[schemas.NoteResponse])
@@ -138,11 +176,22 @@ def get_all_notes(
     id_classe: Optional[int] = None,
     id_cours: Optional[int] = None,
     id_trimestre: Optional[int] = None,
+    annee_id: Optional[int] = Query(None, description="Filtrer par année scolaire (défaut : active)"),
     skip: int = 0,
     limit: int = Query(default=200, le=500),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Notes).options(*_EAGER)
+
+    if annee_id is not None:
+        # Filtrer les notes dont le trimestre appartient à cette année
+        query = query.join(
+            models.Trimestres,
+            models.Notes.id_trimestre == models.Trimestres.id
+        ).filter(
+            models.Trimestres.annee_scolaire_id == annee_id
+        )
+
     if matricule_eleve:
         query = query.filter(models.Notes.matricule_eleve == matricule_eleve)
     if id_classe:
@@ -151,6 +200,7 @@ def get_all_notes(
         query = query.filter(models.Notes.id_cours == id_cours)
     if id_trimestre:
         query = query.filter(models.Notes.id_trimestre == id_trimestre)
+
     return query.order_by(models.Notes.id).offset(skip).limit(limit).all()
 
 
@@ -215,17 +265,36 @@ def patch_note(note_id: int, note_update: schemas.NotePatch, db: Session = Depen
 
 @router.post("/bulk", response_model=schemas.NoteBulkResponse)
 def bulk_notes(payload: schemas.NoteBulkRequest, db: Session = Depends(get_db)):
-    """Sauvegarde groupée (Type D — Enregistrer tout) : création ou mise à jour en un lot."""
+    """Sauvegarde groupée (Type D — Enregistrer tout) : création ou mise à jour en un lot.
+
+    FIX BUG CRITIQUE (incohérence) : chaque note committait individuellement,
+    donc si un élément du lot échouait (doublon, référence invalide...), les
+    précédents restaient enregistrés alors que l'appel global renvoyait une
+    erreur — l'enseignant croit que rien n'a été sauvegardé et resaisit,
+    créant des doublons. Le lot est maintenant tout-ou-rien : un seul commit
+    à la fin, rollback complet en cas d'échec sur n'importe quel élément.
+    """
     enregistrees: list = []
     creees = 0
     modifiees = 0
-    for item in payload.notes:
-        if item.id is not None:
-            enregistrees.append(_modifier_note(item.id, item, db))
-            modifiees += 1
-        else:
-            enregistrees.append(_creer_note(item, db))
-            creees += 1
+    try:
+        for item in payload.notes:
+            if item.id is not None:
+                enregistrees.append(_modifier_note(item.id, item, db, commit=False))
+                modifiees += 1
+            else:
+                note_obj, creee = _creer_note(item, db, commit=False)
+                enregistrees.append(note_obj)
+                if creee:
+                    creees += 1
+                else:
+                    modifiees += 1
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    for note in enregistrees:
+        db.refresh(note)
     return schemas.NoteBulkResponse(notes=enregistrees, creees=creees, modifiees=modifiees)
 
 

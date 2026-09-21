@@ -19,7 +19,8 @@ import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate } from '@/lib/format'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
+import { fetchClasses } from '@/features/classes/api'
 import { fetchInscriptions, fetchInscriptionsTotal, deleteInscription, createInscription } from './api'
 import InscriptionWizard from './InscriptionWizard'
 import InscriptionFormDrawer from './InscriptionFormDrawer'
@@ -37,16 +38,19 @@ const statutTone = (s: string): 'success' | 'warning' | 'danger' | 'neutral' => 
 const PAGE_SIZE = 50
 
 export default function InscriptionListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
   const { data: annees = [] } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
+  const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
+
+  const { data: activeAnnee } = useAnneeActive()
 
   const [tab, setTab] = useState<Tab>('liste')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [filterAnnee, setFilterAnnee] = useState('')
+  const filterAnnee = activeAnnee ? String(activeAnnee.id) : ''
+  const [filterClasse, setFilterClasse] = useState('')
   const [filterStatut, setFilterStatut] = useState('')
   const [page, setPage] = useState(1)
   const [deleting, setDeleting] = useState<Inscription | null>(null)
@@ -59,26 +63,29 @@ export default function InscriptionListPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, filterAnnee, filterStatut])
+  }, [debouncedSearch, filterClasse, filterStatut])
 
   const listParams = {
     ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}),
+    ...(filterClasse ? { id_classe: Number(filterClasse) } : {}),
     ...(filterStatut ? { statut: filterStatut } : {}),
   }
 
   const { data: inscriptions = [], isLoading, isFetching, isError } = useQuery({
-    queryKey: ['inscriptions', filterAnnee, filterStatut, debouncedSearch, page],
+    queryKey: ['inscriptions', filterAnnee, filterClasse, filterStatut, debouncedSearch, page],
     queryFn: () => fetchInscriptions({
       ...listParams,
       q: debouncedSearch,
       skip: (page - 1) * PAGE_SIZE,
       limit: PAGE_SIZE,
     }),
+    enabled: !!filterAnnee,
   })
 
   const { data: total = 0 } = useQuery({
-    queryKey: ['inscriptions', 'total', filterAnnee, filterStatut, debouncedSearch],
+    queryKey: ['inscriptions', 'total', filterAnnee, filterClasse, filterStatut, debouncedSearch],
     queryFn: () => fetchInscriptionsTotal({ ...listParams, q: debouncedSearch }),
+    enabled: !!filterAnnee,
   })
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -88,20 +95,24 @@ export default function InscriptionListPage() {
   }, [page, totalPages])
 
   const { data: statsTotal = 0 } = useQuery({
-    queryKey: ['inscriptions', 'stats', 'total', filterAnnee],
-    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}) }),
+    queryKey: ['inscriptions', 'stats', 'total', filterAnnee, filterClasse],
+    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), ...(filterClasse ? { id_classe: Number(filterClasse) } : {}) }),
+    enabled: !!filterAnnee,
   })
   const { data: statsInscrits = 0 } = useQuery({
-    queryKey: ['inscriptions', 'stats', 'inscrits', filterAnnee],
-    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), statut: 'Inscrit' }),
+    queryKey: ['inscriptions', 'stats', 'inscrits', filterAnnee, filterClasse],
+    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), ...(filterClasse ? { id_classe: Number(filterClasse) } : {}), statut: 'Inscrit' }),
+    enabled: !!filterAnnee,
   })
   const { data: statsRedoublants = 0 } = useQuery({
-    queryKey: ['inscriptions', 'stats', 'redoublants', filterAnnee],
-    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), statut: 'Redoublant' }),
+    queryKey: ['inscriptions', 'stats', 'redoublants', filterAnnee, filterClasse],
+    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), ...(filterClasse ? { id_classe: Number(filterClasse) } : {}), statut: 'Redoublant' }),
+    enabled: !!filterAnnee,
   })
   const { data: statsExclus = 0 } = useQuery({
-    queryKey: ['inscriptions', 'stats', 'exclus', filterAnnee],
-    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), statut: 'Exclu' }),
+    queryKey: ['inscriptions', 'stats', 'exclus', filterAnnee, filterClasse],
+    queryFn: () => fetchInscriptionsTotal({ ...(filterAnnee ? { id_annee_scolaire: Number(filterAnnee) } : {}), ...(filterClasse ? { id_classe: Number(filterClasse) } : {}), statut: 'Exclu' }),
+    enabled: !!filterAnnee,
   })
 
   const stats = {
@@ -136,7 +147,7 @@ export default function InscriptionListPage() {
           )}
         </div>
 
-        <div className="flex gap-1 w-fit rounded-[var(--radius-sm)] bg-[var(--color-surface-2)] p-1">
+        <div className="flex gap-1 w-fit rounded-[var(--radius-sm)] bg-[var(--surface-2)] p-1">
           {(canWrite ? (['liste', 'nouvelle'] as Tab[]) : (['liste'] as Tab[])).map((t) => (
             <button
               key={t}
@@ -144,8 +155,8 @@ export default function InscriptionListPage() {
               className={clsx(
                 'rounded-[var(--radius-sm)] px-4 py-1.5 text-sm font-medium transition-all',
                 tab === t
-                  ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-sm)]'
-                  : 'bg-transparent text-[var(--color-ink-dim)] hover:text-[var(--color-ink)]',
+                  ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
+                  : 'bg-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]',
               )}
             >
               {t === 'liste' ? 'Inscriptions en cours' : 'Nouvelle inscription'}
@@ -165,8 +176,8 @@ export default function InscriptionListPage() {
                 const value = idx === 0 ? stats.total : idx === 1 ? stats.inscrits : idx === 2 ? stats.redoublants : stats.exclus
                 return (
                   <Card key={s.label} className="flex flex-col justify-between p-4 min-h-[96px]">
-                    <p className="text-sm font-medium text-[var(--color-ink-dim)]">{s.label}</p>
-                    <p className="mt-3 text-3xl font-medium text-[var(--color-ink)]">{value}</p>
+                    <p className="text-sm font-medium text-[var(--ink-dim)]">{s.label}</p>
+                    <p className="mt-3 text-3xl font-medium text-[var(--ink)]">{value}</p>
                   </Card>
                 )
               })}
@@ -179,10 +190,10 @@ export default function InscriptionListPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Rechercher une inscription"
               />
-              <ToolbarFilter value={filterAnnee} onChange={(e) => setFilterAnnee(e.target.value)} disabled={!annees.length} aria-label="Filtrer par année">
-                <option value="">Toutes les années</option>
-                {annees.map((a) => (
-                  <option key={a.id} value={a.id}>{a.libelle}</option>
+              <ToolbarFilter value={filterClasse} onChange={(e) => setFilterClasse(e.target.value)} disabled={!classes.length} aria-label="Filtrer par classe">
+                <option value="">Toutes les classes</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.niveau} — {c.nom}</option>
                 ))}
               </ToolbarFilter>
               <ToolbarFilter value={filterStatut} onChange={(e) => setFilterStatut(e.target.value)} aria-label="Filtrer par statut">
@@ -225,26 +236,26 @@ export default function InscriptionListPage() {
                             <Link to={`/app/eleves/${i.matricule_eleve}`} className="flex items-center gap-3 group">
                               <Avatar nom={i.eleve_nom ?? ''} prenom={i.eleve_prenom ?? ''} size="sm" />
                               <div>
-                                <p className="text-sm text-[var(--color-ink)] group-hover:text-[var(--color-action-bright)]">{i.eleve_nom ?? '—'} {i.eleve_prenom ?? '—'}</p>
+                                <p className="text-sm text-[var(--ink)] group-hover:text-[var(--action-bright)]">{i.eleve_nom ?? '—'} {i.eleve_prenom ?? '—'}</p>
                               </div>
                             </Link>
                           </div>
                         </TableCell>
-                        <TableCell className="text-[var(--color-ink-dim)]">
+                        <TableCell className="text-[var(--ink-dim)]">
                           {annees.find((a) => a.id === i.id_annee_scolaire)?.libelle ?? '—'}
                         </TableCell>
-                        <TableCell className="text-[var(--color-ink-dim)]">{formatDate(i.date_inscription)}</TableCell>
+                        <TableCell className="text-[var(--ink-dim)]">{formatDate(i.date_inscription)}</TableCell>
                         <TableCell>
                           <Badge tone={statutTone(i.statut)}>{i.statut}</Badge>
                         </TableCell>
-                        <TableCell className="text-center text-[var(--color-ink-dim)]">
+                        <TableCell className="text-center text-[var(--ink-dim)]">
                           {i.nb_redoublements}
                         </TableCell>
                         <TableCell className="text-right">
                           {canDelete && (
                             <button
                               onClick={() => setDeleting(i)}
-                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                              className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                               aria-label="Supprimer"
                             >
                               <Trash2 size={14} strokeWidth={1.75} />

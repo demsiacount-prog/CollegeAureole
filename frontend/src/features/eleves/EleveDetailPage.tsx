@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { Pencil, GraduationCap, Cake, ChevronDown, User, ClipboardList, UserX, FileText, CreditCard, Files } from 'lucide-react'
+import { Pencil, GraduationCap, Cake, User, ClipboardList, UserX, FileText, CreditCard, Files } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Tabs } from '@/components/ui/Tabs'
@@ -23,52 +23,37 @@ import { useDocuments } from '@/features/documents/hooks'
 import type { DossierEleve, InscriptionDetail, AbsenceEleve, BulletinEleve } from './types'
 import { niveauOrdre } from '@/lib/niveaux'
 import { FicheSuiviSection } from '@/features/rapports/FicheSuiviSection'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 import { FicheMensuelleSection } from '@/features/rapports/FicheMensuelleSection'
 import { PiecesClesDossier } from './PiecesClesDossier'
 
 export default function EleveDetailPage() {
   const { matricule } = useParams<{ matricule: string }>()
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canImportDocs = !lectureSeule
+  const canWrite = true
+  const canImportDocs = true
   const [editOpen, setEditOpen] = useState(false)
   const [inscriptionOpen, setInscriptionOpen] = useState(false)
 
+  const { data: anneeActivee } = useAnneeActive()
+  const anneeActiveId = anneeActivee?.id
+
   const { data: dossier, isLoading, isError, refetch } = useQuery({
-    queryKey: ['eleve-dossier', matricule],
-    queryFn: () => fetchDossierEleve(matricule!),
+    queryKey: ['eleve-dossier', matricule, anneeActiveId],
+    queryFn: () => fetchDossierEleve(matricule!, anneeActiveId),
     enabled: !!matricule,
   })
 
   const { data: documentsData } = useDocuments('eleve', matricule ?? '')
 
-  const anneeActiveId = dossier?.annee_scolaire?.id
   // Un élève déjà inscrit (ou redoublant) pour l'année active n'a plus de
   // bouton « Inscrire » : l'inscription existe déjà.
   const dejaInscritAnneeActive = (dossier?.inscriptions ?? []).some(
     (i) => ['Inscrit', 'Redoublant'].includes(i.statut) && (anneeActiveId == null || i.id_annee_scolaire === anneeActiveId),
   )
 
-  const anneesRanges = useMemo(() => {
-    const seen = new Map<number, { id: number; libelle: string; dateDebut: string; dateFin: string }>()
-    for (const insc of dossier?.inscriptions ?? []) {
-      const y = insc.annee_scolaire
-      if (!y || seen.has(y.id)) continue
-      seen.set(y.id, { id: y.id, libelle: y.libelle, dateDebut: y.date_debut, dateFin: y.date_fin })
-    }
-    return [...seen.values()]
-  }, [dossier])
-
-  const absencesParAnnee = useMemo(
-    () => regrouperAbsences(dossier?.absences ?? [], anneesRanges, anneeActiveId ?? null),
-    [dossier, anneesRanges, anneeActiveId],
-  )
-  const nbAbsencesActives =
-    anneeActiveId != null
-      ? (absencesParAnnee.find((g) => g.anneeId === anneeActiveId)?.absences.length ?? 0)
-      : 0
-  const anneeAbsencesDefaut = absencesParAnnee[0]?.anneeId ?? null
+  // Le dossier est scopé à l'année active côté backend : `absences` ne
+  // contient donc que les absences de l'année courante (pas de regroupement par année).
+  const { absences = [] } = dossier ?? {}
 
   if (isLoading) {
     return (
@@ -123,7 +108,11 @@ export default function EleveDetailPage() {
             <div className="mt-[3px] flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--ink-faint)]">
               <span className="flex items-center gap-1">
                 <GraduationCap className="size-3" strokeWidth={1.75} />
-                {dossier.classe ? `${dossier.classe.niveau} — ${dossier.classe.nom}` : 'Non affecté à une classe'}
+                {dossier.classe_annee
+                  ? `${dossier.classe_annee.niveau} — ${dossier.classe_annee.nom}`
+                  : anneeActiveId != null
+                    ? `Non inscrit(e) en ${dossier.annee_scolaire?.libelle ?? "l'année active"}`
+                    : 'Non affecté à une classe'}
               </span>
               <span className="flex items-center gap-1">
                 <Cake className="size-3" strokeWidth={1.75} />
@@ -168,8 +157,8 @@ export default function EleveDetailPage() {
             key: 'absences',
             label: 'Absences',
             icon: UserX,
-            count: nbAbsencesActives,
-            content: <AbsencesTab groups={absencesParAnnee} defaultExpandedId={anneeAbsencesDefaut} />,
+            count: absences.length,
+            content: <AbsencesTab absences={absences} />,
           },
           {
             key: 'bulletins',
@@ -185,16 +174,19 @@ export default function EleveDetailPage() {
             count: documentsData?.length ?? 0,
             content: (
               <>
-                {[7, 8, 9].includes(niveauOrdre(dossier.classe?.niveau) ?? -1) && (
-                  <FicheSuiviSection matricule={dossier.matricule} />
-                )}
                 {(() => {
-                  const ordre = niveauOrdre(dossier.classe?.niveau)
+                  const niveau = dossier.classe_annee?.niveau ?? dossier.classe?.niveau
+                  return [7, 8, 9].includes(niveauOrdre(niveau) ?? -1) && (
+                  <FicheSuiviSection matricule={dossier.matricule} />
+                )})()}
+                {(() => {
+                  const niveau = dossier.classe_annee?.niveau ?? dossier.classe?.niveau
+                  const ordre = niveauOrdre(niveau)
                   return ordre != null && ordre >= 1 && ordre <= 6 ? (
                     <FicheMensuelleSection
                       matricule={dossier.matricule}
                       anneeId={anneeActiveId}
-                      niveau={dossier.classe?.niveau}
+                      niveau={niveau}
                     />
                   ) : null
                 })()}
@@ -306,15 +298,15 @@ function BulletinsTab({ bulletins }: { bulletins: BulletinEleve[] }) {
               <TableCell>
                 <Link
                   to={`/app/bulletins/${b.id}`}
-                  className="font-medium text-[var(--color-action)] hover:underline"
+                  className="font-medium text-[var(--action)] hover:underline"
                 >
                   Trimestre {b.id_trimestre}
                 </Link>
               </TableCell>
-              <TableCell className="text-right font-medium text-[var(--color-ink)]">
+              <TableCell className="text-right font-medium text-[var(--ink)]">
                 {formatMoyenne(b.moyenne_generale, 20)}
               </TableCell>
-              <TableCell className="text-right text-[var(--color-ink-dim)]">
+              <TableCell className="text-right text-[var(--ink-dim)]">
                 {b.rang != null ? `${b.rang}ᵉ` : '—'}
               </TableCell>
               <TableCell className="text-right">
@@ -348,16 +340,16 @@ function PaiementsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }) {
         <TableBody>
           {sorted.map((p) => (
             <TableRow key={p.id}>
-              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--color-ink-dim)]">
+              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
                 {formatDate(p.date)}
               </TableCell>
-              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--color-ink-dim)]">
+              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
                 {p.code_paiement ?? '—'}
               </TableCell>
-              <TableCell className="text-right font-medium text-[var(--color-ink)]">
+              <TableCell className="text-right font-medium text-[var(--ink)]">
                 {formatMontant(p.montant)}
               </TableCell>
-              <TableCell className="text-right text-[var(--color-ink-dim)]">{p.mode ?? '—'}</TableCell>
+              <TableCell className="text-right text-[var(--ink-dim)]">{p.mode ?? '—'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -381,10 +373,10 @@ function InscriptionsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }
         <Card key={insc.id} className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="font-medium text-[var(--color-ink)]">
+              <p className="font-medium text-[var(--ink)]">
                 {insc.annee_scolaire?.libelle ?? 'Année inconnue'} — {insc.classe ? `${insc.classe.niveau} ${insc.classe.nom}` : 'Sans classe'}
               </p>
-              <p className="mt-0.5 text-xs text-[var(--color-ink-faint)]">
+              <p className="mt-0.5 text-xs text-[var(--ink-faint)]">
                 {insc.code_inscription ?? `#${insc.id}`} · Inscrit le {formatDate(insc.date_inscription)}
               </p>
             </div>
@@ -411,118 +403,44 @@ function InscriptionsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-[var(--color-ink-faint)]">{label}</p>
-      <p className="mt-0.5 font-medium text-[var(--color-ink)]">{value}</p>
+      <p className="text-xs text-[var(--ink-faint)]">{label}</p>
+      <p className="mt-0.5 font-medium text-[var(--ink)]">{value}</p>
     </div>
   )
 }
 
-interface AnneeAbsences {
-  anneeId: number
-  libelle: string
-  absences: AbsenceEleve[]
-}
-
-function regrouperAbsences(
-  absences: AbsenceEleve[],
-  anneesRanges: { id: number; libelle: string; dateDebut: string; dateFin: string }[],
-  anneeActiveId: number | null,
-): AnneeAbsences[] {
-  const groupes = new Map<number, AnneeAbsences>()
-  for (const a of absences) {
-    const match = anneesRanges.find(
-      (y) => y.dateDebut && y.dateFin && a.date_absence >= y.dateDebut && a.date_absence <= y.dateFin,
-    )
-    const anneeId = match ? match.id : -1
-    const libelle = match ? match.libelle : 'Année inconnue'
-    if (!groupes.has(anneeId)) groupes.set(anneeId, { anneeId, libelle, absences: [] })
-    groupes.get(anneeId)!.absences.push(a)
-  }
-  const active = anneesRanges.find((y) => y.id === anneeActiveId)
-  if (active && !groupes.has(active.id)) {
-    groupes.set(active.id, { anneeId: active.id, libelle: active.libelle, absences: [] })
-  }
-  return [...groupes.values()].sort((a, b) => {
-    if (a.anneeId === anneeActiveId) return -1
-    if (b.anneeId === anneeActiveId) return 1
-    return (b.absences[0]?.date_absence ?? '').localeCompare(a.absences[0]?.date_absence ?? '')
-  })
-}
-
-function AbsencesTab({ groups, defaultExpandedId }: { groups: AnneeAbsences[]; defaultExpandedId: number | null }) {
-  const [expanded, setExpanded] = useState<Set<number>>(
-    () => new Set(defaultExpandedId != null ? [defaultExpandedId] : []),
-  )
-
-  const total = groups.reduce((somme, g) => somme + g.absences.length, 0)
-  if (total === 0) return <EmptyState message="Aucune absence enregistrée." />
-
-  const toggle = (id: number) =>
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
+function AbsencesTab({ absences }: { absences: AbsenceEleve[] }) {
+  if (absences.length === 0) return <EmptyState message="Aucune absence enregistrée pour l'année active." />
+  const sorted = [...absences].sort((a, b) => b.date_absence.localeCompare(a.date_absence))
   return (
     <div className="flex flex-col gap-4">
-      {groups.map((g) => {
-       
-        const ouvert = expanded.has(g.anneeId)
-        return (
-          <div key={g.anneeId} className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => toggle(g.anneeId)}
-              className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-1)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-2)]"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <h4 className="font-medium text-[var(--color-ink)]">{g.libelle}</h4>
-                <Badge tone={g.absences.length > 0 ? 'warning' : 'success'} className="text-xs">
-                  {g.absences.length} absence{g.absences.length > 1 ? 's' : ''}
-                </Badge>
-              </div>
-              <ChevronDown
-                strokeWidth={1.75}
-                className={`size-4 shrink-0 text-[var(--color-ink-faint)] transition-transform ${ouvert ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {ouvert &&
-              (g.absences.length === 0 ? (
-                <p className="px-2 text-sm text-[var(--color-ink-faint)]">Aucune absence pour l'année active.</p>
-              ) : (
-                <TableContainer>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Cours</TableHead>
-                        <TableHead>Motif</TableHead>
-                        <TableHead className="text-right">Statut</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    
-                      {g.absences.map((a) => (
-                      
-                        <TableRow key={a.id}>
-                          
-                          <TableCell className="text-[var(--color-ink-dim)]">{formatDate(a.date_absence)}</TableCell>
-                          <TableCell className="text-[var(--color-ink)]">{a.cours?.nom ?? '—'}</TableCell>
-                          <TableCell className="text-[var(--color-ink-dim)]">{a.motif ?? '—'}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge tone={a.justifiee ? 'success' : 'danger'}>{a.justifiee ? 'Justifiée' : 'Non justifiée'}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ))}
-          </div>
-        )
-      })}
+      <p className="text-xs uppercase tracking-[0.08em] text-[var(--ink-faint)]">
+        {sorted.length} absence{sorted.length > 1 ? 's' : ''} — année active
+      </p>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Cours</TableHead>
+              <TableHead>Motif</TableHead>
+              <TableHead className="text-right">Statut</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((a) => (
+              <TableRow key={a.id}>
+                <TableCell className="text-[var(--ink-dim)]">{formatDate(a.date_absence)}</TableCell>
+                <TableCell className="text-[var(--ink)]">{a.cours?.nom ?? '—'}</TableCell>
+                <TableCell className="text-[var(--ink-dim)]">{a.motif ?? '—'}</TableCell>
+                <TableCell className="text-right">
+                  <Badge tone={a.justifiee ? 'success' : 'danger'}>{a.justifiee ? 'Justifiée' : 'Non justifiée'}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   )
 }

@@ -122,7 +122,7 @@ export default function SeanceFormDrawer({ open, onClose, onSubmit, initial }: P
           </Select>
 
           {idClasse && (
-            <p className="text-xs text-[var(--color-ink-dim)]">
+            <p className="text-xs text-[var(--ink-dim)]">
               Effectif de la classe : <strong>{loadingClasse ? '…' : classeDetail?.effectif_actuel ?? '?'}</strong> élève(s)
             </p>
           )}
@@ -155,7 +155,7 @@ export default function SeanceFormDrawer({ open, onClose, onSubmit, initial }: P
             if (!salle || salle.capacite == null) return null
             if (classeDetail.effectif_actuel > salle.capacite) {
               return (
-                <p className="text-xs text-[var(--color-danger)]">
+                <p className="text-xs text-[var(--danger)]">
                   Cette salle ({salle.capacite} places) est trop petite pour l'effectif de {classeDetail.effectif_actuel} élèves.
                 </p>
               )
@@ -176,7 +176,7 @@ export default function SeanceFormDrawer({ open, onClose, onSubmit, initial }: P
           </div>
         </div>
 
-        <div className="p-4 border-t border-[var(--color-border)]">
+        <div className="p-4 border-t border-[var(--border)]">
           <Button type="submit" variant="primary" className="w-full">
             {initial ? 'Enregistrer' : 'Créer'}
           </Button>

@@ -291,8 +291,8 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
         />
         <Input label="Adresse" placeholder="ex. Badalabougou, Bamako" value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} />
 
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] p-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">État civil</p>
+        <div className="rounded-[var(--radius-sm)] border border-[var(--border)] p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ink-faint)]">État civil</p>
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Acte de naissance N°"
@@ -387,16 +387,16 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
           </Select>
         </div>
 
-        <div className="border-t border-[var(--color-border-soft)] pt-4">
-          <p className="mb-2 text-xs font-semibold text-[var(--color-ink)]">Documents fournis</p>
+        <div className="border-t border-[var(--border-soft)] pt-4">
+          <p className="mb-2 text-xs font-semibold text-[var(--ink)]">Documents fournis</p>
           <div className="space-y-2">
             {DOCS_FIELDS.map((field) => (
               <div
                 key={field}
                 className="rounded-[var(--radius-sm)] border p-3 transition-all"
                 style={{
-                  borderColor: form[field] ? 'var(--color-success)' : 'var(--color-border)',
-                  background: form[field] ? 'var(--color-success-wash)' : 'var(--color-surface)',
+                  borderColor: form[field] ? 'var(--success)' : 'var(--border)',
+                  background: form[field] ? 'var(--success-w)' : 'var(--surface)',
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -406,16 +406,16 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
                     className="flex items-center gap-2 text-xs transition-all"
                   >
                     {form[field] ? (
-                      <CheckCircle size={14} className="text-[var(--color-success)] shrink-0" />
+                      <CheckCircle size={14} className="text-[var(--success)] shrink-0" />
                     ) : (
-                      <FileText size={14} className="text-[var(--color-ink-faint)] shrink-0" />
+                      <FileText size={14} className="text-[var(--ink-faint)] shrink-0" />
                     )}
-                    <span className="font-medium" style={{ color: form[field] ? 'var(--color-success)' : 'var(--color-ink-dim)' }}>
+                    <span className="font-medium" style={{ color: form[field] ? 'var(--success)' : 'var(--ink-dim)' }}>
                       {DOCS_LABELS[field]}
                     </span>
                   </button>
                   {canImport && (
-                    <label className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-ink-dim)] transition-colors hover:bg-[var(--color-surface-2)]">
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--ink-dim)] transition-colors hover:bg-[var(--surface-2)]">
                       <Upload size={13} strokeWidth={1.75} />
                       <span className="max-w-[140px] truncate">
                         {docFiles[field] ? docFiles[field]!.name : 'Importer…'}
@@ -435,13 +435,13 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
                 </div>
                 {docFiles[field] && (
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="truncate text-[11px] text-[var(--color-ink-faint)]">
+                    <span className="truncate text-[11px] text-[var(--ink-faint)]">
                       Fichier importé : {docFiles[field]!.name}
                     </span>
                     <button
                       type="button"
                       onClick={() => setDocFiles((prev) => ({ ...prev, [field]: null }))}
-                      className="shrink-0 text-[11px] text-[var(--color-danger)] hover:underline"
+                      className="shrink-0 text-[11px] text-[var(--danger)] hover:underline"
                     >
                       Retirer
                     </button>
@@ -451,7 +451,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
             ))}
           </div>
           {uploadProgress && (
-            <p className="mt-2 flex items-center gap-2 text-xs text-[var(--color-info)]">
+            <p className="mt-2 flex items-center gap-2 text-xs text-[var(--info)]">
               <Upload size={13} strokeWidth={1.75} className="animate-pulse" />
               {uploadProgress}
             </p>
@@ -459,9 +459,9 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
         </div>
 
         {!isEdit && (
-          <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-medium text-[var(--color-ink)]">Tuteur</p>
+              <p className="text-sm font-medium text-[var(--ink)]">Tuteur</p>
               <Button
                 type="button"
                 variant="secondary"
@@ -575,7 +575,7 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
         )}
 
         {error && (
-          <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--color-danger)]/30 bg-[var(--color-danger-wash)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          <p role="alert" className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-w)] px-3 py-2 text-sm text-[var(--danger)]">
             {error}
           </p>
         )}

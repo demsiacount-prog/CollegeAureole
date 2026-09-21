@@ -10,8 +10,37 @@ import schemas
 from security import get_current_user
 from bareme import appreciation_for_moyenne, bareme_niveau, est_jardin, utilise_coefficient
 from services import pdf as pdf_service
+from helpers import get_annee_ou_active
 
 router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[Depends(get_current_user)])
+
+
+def _classe_bulletin_trimestre(db: Session, eleve: models.Eleves, trimestre: models.Trimestres | None):
+    """Classe de référence d'un bulletin : celle de l'inscription de l'élève
+    pour l'année scolaire du trimestre.
+
+    On ne lit JAMAIS Eleves.classe_id comme source unique : cette colonne reflète
+    la classe ACTUELLE de l'élève, pas celle qu'il avait l'année du bulletin
+    (régressions lors de la relecture d'anciens bulletins après un changement de
+    classe). L'inscription de l'année est la source fiable ; la classe courante
+    ne sert de repli que lorsque aucune inscription n'existe (données anciennes).
+    """
+    id_classe = eleve.classe_id
+    if trimestre is not None:
+        inscription = (
+            db.query(models.Inscriptions)
+            .filter(
+                models.Inscriptions.matricule_eleve == eleve.matricule,
+                models.Inscriptions.id_annee_scolaire == trimestre.annee_scolaire_id,
+            )
+            .first()
+        )
+        if inscription is not None and inscription.id_classe is not None:
+            id_classe = inscription.id_classe
+    if id_classe is None:
+        return None, None
+    classe = db.query(models.Classes).filter(models.Classes.id == id_classe).first()
+    return id_classe, classe
 
 
 def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> dict:
@@ -34,14 +63,17 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     if not trimestre:
         raise HTTPException(status_code=404, detail="Trimestre introuvable")
 
-    if not eleve.classe_id:
+    # Classe de l'élève pour l'année du trimestre (inscription), jamais la classe
+    # actuelle : un élève qui a changé de classe depuis conserve son ancien
+    # bulletin avec les coefficients et le barème de l'époque.
+    id_classe, classe = _classe_bulletin_trimestre(db, eleve, trimestre)
+    if id_classe is None or classe is None:
         raise HTTPException(
             status_code=400,
             detail="Classe introuvable",
         )
 
-    classe_jardin = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
-    if classe_jardin and est_jardin(classe_jardin.niveau):
+    if est_jardin(classe.niveau):
         raise HTTPException(
             status_code=400,
             detail="Le jardin d'enfants n'utilise pas de notes : appréciation manuelle de l'enseignant.",
@@ -50,7 +82,7 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     # Cours attendus pour cette classe (avec leur coefficient)
     affectations_classe = (
         db.query(models.AffectationCoursClasse)
-        .filter(models.AffectationCoursClasse.id_classe == eleve.classe_id)
+        .filter(models.AffectationCoursClasse.id_classe == id_classe)
         .all()
     )
     coefficients_par_cours = {a.id_cours: a.coefficient for a in affectations_classe}
@@ -98,7 +130,6 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
             detail=f"Notes manquantes pour : {', '.join(noms)}",
         )
 
-    classe = db.query(models.Classes).filter(models.Classes.id == eleve.classe_id).first()
     bareme = bareme_niveau(classe.niveau) if classe else 20
 
     details = []
@@ -141,7 +172,7 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
     return {
         "matricule_eleve": matricule_eleve,
         "id_trimestre": id_trimestre,
-        "id_classe": eleve.classe_id,
+        "id_classe": id_classe,
         "moyenne_generale": moyenne_generale,
         "appreciation": appreciation_for_moyenne(moyenne_generale, bareme),
         "details": details,
@@ -216,6 +247,15 @@ def _calculer_rangs_classe(db: Session, id_classe: int, id_trimestre: int) -> No
 
 @router.post("/generer", response_model=schemas.BulletinResponse, status_code=status.HTTP_201_CREATED)
 def generer_bulletin(payload: schemas.BulletinGenerateRequest, db: Session = Depends(get_db)):
+    # FIX SÉCURITÉ : bloquer la génération de bulletin sur une année clôturée
+    trimestre = db.query(models.Trimestres).options(
+        joinedload(models.Trimestres.annee_scolaire)
+    ).filter(models.Trimestres.id == payload.id_trimestre).first()
+    if trimestre and trimestre.annee_scolaire and trimestre.annee_scolaire.cloturee:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Année scolaire clôturée : la génération de bulletin est bloquée.",
+        )
     calcul = _calculer_bulletin(db, payload.matricule_eleve, payload.id_trimestre)
     bulletin = _upsert_bulletin(db, calcul)
     _calculer_rangs_classe(db, calcul["id_classe"], calcul["id_trimestre"])
@@ -229,23 +269,53 @@ def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db:
     classe = db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first()
     if not classe:
         raise HTTPException(status_code=404, detail="Classe introuvable")
-    if not db.query(models.Trimestres).filter(models.Trimestres.id == payload.id_trimestre).first():
+    trimestre = db.query(models.Trimestres).options(
+        joinedload(models.Trimestres.annee_scolaire)
+    ).filter(models.Trimestres.id == payload.id_trimestre).first()
+    if not trimestre:
         raise HTTPException(status_code=404, detail="Trimestre introuvable")
+    # FIX SÉCURITÉ : bloquer la génération sur une année clôturée
+    if trimestre.annee_scolaire and trimestre.annee_scolaire.cloturee:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Année scolaire clôturée : la génération de bulletins est bloquée.",
+        )
     if est_jardin(classe.niveau):
         raise HTTPException(
             status_code=400,
             detail="Le jardin d'enfants n'utilise pas de bulletins chiffrés : appréciation manuelle de l'enseignant.",
         )
 
-    eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe).all()
+    # Effectif de la classe POUR l'année du trimestre = union de deux sources,
+    # pour ne JAMAIS perdre d'étudiant :
+    # - les inscriptions de cette (classe, année) : source fiable et historique ;
+    # - les élèves actuellement affectés à la classe (Eleves.classe_id), en
+    #   complément pour ceux sans inscription de l'année (inscriptions
+    #   incomplètes ou non re-saisies chaque année).
+    # La classe via Eleves.classe_id seul reste interdite pour reconstruire
+    # l'année (fausse pour les années antérieures après un changement de classe).
+    inscrits_annee = {
+        row[0]
+        for row in db.query(models.Inscriptions.matricule_eleve)
+        .filter(
+            models.Inscriptions.id_classe == payload.id_classe,
+            models.Inscriptions.id_annee_scolaire == trimestre.annee_scolaire_id,
+        )
+        .all()
+    }
+    effectifs_classe = {
+        e.matricule
+        for e in db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe).all()
+    }
+    matricules = sorted(inscrits_annee | effectifs_classe)
 
     bulletins_generes, erreurs = [], []
-    for eleve in eleves:
+    for matricule in matricules:
         try:
-            calcul = _calculer_bulletin(db, eleve.matricule, payload.id_trimestre)
+            calcul = _calculer_bulletin(db, matricule, payload.id_trimestre)
             bulletins_generes.append(_upsert_bulletin(db, calcul))
         except HTTPException as exc:
-            erreurs.append({"matricule_eleve": eleve.matricule, "detail": exc.detail})
+            erreurs.append({"matricule_eleve": matricule, "detail": exc.detail})
 
     _calculer_rangs_classe(db, payload.id_classe, payload.id_trimestre)
     db.commit()
@@ -384,22 +454,31 @@ def get_all_bulletins(
     matricule_eleve: Optional[str] = None,
     id_classe: Optional[int] = None,
     id_trimestre: Optional[int] = None,
+    annee_id: Optional[int] = Query(None, description="Filtrer par année scolaire (défaut : active)"),
     skip: int = 0,
     limit: int = Query(default=200, le=500),
     db: Session = Depends(get_db),
 ):
-    # BulletinResponse imbrique details -> cours_nom (via detail.cours) : sans
-    # eager loading, chaque détail de bulletin déclenche une requête supplémentaire.
     query = db.query(models.Bulletins).options(
         joinedload(models.Bulletins.eleve),
         joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours)
     )
+
+    if annee_id is not None:
+        query = query.join(
+            models.Trimestres,
+            models.Bulletins.id_trimestre == models.Trimestres.id
+        ).filter(
+            models.Trimestres.annee_scolaire_id == annee_id
+        )
+
     if matricule_eleve:
         query = query.filter(models.Bulletins.matricule_eleve == matricule_eleve)
     if id_classe:
         query = query.filter(models.Bulletins.id_classe == id_classe)
     if id_trimestre:
         query = query.filter(models.Bulletins.id_trimestre == id_trimestre)
+
     return query.order_by(models.Bulletins.rang.asc().nullslast()).offset(skip).limit(limit).all()
 
 
@@ -436,6 +515,15 @@ def delete_bulletin(bulletin_id: int, db: Session = Depends(get_db)):
     bulletin = db.query(models.Bulletins).filter(models.Bulletins.id == bulletin_id).first()
     if not bulletin:
         raise HTTPException(status_code=404, detail="Bulletin introuvable")
+    # FIX BUG CRITIQUE : la régénération d'un bulletin publié est bloquée
+    # (_upsert_bulletin) mais sa suppression pure ne l'était pas — on pouvait
+    # effacer un bulletin officiel déjà diffusé aux familles. On exige une
+    # dépublication explicite au préalable (POST /api/bulletins/depublier).
+    if bulletin.statut == "PUBLIE":
+        raise HTTPException(
+            status_code=409,
+            detail="Ce bulletin est publié : dépubliez-le d'abord avant de le supprimer.",
+        )
     db.delete(bulletin)
     db.commit()
     return None

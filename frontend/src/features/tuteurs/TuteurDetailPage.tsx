@@ -13,12 +13,9 @@ import { DocumentsTab } from '@/features/documents/DocumentsTab'
 import { formatDate } from '@/lib/format'
 import { fetchTuteurById } from './api'
 import { TuteurFormDrawer } from './TuteurFormDrawer'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 export default function TuteurDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: tuteur, isLoading, isError, refetch } = useQuery({
@@ -158,7 +155,7 @@ function ElevesTab({ eleves }: { eleves: import('@/features/shared/types').Eleve
               <TableCell>
                 <Link
                   to={`/app/eleves/${e.matricule}`}
-                  className="flex items-center gap-3 text-[var(--color-ink)] hover:text-[var(--color-action-bright)]"
+                  className="flex items-center gap-3 text-[var(--ink)] hover:text-[var(--action-bright)]"
                 >
                   <Avatar nom={e.nom} prenom={e.prenom} photo={e.photo} size="sm" />
                   <div>
@@ -166,10 +163,10 @@ function ElevesTab({ eleves }: { eleves: import('@/features/shared/types').Eleve
                   </div>
                 </Link>
               </TableCell>
-              <TableCell className="text-[var(--color-ink-dim)]">
+              <TableCell className="text-[var(--ink-dim)]">
                 {e.classe ? `${e.classe.niveau} — ${e.classe.nom}` : '—'}
               </TableCell>
-              <TableCell className="text-[var(--color-ink-dim)]">{formatDate(e.date_de_naissance)}</TableCell>
+              <TableCell className="text-[var(--ink-dim)]">{formatDate(e.date_de_naissance)}</TableCell>
               <TableCell>
                 <Badge tone={e.statut === 'actif' ? 'success' : 'neutral'}>
                   {e.statut === 'actif' ? 'Actif' : 'Inactif'}

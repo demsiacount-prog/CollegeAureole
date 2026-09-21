@@ -18,8 +18,8 @@ import { formatMoyenne } from '@/lib/format'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
 import { fetchClasses } from '@/features/classes/api'
+import { fetchEleves } from '@/features/eleves/api'
 import { fetchTrimestres } from '@/features/trimestres/api'
 import {
   fetchBulletins,
@@ -33,11 +33,11 @@ import {
 import { PdfViewerModal } from '@/components/pdf/PdfViewerModal'
 
 function noteColor(n: number | null, bareme: number = 20): string {
-  if (n == null) return 'var(--color-ink-dim)'
+  if (n == null) return 'var(--ink-dim)'
   const pct = n / bareme
-  if (pct >= 0.7) return 'var(--color-success)'
-  if (pct >= 0.5) return 'var(--color-ink)'
-  return 'var(--color-danger)'
+  if (pct >= 0.7) return 'var(--success)'
+  if (pct >= 0.5) return 'var(--ink)'
+  return 'var(--danger)'
 }
 
 function getNiveauNumber(niveau: string): number {
@@ -53,8 +53,7 @@ const PERIOD_TYPE = {
 } as const
 
 export default function BulletinListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
+  const canWrite = true
   const qc = useQueryClient()
   const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
   const { data: annees = [] } = useQuery({ queryKey: ['annees'], queryFn: () => fetchAnneesScolaires() })
@@ -65,13 +64,21 @@ export default function BulletinListPage() {
   const [trimestreId, setTrimestreId] = useState('')
   const [search, setSearch] = useState('')
 
+  const selectedAnnee = annees.find((a) => String(a.id) === anneeId)
+  const anneeCloturee = selectedAnnee?.cloturee ?? false
+
   const prevClasseRef = useRef(classeId)
 
   useEffect(() => {
-    if (activeAnnee && !anneeId) {
+    if (activeAnnee) {
       setAnneeId(String(activeAnnee.id))
     }
-  }, [activeAnnee, anneeId])
+  }, [activeAnnee])
+
+  useEffect(() => {
+    setClasseId('')
+    setTrimestreId('')
+  }, [anneeId])
 
   const { data: trimestres = [] } = useQuery({
     queryKey: ['trimestres', anneeId],
@@ -111,13 +118,36 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
   const [apercuLoading, setApercuLoading] = useState<string | null>(null)
 
   const { data: bulletins = [], isLoading, isError } = useQuery({
-    queryKey: ['bulletins', classeId, trimestreId],
+    queryKey: ['bulletins', anneeId, classeId, trimestreId],
     queryFn: () => fetchBulletins({
+      ...(anneeId ? { annee_id: Number(anneeId) } : {}),
       ...(classeId ? { id_classe: Number(classeId) } : {}),
       ...(trimestreId ? { id_trimestre: Number(trimestreId) } : {}),
     }),
     enabled: !!classeId && !!trimestreId,
   })
+
+  const { data: effectifEleves = [], isLoading: loadingEleves } = useQuery({
+    queryKey: ['eleves', 'classe', anneeId, classeId],
+    queryFn: () => fetchEleves({
+      classe_id: Number(classeId),
+      id_annee_scolaire: Number(anneeId),
+      limit: 500,
+    }),
+    enabled: !!classeId && !!anneeId,
+  })
+
+  const rows = useMemo(() => {
+    const byMatricule = new Map(bulletins.map((b) => [b.matricule_eleve, b]))
+    const lignes = effectifEleves.map((e) => ({ eleve: e, bulletin: byMatricule.get(e.matricule) ?? null }))
+    lignes.sort((a, b) => {
+      const ra = a.bulletin?.rang ?? Infinity
+      const rb = b.bulletin?.rang ?? Infinity
+      if (ra !== rb) return ra - rb
+      return a.eleve.matricule.localeCompare(b.eleve.matricule)
+    })
+    return lignes
+  }, [effectifEleves, bulletins])
 
   const hasBulletins = bulletins.length > 0
   const hasPublished = bulletins.some((b) => b.statut === 'PUBLIE')
@@ -151,9 +181,9 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    if (!q) return bulletins
-    return bulletins.filter((b) => b.matricule_eleve.toLowerCase().includes(q))
-  }, [bulletins, search])
+    if (!q) return rows
+    return rows.filter((r) => r.eleve.matricule.toLowerCase().includes(q))
+  }, [rows, search])
 
   const classeLabel = classes.find((c) => String(c.id) === classeId)
   const trimestreLabel = filteredTrimestres.find((t) => String(t.id) === trimestreId)
@@ -207,14 +237,14 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
       <div className="flex flex-col gap-5">
         <PageHeader
           title="Bulletins scolaires"
-          subtitle={<p className="mt-1 text-sm text-[var(--color-ink-dim)]">Moyennes, rangs et appréciations calculés à partir des notes saisies</p>}
+          subtitle={<p className="mt-1 text-sm text-[var(--ink-dim)]">Moyennes, rangs et appréciations calculés à partir des notes saisies</p>}
         />
 
         <div className="flex flex-wrap items-end gap-3">
           <Select label="Année" value={anneeId} onChange={(e) => setAnneeId(e.target.value)} disabled={!annees.length}>
             <option value="">— Choisir une année —</option>
             {annees.map((a) => (
-              <option key={a.id} value={a.id}>{a.libelle}</option>
+              <option key={a.id} value={a.id}>{a.libelle}{a.cloturee ? ' (archivée)' : ''}</option>
             ))}
           </Select>
           <Select label="Classe" value={classeId} onChange={(e) => setClasseId(e.target.value)} disabled={!classes.length}>
@@ -232,8 +262,8 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
           {canWrite && !estJardin && (
             <Button
               variant="primary"
-              disabled={!classeId || !trimestreId || isLoading || hasPublished}
-              title={hasPublished ? 'Bulletins publiés — dépublié pour régénérer' : undefined}
+              disabled={!classeId || !trimestreId || isLoading || hasPublished || anneeCloturee}
+              title={hasPublished ? 'Bulletins publiés — dépublier pour régénérer' : anneeCloturee ? 'Année archivée — lecture seule' : undefined}
               onClick={() => genererMut.mutate({ id_classe: Number(classeId), id_trimestre: Number(trimestreId) })}
             >
               {genererMut.isPending ? (
@@ -246,16 +276,16 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
             <>
               <Button
                 variant="secondary"
-                disabled={!hasBulletins || hasPublished || publierMut.isPending}
-                title={hasPublished ? 'Déjà publiés' : !hasBulletins ? 'Aucun bulletin à publier' : undefined}
+                disabled={!hasBulletins || hasPublished || publierMut.isPending || anneeCloturee}
+                title={hasPublished ? 'Déjà publiés' : !hasBulletins ? 'Aucun bulletin à publier' : anneeCloturee ? 'Année archivée — lecture seule' : undefined}
                 onClick={() => publierMut.mutate({ id_classe: Number(classeId), id_trimestre: Number(trimestreId) })}
               >
                 Publier
               </Button>
               <Button
                 variant="ghost"
-                disabled={!hasPublished || depublierMut.isPending}
-                title={!hasPublished ? 'Aucun bulletin publié' : undefined}
+                disabled={!hasPublished || depublierMut.isPending || anneeCloturee}
+                title={!hasPublished ? 'Aucun bulletin publié' : anneeCloturee ? 'Année archivée — lecture seule' : undefined}
                 onClick={() => depublierMut.mutate({ id_classe: Number(classeId), id_trimestre: Number(trimestreId) })}
               >
                 Dépublier
@@ -263,6 +293,13 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
             </>
           )}
         </div>
+
+        {anneeCloturee && (
+          <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-soft)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--ink-dim)]">
+            <Badge tone="neutral">Archivée</Badge>
+            {selectedAnnee?.libelle} : consultation en lecture seule — la génération et la publication sont désactivées.
+          </div>
+        )}
 
         {classes.length === 0 && (
           <div className="py-16">
@@ -289,7 +326,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
           <>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative max-w-sm flex-1">
-                <Search strokeWidth={1.75} className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
+                <Search strokeWidth={1.75} className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ink-faint)]" />
                 <Input
                   placeholder="Rechercher par matricule…"
                   value={search}
@@ -297,7 +334,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
                   className="pl-9"
                 />
               </div>
-              <span className="text-xs text-[var(--color-ink-dim)]">{filtered.length} élève(s)</span>
+              <span className="text-xs text-[var(--ink-dim)]">{filtered.length} élève(s)</span>
               <Button
                 variant="secondary"
                 className="ml-auto"
@@ -310,7 +347,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
               </Button>
             </div>
 
-            {isLoading ? (
+            {isLoading || loadingEleves ? (
               <TableSkeleton rows={8} />
             ) : isError ? (
               <div className="py-16">
@@ -318,12 +355,12 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
               </div>
             ) : filtered.length === 0 ? (
               <div className="py-16">
-                <EmptyState message={search ? 'Aucun élève trouvé.' : 'Aucun bulletin pour cette classe / période.'} />
+                <EmptyState message={search ? 'Aucun élève trouvé.' : "Aucun élève inscrit pour cette classe / cette année."} />
               </div>
             ) : (
               <Card className="overflow-hidden">
-                <div className="border-b border-[var(--color-border-soft)] px-5 py-3">
-                  <span className="text-sm font-semibold text-[var(--color-ink)]">
+                <div className="border-b border-[var(--border-soft)] px-5 py-3">
+                  <span className="text-sm font-semibold text-[var(--ink)]">
                     {classeLabel?.niveau} {classeLabel?.nom} — {trimestreLabel?.nom}
                   </span>
                 </div>
@@ -340,76 +377,78 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.map((b) => (
-                        <TableRow key={b.id}>
+                      {filtered.map(({ eleve, bulletin }) => (
+                        <TableRow key={eleve.matricule}>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              {b.eleve ? (
-                                <>
-                                  <Avatar nom={b.eleve.nom} prenom={b.eleve.prenom} photo={b.eleve.photo} size="sm" />
-                                  <span className="font-medium text-[var(--color-ink)]">
-                                    {b.eleve.prenom} {b.eleve.nom}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-[var(--color-ink-dim)]">—</span>
-                              )}
+                              <Avatar nom={eleve.nom} prenom={eleve.prenom} photo={eleve.photo} size="sm" />
+                              <span className="font-medium text-[var(--ink)]">
+                                {eleve.prenom} {eleve.nom}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="text-sm font-medium" style={{ color: b.rang != null && b.rang <= 3 ? 'var(--color-action-bright)' : 'var(--color-ink)' }}>
-                              {b.rang != null ? `${b.rang}${b.rang === 1 ? 'er' : 'e'}` : '—'}
+                            <span className="text-sm font-medium" style={{ color: bulletin?.rang != null && bulletin.rang <= 3 ? 'var(--action-bright)' : 'var(--ink)' }}>
+                              {bulletin?.rang != null ? `${bulletin.rang}${bulletin.rang === 1 ? 'er' : 'e'}` : '—'}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="text-sm font-medium" style={{ color: noteColor(b.moyenne_generale, bareme) }}>
-                              {formatMoyenne(b.moyenne_generale, bareme)}
+                            <span className="text-sm font-medium" style={{ color: noteColor(bulletin?.moyenne_generale ?? null, bareme) }}>
+                              {bulletin ? formatMoyenne(bulletin.moyenne_generale, bareme) : '—'}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs text-[var(--color-ink-dim)]">
-                            {b.appreciation ?? '—'}
+                          <TableCell className="text-xs text-[var(--ink-dim)]">
+                            {bulletin?.appreciation ?? '—'}
                           </TableCell>
                           <TableCell>
-                            <Badge tone={b.statut === 'PUBLIE' ? 'success' : 'neutral'}>
-                              {b.statut === 'PUBLIE' ? 'Publié' : 'Brouillon'}
-                            </Badge>
+                            {bulletin ? (
+                              <Badge tone={bulletin.statut === 'PUBLIE' ? 'success' : 'neutral'}>
+                                {bulletin.statut === 'PUBLIE' ? 'Publié' : 'Brouillon'}
+                              </Badge>
+                            ) : (
+                              <Badge tone="info">Non généré</Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Tooltip content="Télécharger ce bulletin en PDF">
-                              <button
-                                disabled={downloading === b.id}
-                                onClick={() => telechargerUn(b.id)}
-                                aria-label="Télécharger ce bulletin en PDF"
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                              >
-                                {downloading === b.id ? (
-                                  <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                                ) : (
-                                  <Download size={14} strokeWidth={1.75} />
-                                )}
-                              </button>
-                              </Tooltip>
-                              <Tooltip content="Aperçu">
-                              <button
-                                disabled={apercuLoading === `b-${b.id}`}
-                                onClick={() => void ouvrirPdf(
-                                  `b-${b.id}`,
-                                  `Bulletin · ${b.eleve?.prenom ?? ''} ${b.eleve?.nom ?? ''} · ${trimestreLabel?.nom ?? ''}`,
-                                  () => fetchBulletinPdf(b.id),
-                                  () => void telechargerUn(b.id),
-                                )}
-                                aria-label="Aperçu"
-                                className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
-                              >
-                                {apercuLoading === `b-${b.id}` ? (
-                                  <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                                ) : (
-                                  <FileText size={14} strokeWidth={1.75} />
-                                )}
-                              </button>
-                              </Tooltip>
-                            </div>
+                            {bulletin ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Tooltip content="Télécharger ce bulletin en PDF">
+                                <button
+                                  disabled={downloading === bulletin.id}
+                                  onClick={() => telechargerUn(bulletin.id)}
+                                  aria-label="Télécharger ce bulletin en PDF"
+                                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                                >
+                                  {downloading === bulletin.id ? (
+                                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                                  ) : (
+                                    <Download size={14} strokeWidth={1.75} />
+                                  )}
+                                </button>
+                                </Tooltip>
+                                <Tooltip content="Aperçu">
+                                <button
+                                  disabled={apercuLoading === `b-${bulletin.id}`}
+                                  onClick={() => void ouvrirPdf(
+                                    `b-${bulletin.id}`,
+                                    `Bulletin · ${eleve.prenom} ${eleve.nom} · ${trimestreLabel?.nom ?? ''}`,
+                                    () => fetchBulletinPdf(bulletin.id),
+                                    () => void telechargerUn(bulletin.id),
+                                  )}
+                                  aria-label="Aperçu"
+                                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                                >
+                                  {apercuLoading === `b-${bulletin.id}` ? (
+                                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                                  ) : (
+                                    <FileText size={14} strokeWidth={1.75} />
+                                  )}
+                                </button>
+                                </Tooltip>
+                              </div>
+                            ) : (
+                              <span className="text-[var(--ink-faint)]">—</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

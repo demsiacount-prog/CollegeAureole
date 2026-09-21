@@ -17,20 +17,10 @@ test('paiements : recherche dans le sélect et création', async ({ page }) => {
   })
   expect(tuteur.status()).toBe(201)
 
-  const eleve = await ctx.post('/api/eleves/', {
-    data: {
-      nom: `PaiTest${Date.now()}`, prenom: 'Élève', date_de_naissance: '2011-06-15',
-      lieu_de_naissance: 'Bamako', sexe: 'M', statut: 'actif',
-      tuteur_id: (await tuteur.json()).id,
-    },
-    headers: auth.headers,
-  })
-  expect(eleve.status()).toBe(201)
-  const matricule = (await eleve.json()).matricule
-
   const annees = await (await ctx.get('/api/anneesScolaires/', auth)).json()
   const anneeActive = (Array.isArray(annees) ? annees : annees.items).find((a: { active: boolean }) => a.active)
 
+  let classeId: number | undefined
   if (anneeActive) {
     const classe = await ctx.post('/api/classes/', {
       data: {
@@ -42,11 +32,20 @@ test('paiements : recherche dans le sélect et création', async ({ page }) => {
       headers: auth.headers,
     })
     expect(classe.status()).toBe(201)
-    await ctx.post('/api/inscriptions/', {
-      data: { matricule_eleve: matricule, id_classe: (await classe.json()).id, id_annee_scolaire: anneeActive.id },
-      headers: auth.headers,
-    })
+    classeId = (await classe.json()).id
   }
+
+  const eleve = await ctx.post('/api/eleves/', {
+    data: {
+      nom: `PaiTest${Date.now()}`, prenom: 'Élève', date_de_naissance: '2011-06-15',
+      lieu_de_naissance: 'Bamako', sexe: 'M', statut: 'actif',
+      tuteur_id: (await tuteur.json()).id,
+      classe_id: classeId ?? null,
+    },
+    headers: auth.headers,
+  })
+  expect(eleve.status()).toBe(201)
+  const matricule = (await eleve.json()).matricule
   await ctx.dispose()
 
   await page.goto('/app/paiements')

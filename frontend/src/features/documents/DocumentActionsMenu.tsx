@@ -50,10 +50,10 @@ export function DocumentActionsMenu({
       className={clsx(
         'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors',
         disabled
-          ? 'cursor-not-allowed text-[var(--color-ink-disabled)]'
+          ? 'cursor-not-allowed text-[var(--ink-disabled)]'
           : danger
-            ? 'text-[var(--color-danger)] hover:bg-[var(--color-danger-wash)]'
-            : 'text-[var(--color-ink-dim)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]',
+            ? 'text-[var(--danger)] hover:bg-[var(--danger-w)]'
+            : 'text-[var(--ink-dim)] hover:bg-[var(--surface-3)] hover:text-[var(--ink)]',
       )}
     >
       {icon}
@@ -69,20 +69,20 @@ export function DocumentActionsMenu({
         aria-label="Actions du document"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex size-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+        className="inline-flex size-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
       >
         <MoreVertical size={16} strokeWidth={1.75} />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-9 z-[var(--z-dropdown)] w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-float)]"
+          className="absolute right-0 top-9 z-[var(--z-dropdown)] w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-[var(--shadow-float)]"
         >
           {onView && item(<Eye size={15} strokeWidth={1.75} />, 'Ouvrir dans la visionneuse', onView)}
           {onDownload && item(<Download size={15} strokeWidth={1.75} />, 'Télécharger', onDownload)}
           {onPrint && item(<Printer size={15} strokeWidth={1.75} />, 'Imprimer', onPrint)}
           {item(<Pencil size={15} strokeWidth={1.75} />, 'Renommer', undefined, !canRename)}
-          <div className="my-1 h-px bg-[var(--color-border-soft)]" />
+          <div className="my-1 h-px bg-[var(--border-soft)]" />
           {onDelete && item(<Trash2 size={15} strokeWidth={1.75} />, 'Supprimer', onDelete, false, true)}
         </div>
       )}

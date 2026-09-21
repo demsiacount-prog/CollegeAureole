@@ -17,14 +17,11 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchEnseignants, fetchEnseignantsTotal, deleteEnseignant } from './api'
 import EnseignantFormDrawer from './EnseignantFormDrawer'
 import type { Enseignant } from './types'
-import { useLectureSeule } from '@/features/annees_scolaires/useLectureSeule'
-
 const PAGE_SIZE = 50
 
 export default function EnseignantListPage() {
-  const { lectureSeule } = useLectureSeule()
-  const canWrite = !lectureSeule
-  const canDelete = !lectureSeule
+  const canWrite = true
+  const canDelete = true
   const qc = useQueryClient()
 
   const [search, setSearch] = useState('')
@@ -119,7 +116,7 @@ export default function EnseignantListPage() {
                       <div className="flex items-center gap-3">
                         <Avatar nom={e.nom} prenom={e.prenom} size="sm" />
                         <div>
-                          <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-action-bright)]">
+                          <Link to={`/app/enseignants/${e.matricule}`} className="font-medium text-[var(--ink)] hover:text-[var(--action-bright)]">
                             {e.prenom} {e.nom}
                           </Link>
                         </div>
@@ -128,13 +125,13 @@ export default function EnseignantListPage() {
                     <TableCell>
                       <Badge tone="neutral">{e.specialite}</Badge>
                     </TableCell>
-                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--color-ink-dim)]">{e.telephone}</TableCell>
+                    <TableCell className="font-[var(--font-mono)] text-xs text-[var(--ink-dim)]">{e.telephone}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
                         {canWrite && (
                           <button
                             onClick={() => openEdit(e)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-3)] hover:text-[var(--color-ink)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                             aria-label={`Modifier ${e.prenom} ${e.nom}`}
                           >
                             <Pencil strokeWidth={1.75} className="size-4" />
@@ -143,7 +140,7 @@ export default function EnseignantListPage() {
                         {canDelete && (
                           <button
                             onClick={() => setDeleting(e)}
-                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-danger-wash)] hover:text-[var(--color-danger)]"
+                            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--danger-w)] hover:text-[var(--danger)]"
                             aria-label={`Supprimer ${e.prenom} ${e.nom}`}
                           >
                             <Trash2 strokeWidth={1.75} className="size-4" />

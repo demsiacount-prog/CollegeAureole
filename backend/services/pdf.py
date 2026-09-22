@@ -552,7 +552,7 @@ def _recu_bandeau(code_paiement: str, le_jour: date) -> list:
     bottom = Table([[""]], colWidths=[None])
     bottom.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, 0), 2.2, _INK)]))
     sous = _text_p(
-        f"Reçu n° {_assainir(code_paiement, "—")} · {_date_francaise(le_jour)}",
+        f"Reçu n° {_assainir(code_paiement, '—')} · {_date_francaise(le_jour)}",
         ST_TITRE_SUB,
     )
     return [

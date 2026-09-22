@@ -22,14 +22,13 @@ L'utilisateur final lance simplement l'application : elle se connecte
 | Fichier | Rôle |
 |---|---|
 | `college-aureole-setup.exe` | **Tout-en-un** : installe le serveur (service) **et** le client, avec raccourci Bureau. C'est l'installeur à utiliser. |
-| `college-aureole_x64-setup.exe` | Installateur du client seul (pour déploiements particuliers ou mises à jour client). |
 
 ## Installation (rôle admin)
 
-1. **PostgreSQL** : sur le poste, installer PostgreSQL ≥ 14 et créer une base
-   dédiée (`collegeaureole`) avec un rôle propriétaire et son mot de passe.
-   *L'installeur ne gère pas PostgreSQL* : il ne fait que détecter (au boot,
-   le backend démarre après le service PostgreSQL).
+1. **PostgreSQL** : l'installeur détecte un service PostgreSQL déjà présent ;
+   sinon il installe PostgreSQL 16 en silence (paquet embarqué), puis il crée
+   le rôle et la base demandés (`collegeaureole`) avant de configurer le
+   backend.
 2. **Installeur tout-en-un** : lancer `college-aureole-setup.exe`, puis saisir :
    - le **port HTTP** (défaut `8000`),
    - l'**utilisateur** et le **mot de passe** de la base PostgreSQL.
@@ -55,7 +54,6 @@ local est détecté automatiquement. Aucune configuration requise.
 
 - **Tout-en-un** : réinstaller `college-aureole-setup.exe` par-dessus (le
   `.env` et le dossier `uploads` sont conservés).
-- **Client seul** : réinstaller `college-aureole_x64-setup.exe`.
 
 ## Exploitation
 

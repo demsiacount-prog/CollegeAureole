@@ -3,6 +3,5 @@
 .idea/
 
 # Artéfacts de build
-*.deb
 *.zip
 dist/

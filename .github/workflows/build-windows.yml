@@ -64,12 +64,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ''
         run: npm run tauri build -- --bundles nsis
 
-      - name: Récupérer l'installeur
-        shell: pwsh
-        run: |
-          $exe = Get-ChildItem "frontend/src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
-          Copy-Item $exe.FullName "college-aureole_x64-setup.exe"
-
       - name: Récupérer l'exécutable portable
         shell: pwsh
         run: |
@@ -87,82 +81,7 @@ jobs:
         with:
           name: client-windows
           path: |
-            college-aureole_x64-setup.exe
             college-aureole-client.exe
-          if-no-files-found: error
-
-  client-linux:
-    name: Client Linux (.deb)
-    runs-on: ubuntu-latest
-    needs: [tests-backend]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: frontend/src-tauri
-
-      - name: Dépendances système Tauri
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Installer les dépendances front
-        working-directory: frontend
-        run: npm ci
-
-      - name: Construire le client (.deb)
-        working-directory: frontend
-        run: npm run tauri build -- --bundles deb
-
-      - name: Récupérer le paquet
-        run: |
-          VERSION=$(node -p "require('./frontend/src-tauri/tauri.conf.json').version")
-          cp "frontend/src-tauri/target/release/bundle/deb/College Aureole_${VERSION}_amd64.deb" \
-             "college-aureole_${VERSION}_amd64.deb"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: client-linux
-          path: college-aureole_*_amd64.deb
-          if-no-files-found: error
-
-  serveur-linux:
-    name: Serveur Linux (.deb)
-    runs-on: ubuntu-latest
-    needs: [tests-backend]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Installer les dépendances de build
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y python3 python3-venv python3-pip dpkg-dev
-
-      - name: Lire la version
-        id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-
-      - name: Construire le .deb serveur
-        run: |
-          mkdir -p dist
-          chmod +x build-deb.sh
-          APP_VERSION=${{ steps.version.outputs.version }} ./build-deb.sh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: serveur-linux
-          path: dist/college-aureole-serveur_*.deb
           if-no-files-found: error
 
   serveur-backend:
@@ -275,7 +194,7 @@ jobs:
 
   release:
     name: Publication GitHub Release
-    needs: [client-tauri, client-linux, serveur-backend, serveur-linux]
+    needs: [client-tauri, serveur-backend]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -285,14 +204,7 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Préparer install-linux.sh pour la release
-        run: cp install-linux.sh install-linux.sh
-
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             college-aureole-setup.exe
-            college-aureole_x64-setup.exe
-            college-aureole_*_amd64.deb
-            college-aureole-serveur_*_amd64.deb
-            install-linux.sh

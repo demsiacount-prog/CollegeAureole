@@ -10,6 +10,7 @@ Configuration lue depuis le fichier .env du répertoire d'installation
 - DATABASE_URL          : connexion PostgreSQL (générée par l'installeur)
 - DB_ATTENTE_MAX_S      : durée max d'attente de la base (défaut 60 s)
 - DB_ATTENTE_INTERVAL_S : intervalle entre deux tentatives (défaut 3 s)
+- DB_CONNECT_TIMEOUT_S  : délai d'établissement de la connexion TCP/SSL (défaut 5 s)
 """
 import logging
 import os
@@ -20,6 +21,24 @@ import uvicorn
 from sqlalchemy import create_engine, text
 
 logger = logging.getLogger("college_aureole")
+
+
+def _url_masquee(url: str) -> str:
+    """Masque le mot de passe d'une URL de connexion avant journalisation."""
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+
+        p = urlsplit(url)
+        if p.username is None or "@" not in p.netloc:
+            return url
+        hote = p.hostname or ""
+        if p.port:
+            hote += ":%s" % p.port
+        return urlunsplit(
+            (p.scheme, "%s:*****@%s" % (p.username, hote), p.path, p.query, p.fragment)
+        )
+    except Exception:
+        return url
 
 
 def attendre_base() -> None:
@@ -39,8 +58,13 @@ def attendre_base() -> None:
 
     from database import DATABASE_URL  # import tardif : charge le .env
 
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_S", "5"))},
+    )
     echec = False
+    cause_logguee = False
     debut = time.monotonic()
     while True:
         try:
@@ -52,15 +76,18 @@ def attendre_base() -> None:
                 logger.info("Base de données disponible.")
             engine.dispose()
             return
-        except Exception:
+        except Exception as exc:
             echec = True
             elapsed = time.monotonic() - debut
+            if not cause_logguee:
+                logger.error("Connexion à la base impossible : %s", exc)
+                cause_logguee = True
             if elapsed >= max_s:
                 logger.error(
                     "Base de données injoignable après %.0f s (DATABASE_URL=%s). "
                     "Sortie pour redémarrage.",
                     elapsed,
-                    DATABASE_URL,
+                    _url_masquee(DATABASE_URL),
                 )
                 engine.dispose()
                 sys.exit(1)

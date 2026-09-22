@@ -25,16 +25,23 @@ L'utilisateur final lance simplement l'application : elle se connecte
 
 ## Installation (rôle admin)
 
-1. **PostgreSQL** : l'installeur détecte un service PostgreSQL déjà présent ;
-   sinon il installe PostgreSQL 16 en silence (paquet embarqué), puis il crée
-   le rôle et la base demandés (`collegeaureole`) avant de configurer le
-   backend.
+1. **PostgreSQL (prérequis)** : installer PostgreSQL 16+ sur le poste et
+   créer un rôle applicatif ainsi que la base `collegeaureole` (l'application
+   ne prend pas PostgreSQL en charge). Depuis `psql` en superutilisateur :
+
+   ```sql
+   CREATE ROLE <utilisateur> WITH LOGIN PASSWORD '<mot de passe>';
+   CREATE DATABASE collegeaureole OWNER <utilisateur>;
+   ```
+
 2. **Installeur tout-en-un** : lancer `college-aureole-setup.exe`, puis saisir :
    - le **port HTTP** (défaut `8000`),
    - l'**utilisateur** et le **mot de passe** de la base PostgreSQL.
    L'installeur :
+   - vérifie d'abord que la base `collegeaureole` est joignable avec ces
+     identifiants (arrêt avec message d'erreur en cas d'échec),
    - copie l'application dans `C:\Program Files\CollegeAureole\`,
-   - génère le fichier `.env` (connexion base + clé JWT aléatoire),
+   - (re)génère le fichier `.env` (connexion base + clé JWT aléatoire),
    - crée la règle de pare-feu pour le port choisi,
    - installe et démarre le **service Windows** « College Aureole - Serveur »
      (avec dépendance sur le service PostgreSQL, redémarrage auto si la base

@@ -101,18 +101,6 @@ jobs:
             https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe `
             -OutFile desktop/serveur/paquetage/college-aureole-service.exe
 
-      - name: Télécharger l'installeur PostgreSQL 16 (bundlé dans NSIS)
-        shell: pwsh
-        run: |
-          $pgVersion = "16.4-1"
-          $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$pgVersion-windows-x64.exe"
-          $pgDest = "desktop/serveur/paquetage/postgresql-setup.exe"
-          Write-Host "Téléchargement PostgreSQL $pgVersion..."
-          curl.exe -L --retry 3 --connect-timeout 120 -# -o $pgDest $pgUrl
-          if (-not (Test-Path $pgDest)) { throw "Téléchargement PostgreSQL échoué" }
-          $size = (Get-Item $pgDest).Length
-          Write-Host "Téléchargé : $([math]::Round($size/1MB, 1)) MB"
-
       - name: Assembler le paquetage NSIS
         shell: pwsh
         run: |

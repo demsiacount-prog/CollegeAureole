@@ -6,7 +6,9 @@
 ;   paquetage\college-aureole-service.exe   (wrapper WinSW x64 renommé)
 ;   paquetage\college-aureole-serveur.xml   (définition du service)
 ;   paquetage\college-aureole-client.exe    (exécutable portable du client Tauri)
-;   paquetage\postgresql-setup.exe          (installeur PostgreSQL 16 silencieux)
+;
+; Prérequis : PostgreSQL installé ET configuré AVANT l'installation (rôle +
+; base `collegeaureole` créés). L'installeur vérifie la connexion en pré-vol.
 ;
 ; Build :  makensis tout-en-un.nsi
 ;
@@ -15,7 +17,7 @@
 ;   2. Page HTTP (port, défaut 8000)
 ;   3. Page PostgreSQL (utilisateur + mot de passe)
 ;   4. Dossier d'installation
-;   5. PostgreSQL : détection / installation silencieuse / création base
+;   5. Vérification pré-vol de la connexion à la base `collegeaureole`
 ;   6. Serveur (service WinSW)
 ;   7. Client : copie de l'exécutable portable + raccourci Bureau/Menu
 ;   8. Vérification finale (healthcheck HTTP + adresse)
@@ -159,126 +161,33 @@ FunctionEnd
 ; INSTALLATION
 ; ============================================================
 ; ============================================================
-; Section PostgreSQL — Détection ou installation silencieuse
+; Vérification pré-vol : la base 'collegeaureole' doit être
+; joignable avec l'utilisateur saisi (PostgreSQL est un
+; prérequis configuré avant l'installation).
 ; ============================================================
-Section "PostgreSQL (base de données)" SectionPostgres
+Function VerifierConnexionBase
+  DetailPrint "Vérification de la connexion à la base 'collegeaureole'…"
+  SetOutPath "$PLUGINSDIR"
+  File "/oname=verif-base.ps1" "verif-base.ps1"
+  SetOutPath "$INSTDIR"
 
-  ; ── Vérifier si un service PostgreSQL est déjà présent ──────────────────
-  nsExec::ExecToStack \
-    '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-     -NoProfile -ExecutionPolicy Bypass \
-     -Command "(Get-Service | Where-Object {$_.Name -match ''postgres''} | Select-Object -First 1).Name"'
-  Pop $0  ; code retour
-  Pop $1  ; nom du service (vide si absent)
-
-  ${If} $0 == 0
-  ${AndIf} $1 != ""
-    DetailPrint "PostgreSQL déjà installé (service : $1). Installation ignorée."
-  ${Else}
-    ; ── PostgreSQL absent : installer depuis le binaire bundlé ──────────
-    DetailPrint "PostgreSQL non détecté. Installation de PostgreSQL 16..."
-
-    SetOutPath "$TEMP\aureole-pg-setup"
-    File "paquetage\postgresql-setup.exe"
-
-    ; Installation silencieuse : sans pgAdmin, sans StackBuilder, sans docs.
-    ; --superpassword = mot de passe du compte superutilisateur "postgres".
-    ; --servicename   = nom du service Windows créé par l'installeur PG.
-    nsExec::ExecToStack \
-      '"$TEMP\aureole-pg-setup\postgresql-setup.exe" \
-       --mode unattended \
-       --unattendedmodeui none \
-       --superpassword "$PgMotDePasse" \
-       --servicename "postgresql-16" \
-       --disable-components pgAdmin,stackbuilder \
-       --install_runtimes 0'
-    Pop $0
-    Pop $1
-
-    ${If} $0 != 0
-      MessageBox MB_ICONSTOP \
-        "L'installation automatique de PostgreSQL a échoué (code $0).\
-        $\n$\nAction requise : installez manuellement PostgreSQL 16\
-        $\ndepuis https://www.postgresql.org/download/windows/\
-        $\npuis relancez cet installeur."
-      Abort
-    ${EndIf}
-
-    ; Attendre que le service PostgreSQL soit opérationnel (max 20 s)
-    StrCpy $R0 "0"
-    pg_wait_loop:
-      IntOp $R0 $R0 + 1
-      nsExec::ExecToStack \
-        '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-         -NoProfile -ExecutionPolicy Bypass \
-         -Command "(Get-Service postgresql-16 -ErrorAction SilentlyContinue).Status"'
-      Pop $0
-      Pop $1
-      ${If} $1 == "Running"
-        DetailPrint "Service PostgreSQL opérationnel."
-        Goto pg_ready
-      ${EndIf}
-      ${If} $R0 < 10
-        Sleep 2000
-        Goto pg_wait_loop
-      ${EndIf}
-      DetailPrint "AVERTISSEMENT : PostgreSQL ne répond pas après 20 s. Tentative de création de base..."
-    pg_ready:
-
-    DetailPrint "PostgreSQL 16 installé avec succès."
-  ${EndIf}
-
-  ; ── Créer l'utilisateur et la base de données (idempotent) ─────────────
-  Call CreerBaseDeDonnees
-
-SectionEnd
-
-
-; ============================================================
-; Création de l'utilisateur et de la base PostgreSQL
-; Utilise un script PowerShell temporaire pour éviter
-; les problèmes d'échappement des mots de passe.
-; ============================================================
-Function CreerBaseDeDonnees
-
-  ; Écrire un script PowerShell temporaire (évite les problèmes
-  ; d'échappement de $PgMotDePasse dans la ligne de commande).
-  FileOpen $3 "$PLUGINSDIR\pg-init.ps1" w
-  IfErrors pg_script_err 0
-  FileWrite $3 '$pgDir = (Get-ChildItem "C:\Program Files\PostgreSQL\*" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName$\r$\n'
-  FileWrite $3 'if (-not $pgDir) { Write-Error "PostgreSQL introuvable"; exit 1 }$\r$\n'
-  FileWrite $3 '$psql = "$pgDir\bin\psql.exe"$\r$\n'
-  FileWrite $3 '$env:PGPASSWORD = "$PgMotDePasse"$\r$\n'
-  FileWrite $3 '& $psql -U postgres -h localhost -c "CREATE USER \"$PgUtilisateur\" WITH PASSWORD $\'$PgMotDePasse$\' LOGIN;" 2>$null$\r$\n'
-  FileWrite $3 '& $psql -U postgres -h localhost -c "CREATE DATABASE collegeaureole OWNER \"$PgUtilisateur\";" 2>$null$\r$\n'
-  FileWrite $3 '& $psql -U postgres -h localhost -c "GRANT ALL PRIVILEGES ON DATABASE collegeaureole TO \"$PgUtilisateur\";" 2>$null$\r$\n'
-  FileWrite $3 'exit 0$\r$\n'
-  FileClose $3
-
-  nsExec::ExecToStack \
-    '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-     -NoProfile -ExecutionPolicy Bypass \
-     -File "$PLUGINSDIR\pg-init.ps1"'
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\verif-base.ps1" -Utilisateur "$PgUtilisateur" -MotDePasse "$PgMotDePasse"'
   Pop $0
   Pop $1
-
+  DetailPrint "verif-base.ps1 : code retour $0"
   ${If} $0 != 0
-    DetailPrint "AVERTISSEMENT : création de la base a retourné un code $0."
-    DetailPrint "Si la base ou l'utilisateur existait déjà, c'est normal."
-  ${Else}
-    DetailPrint "Base 'collegeaureole' et utilisateur '$PgUtilisateur' prêts."
-  ${EndIf}
-
-  Return
-
-  pg_script_err:
-    MessageBox MB_ICONSTOP "Impossible de créer le script d'initialisation PostgreSQL.$\nInstallation interrompue."
+    MessageBox MB_ICONSTOP "Connexion à la base 'collegeaureole' impossible (code $0).$\n$\n$1$\n$\nVérifiez que PostgreSQL démarre et que le rôle '$PgUtilisateur' a bien accès, puis relancez l'installateur."
     Abort
-
+  ${EndIf}
+  DetailPrint "Connexion à la base 'collegeaureole' : OK."
 FunctionEnd
 
 Section "Serveur" SectionServeur
   SetOutPath "$INSTDIR"
+
+  ; Pré-vol : la base 'collegeaureole' doit être joignable avec les
+  ; identifiants saisis avant toute modification du poste.
+  Call VerifierConnexionBase
 
   ; Arrêt propre d'une installation existante avant mise à jour des fichiers.
   ; On différencie first install (exe absent : le stop échoue = normal)
@@ -314,12 +223,9 @@ Section "Serveur" SectionServeur
   ; Mise à jour de la dépendance de service PostgreSQL dans le XML
   Call InjecterDependancePG
 
-  ; Fichier .env généré (conservé lors des mises à jour)
-  ${IfNot} ${FileExists} "$INSTDIR\.env"
-    Call GenererEnv
-  ${ElseIfNot} ${Silent}
-    DetailPrint ".env existant conservé (configuration inchangée)."
-  ${EndIf}
+  ; Fichier .env : régénéré à chaque installation (applique les identifiants
+  ; saisis ; JWT_SECRET_KEY conservée par env.ps1 si présente)
+  Call GenererEnv
 
   ; Règle de pare-feu entrante pour le port HTTP (non bloquant si échec)
   nsExec::ExecToStack 'netsh advfirewall firewall delete rule name="College Aureole Serveur"'
@@ -461,37 +367,20 @@ FunctionEnd
 ; ============================================================
 Function GenererEnv
   DetailPrint "Génération du fichier .env…"
+  SetOutPath "$PLUGINSDIR"
+  File "/oname=env.ps1" "env.ps1"
+  SetOutPath "$INSTDIR"
 
-  ; Clé JWT : deux GUID concaténés via un fichier .ps1 temporaire
-  ; (robuste face aux apostrophes typographiques).
-  ClearErrors
-  FileOpen $3 "$PLUGINSDIR\genkey.ps1" w
-  IfErrors 0 +3
-    MessageBox MB_ICONSTOP "Impossible de créer le script temporaire de génération de clé.$\nInstallation interrompue."
-    Abort
-  FileWrite $3 "[Console]::Out.Write([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N'))$\r$\n"
-  FileClose $3
-
-  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\genkey.ps1"'
+  ; env.ps1 écrit/réécrit le .env (hôte/port/base fixés en mono-poste) :
+  ; identifiants percent-encodés dans DATABASE_URL, JWT_SECRET_KEY conservée.
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\env.ps1" -Utilisateur "$PgUtilisateur" -MotDePasse "$PgMotDePasse" -PortHttp $PortApi -EnvPath "$INSTDIR\.env"'
   Pop $0
   Pop $1
-  DetailPrint "Code retour PowerShell : $0 | Sortie : $1"
+  DetailPrint "env.ps1 : code retour $0"
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "PowerShell est requis pour générer la clé de sécurité.$\nInstallation interrompue.$\n$\nCode retour : $0$\nSortie : $1"
+    MessageBox MB_ICONSTOP "Échec de la génération du fichier .env.$\nInstallation interrompue.$\n$\nCode retour : $0$\nSortie : $1"
     Abort
   ${EndIf}
-
-  ; Écriture du .env. Hôte/port/base fixés en mono-poste (localhost:5432).
-  FileOpen $2 "$INSTDIR\.env" w
-  FileWrite $2 "ENVIRONMENT=production$\r$\n"
-  FileWrite $2 "AUREOLE_HOST=0.0.0.0$\r$\n"
-  FileWrite $2 "AUREOLE_PORT=$PortApi$\r$\n"
-  FileWrite $2 "JWT_SECRET_KEY=$1$\r$\n"
-  FileWrite $2 "CORS_ORIGINS=http://tauri.localhost,https://tauri.localhost,tauri://localhost,http://localhost$\r$\n"
-  FileWrite $2 "DATABASE_URL=postgresql+psycopg2://$PgUtilisateur:$PgMotDePasse@localhost:5432/collegeaureole$\r$\n"
-  FileWrite $2 "AUTO_CREATE_TABLES=true$\r$\n"
-  FileWrite $2 "LOG_LEVEL=INFO$\r$\n"
-  FileClose $2
 
   ; Vérification que le .env est bien non vide
   ${IfNot} ${FileExists} "$INSTDIR\.env"
@@ -543,9 +432,6 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\College Aureole\College Aureole.lnk"
   RMDir "$SMPROGRAMS\College Aureole"
   RMDir /r "$INSTDIR\client"
-
-  ; Nettoyage du setup PostgreSQL temporaire
-  RMDir /r "$TEMP\aureole-pg-setup"
 
   RMDir "$INSTDIR"
 

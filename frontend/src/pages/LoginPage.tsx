@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LockKeyhole, Moon, Sun } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '@/auth/useAuth'
@@ -186,6 +186,15 @@ export function LoginPage() {
                 Se connecter
               </Button>
             </form>
+
+            <div className="mt-5 text-center">
+              <Link
+                to="/connexion/mot-de-passe-oublie"
+                className="text-xs font-medium text-[var(--ink-dim)] underline decoration-[var(--border)] underline-offset-2 transition-colors hover:text-[var(--action)]"
+              >
+                Mot de passe oublié&nbsp;?
+              </Link>
+            </div>
           </div>
 
           <p className="mt-8 text-center text-xs text-[var(--ink-faint)]">

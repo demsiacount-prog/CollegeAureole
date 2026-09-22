@@ -48,6 +48,30 @@ class TestCreation:
         assert body["matricule_eleve"] == eleve.matricule
         assert body["justifiee"] is False
 
+    def test_absence_doublon_409(self, client, auth_headers, db_session):
+        """Même élève + même date + même cours (ici aucun) → refusé en 409."""
+        t = _creer_tuteur(client, auth_headers).json()
+        eleve = _creer_eleve(db_session, t["id"])
+        payload = {
+            "matricule_eleve": eleve.matricule,
+            "date_absence": "2025-10-15",
+        }
+        premier = client.post("/api/absences/", json=payload, headers=auth_headers)
+        assert premier.status_code == 201
+        doublon = client.post("/api/absences/", json=payload, headers=auth_headers)
+        assert doublon.status_code == 409
+
+    def test_absence_dates_differentes_ok(self, client, auth_headers, db_session):
+        """Deux absences du même élève à des dates différentes restent permises."""
+        t = _creer_tuteur(client, auth_headers).json()
+        eleve = _creer_eleve(db_session, t["id"])
+        for jour in ("2025-10-15", "2025-10-16"):
+            resp = client.post("/api/absences/", json={
+                "matricule_eleve": eleve.matricule,
+                "date_absence": jour,
+            }, headers=auth_headers)
+            assert resp.status_code == 201
+
     def test_eleve_introuvable_404(self, client, auth_headers):
         resp = client.post("/api/absences/", json={
             "matricule_eleve": "AU9900000",
@@ -133,6 +157,23 @@ class TestModification:
         }, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["date_absence"] == "2025-10-20"
+
+    def test_modifier_absence_vers_doublon_409(self, client, auth_headers, db_session):
+        """Modifier une absence pour la faire coïncider avec une autre existante
+        (même élève, même date) est refusé en 409."""
+        t = _creer_tuteur(client, auth_headers).json()
+        eleve = _creer_eleve(db_session, t["id"])
+        client.post("/api/absences/", json={
+            "matricule_eleve": eleve.matricule, "date_absence": "2025-10-15",
+        }, headers=auth_headers)
+        absence = client.post("/api/absences/", json={
+            "matricule_eleve": eleve.matricule, "date_absence": "2025-10-16",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/absences/{absence['id']}", json={
+            "matricule_eleve": eleve.matricule,
+            "date_absence": "2025-10-15",
+        }, headers=auth_headers)
+        assert resp.status_code == 409
 
 
 class TestSuppression:

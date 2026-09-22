@@ -10,7 +10,7 @@ export { fetchClasses, fetchClasseDetail, fetchTrimestres }
 export interface Note {
   id: number
   date: string
-  note: number
+  note: number | null
   note_classe: number | null
   matricule_eleve: string
   id_cours: number
@@ -19,6 +19,7 @@ export interface Note {
   id_trimestre: number | null
   created_at: string
   updated_at: string
+  peut_saisir: boolean | null
   eleve: Eleve
   cours: Cours
   classe: Classe
@@ -26,13 +27,30 @@ export interface Note {
 }
 
 export interface NoteCreatePayload {
-  note: number
+  note: number | null
   note_classe?: number | null
   matricule_eleve: string
   id_cours: number
   id_classe: number
   matricule_enseignant: string
-  id_trimestre: number | null
+  id_trimestre: number
+}
+
+export interface SaisieTrimestre {
+  id: number
+  nom: string
+  type: string
+  verrouille: boolean
+  annee_cloturee: boolean
+  peut_saisir: boolean
+}
+
+export interface SaisieAutorisee {
+  annee_id: number
+  annee_libelle: string | null
+  annee_cloturee: boolean
+  trimestres: SaisieTrimestre[]
+  peut_saisir: boolean
 }
 
 export interface RegistreNoteLigne {
@@ -86,9 +104,17 @@ export async function fetchExistingNotes(params: {
   id_classe: number
   id_cours: number
   id_trimestre: number
+  id_annee_scolaire?: number
 }): Promise<Note[]> {
   const res = await api.get<Note[]>('/api/notes/', {
     params: { ...params, limit: 500 },
+  })
+  return res.data
+}
+
+export async function fetchSaisieAutorisee(anneeId?: number): Promise<SaisieAutorisee> {
+  const res = await api.get<SaisieAutorisee>('/api/notes/saisie-autorisee', {
+    params: anneeId != null ? { annee_id: anneeId } : {},
   })
   return res.data
 }

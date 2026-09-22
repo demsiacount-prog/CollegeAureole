@@ -12,7 +12,7 @@ class Notes(Base):
     )
     id = Column(Integer, primary_key=True)
     date = Column(Date, nullable=False, default=date.today)
-    note = Column(Float, nullable=False)
+    note = Column(Float, nullable=True)  # nullable : saisie « note de classe seule » ; au moins une des deux notes est imposée par l'API
     note_classe = Column(Float, nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)

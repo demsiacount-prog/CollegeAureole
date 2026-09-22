@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { GraduationCap, Wallet, AlertTriangle, Users, BookOpen, CalendarCheck, Clock, UserRound, FilePlus2, Receipt, StickyNote, FileText, type LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/useAuth'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Select } from '@/components/ui/Select'
 import { fetchDashboardStats } from '@/features/dashboard/api'
 
 const PIE_COLORS = [
@@ -98,11 +99,21 @@ export default function DashboardDirection() {
     refetchInterval: 60_000,
   })
 
-  const absencesCeMois = useMemo(() => {
-    if (!stats) return 0
-    const m = [...stats.absences_par_mois].reverse().find((a) => a.absences > 0)
-    return m?.absences ?? 0
+  // Période d'absences affichée dans le KPI « Absences du mois » : par défaut
+  // le dernier mois non nul, sinon un mois choisi explicitement par l'utilisateur
+  // via le sélecteur. L'affichage précise toujours de quel mois il s'agit.
+  const dernierMoisAvecAbsences = useMemo(() => {
+    const m = [...(stats?.absences_par_mois ?? [])].reverse().find((a) => a.absences > 0)
+    return m?.mois ?? null
   }, [stats])
+
+  const [moisAbsence, setMoisAbsence] = useState('')
+  const moisAbsenceEffectif = moisAbsence || dernierMoisAvecAbsences
+
+  const absencesMois = useMemo(() => {
+    if (!stats) return 0
+    return stats.absences_par_mois.find((a) => a.mois === moisAbsenceEffectif)?.absences ?? 0
+  }, [stats, moisAbsenceEffectif])
 
   const niveauxTries = useMemo(() => {
     return [...(stats?.repartition_niveaux ?? [])].sort((a, b) => {
@@ -154,7 +165,7 @@ export default function DashboardDirection() {
         { label: 'Élèves inscrits', value: stats.nb_eleves.toString(), band: 'band-ped', time: 'Année en cours' },
         { label: 'Enseignants actifs', value: stats.nb_enseignants.toString(), band: 'band-vie', time: 'Année en cours' },
         { label: 'Paiements', value: formatMontant(stats.paiements_annee), band: 'band-fin', time: 'Année en cours' },
-        { label: 'Absences du mois', value: absencesCeMois.toString(), band: 'band-res', time: 'Dernier mois relevé' },
+        { label: 'Absences du mois', value: absencesMois.toString(), band: 'band-res', time: moisAbsenceEffectif ? `Mois : ${moisAbsenceEffectif}` : 'Aucune absence enregistrée' },
       ]
     : []
 
@@ -164,6 +175,26 @@ export default function DashboardDirection() {
         title={`Bonjour, ${user?.prenom}`}
         subtitle="Voici un aperçu de l'établissement."
       />
+
+      {/* Sélecteur de période du KPI « Absences du mois » : rend explicite le
+          mois couvert au lieu d'afficher silencieusement le dernier mois relevé. */}
+      {stats && (
+        <div className="flex justify-end">
+          <Select
+            label="Période d'absences"
+            value={moisAbsence}
+            onChange={(e) => setMoisAbsence(e.target.value)}
+            options={[
+              { value: '', label: 'Dernier mois relevé' },
+              ...stats.absences_par_mois
+                .filter((a) => a.absences > 0)
+                .map((a) => ({ value: a.mois, label: a.mois })),
+            ]}
+            className="w-56"
+            disabled={stats.absences_par_mois.every((a) => a.absences === 0)}
+          />
+        </div>
+      )}
 
       {/* Grille KPI — 4 colonnes, gap 12px */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

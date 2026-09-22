@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2, Wallet, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
+import { Pencil, Trash2, Wallet, AlertTriangle, CheckCircle2, Clock, Receipt } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -16,7 +16,7 @@ import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { formatDate, formatMontant } from '@/lib/format'
-import { fetchPaiements, fetchPaiementsTotal, fetchPaiementStats, deletePaiement } from './api'
+import { fetchPaiements, fetchPaiementsTotal, fetchPaiementStats, deletePaiement, fetchRecuPaiement } from './api'
 import PaiementFormDrawer from './PaiementFormDrawer'
 import type { Paiement } from './types'
 
@@ -88,6 +88,25 @@ export default function PaiementListPage() {
     mutationFn: deletePaiement,
     onSuccess: () => { toast('Paiement supprimé.'); qc.invalidateQueries({ queryKey: ['paiements'] }); setDeleting(null) },
     onError: (err) => toast(extractErrorMessage(err), 'error'),
+  })
+
+  // Reçu PDF : GET /api/paiements/{id}/recu (en cours d'ajout côté backend).
+  // Téléchargement via le client axios authentifié (token Bearer) ; si
+  // l'endpoint n'est pas encore disponible (404/405…), l'erreur est affichée.
+  const recuMut = useMutation({
+    mutationFn: (p: Paiement) => fetchRecuPaiement(p.id),
+    onSuccess: (blob, p) => {
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `recu-${p.code_paiement ?? p.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast('Reçu téléchargé.')
+    },
+    onError: (err) => toast(extractErrorMessage(err, 'Le reçu n’est pas encore disponible.'), 'error'),
   })
 
   return (
@@ -230,6 +249,16 @@ export default function PaiementListPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="icon"
+                            size="icon"
+                            onClick={() => recuMut.mutate(p)}
+                            isLoading={recuMut.isPending && recuMut.variables?.id === p.id}
+                            aria-label="Télécharger le reçu de ce paiement"
+                            title="Télécharger le reçu (PDF)"
+                          >
+                            <Receipt strokeWidth={1.75} className="size-4" />
+                          </Button>
                           {canWrite && (
                             <Button
                               variant="icon"

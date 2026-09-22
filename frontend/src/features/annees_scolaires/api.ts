@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
-import type { AnneeScolaire, AnneeScolaireCreateInput } from './types'
+import type { AnneeScolaire, AnneeScolaireCreateInput, AnneeScolaireUpdateInput } from './types'
 
-export type { AnneeScolaire, AnneeScolaireCreateInput }
+export type { AnneeScolaire, AnneeScolaireCreateInput, AnneeScolaireUpdateInput }
 
 export async function fetchAnneesScolaires(): Promise<AnneeScolaire[]> {
   const res = await api.get<AnneeScolaire[]>('/api/anneesScolaires/')
@@ -15,6 +15,14 @@ export async function createAnneeScolaire(body: AnneeScolaireCreateInput): Promi
 
 export async function deleteAnneeScolaire(id: number): Promise<void> {
   await api.delete(`/api/anneesScolaires/${id}`)
+}
+
+export async function updateAnneeScolaire(
+  id: number,
+  body: AnneeScolaireUpdateInput,
+): Promise<AnneeScolaire> {
+  const res = await api.put<AnneeScolaire>(`/api/anneesScolaires/${id}`, body)
+  return res.data
 }
 
 export async function activerAnneeScolaire(id: number): Promise<AnneeScolaire> {

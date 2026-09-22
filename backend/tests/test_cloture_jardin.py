@@ -139,6 +139,48 @@ class TestPreviewJardin:
         assert body["compteurs"]["ADMIS_PASSAGE"] == 1
         assert body["compteurs"]["EN_ATTENTE"] == 1
 
+    def test_executer_409_structure_des_bloquants(self, client, auth_headers, db_session):
+        """Bug 9 : le 409 d'exécution est structuré : message + liste des élèves
+        bloquants (matricule, nom, prénom, statut) + nb_bloquants."""
+        annee = _creer_annee(client, auth_headers).json()
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        sept = _creer_classe(client, auth_headers, niveau="7ème Année", nom="B").json()
+        _creer_eleve_et_inscription(db_session, client, auth_headers, tuteur["id"], sept["id"], annee["id"], prenom="Moussa")
+
+        resp = client.post("/api/cloture/executer", json={
+            "nouvelle_annee": {"libelle": "2026-2027", "date_debut": "2026-09-01", "date_fin": "2027-06-30"},
+        }, headers=auth_headers)
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert "message" in detail
+        assert detail["nb_bloquants"] == 1
+        assert len(detail["eleves"]) == 1
+        assert detail["eleves"][0]["prenom"] == "Moussa"
+        assert detail["eleves"][0]["statut_passage"] == "EN_ATTENTE"
+        assert detail["eleves"][0]["matricule"]
+
+    def test_diplome_detache_de_sa_classe(self, client, auth_headers, db_session):
+        """Bug 10 : un diplômé (ADMIS fin de cycle) quitte définitivement le
+        système → il est détaché de sa classe (classe_id = None)."""
+        annee = _creer_annee(client, auth_headers).json()
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        neuvieme = _creer_classe(client, auth_headers, niveau="9ème Année", nom="A").json()
+        eleve, _ = _creer_eleve_et_inscription(db_session, client, auth_headers, tuteur["id"], neuvieme["id"], annee["id"], prenom="Mariam")
+        insc = db_session.query(models.Inscriptions).filter(models.Inscriptions.matricule_eleve == eleve.matricule).first()
+        insc.statut_passage = "ADMIS"
+        insc.diplome = True
+        db_session.commit()
+
+        resp = client.post("/api/cloture/executer", json={
+            "nouvelle_annee": {"libelle": "2026-2027", "date_debut": "2026-09-01", "date_fin": "2027-06-30"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["rapport"]["admis_diplome"] == 1
+
+        db_session.expire_all()
+        e = db_session.query(models.Eleves).filter(models.Eleves.matricule == eleve.matricule).first()
+        assert e.classe_id is None
+
 
 class TestExecutionJardin:
     def test_promotion_automatique_vers_sections_superieures(self, client, auth_headers, db_session):

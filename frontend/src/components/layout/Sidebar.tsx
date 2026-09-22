@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
-import { ChevronLeft, LogOut } from 'lucide-react'
-import { NAV_SECTIONS } from '@/routes/nav'
+import { ChevronLeft, KeyRound, LogOut } from 'lucide-react'
+import { navSectionsForRole } from '@/routes/nav'
 import { useAuth } from '@/auth/useAuth'
 import { useEtablissement } from '@/features/etablissement/useEtablissement'
 import { LogoEtablissement } from '@/components/ui/LogoEtablissement'
@@ -65,7 +65,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-6" role="navigation">
-        {NAV_SECTIONS.map((section) => (
+        {navSectionsForRole(user.role).map((section) => (
           <div key={section.title ?? 'standalone'}>
             {section.title && (
               <p className="px-[14px] pt-3.5 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-faint)] transition-opacity duration-150" style={{ opacity: collapsed ? 0 : 1 }}>
@@ -123,6 +123,9 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           </p>
           <p className="truncate text-[10.5px] text-[var(--ink-faint)]">{roleLabel(user.role)}</p>
         </div>
+        <Link to="/app/mot-de-passe" title="Changer mon mot de passe" aria-label="Changer mon mot de passe" className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-dim)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]">
+          <KeyRound className="size-3.5" strokeWidth={1.75} />
+        </Link>
         <Tooltip content="Déconnexion">
           <button
             type="button"

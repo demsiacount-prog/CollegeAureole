@@ -30,3 +30,14 @@ class PaiementStatsResponse(BaseModel):
     montant_impaye:        float
     nb_echeances_soldees:  int
     nb_echeances_impayees: int
+
+
+# ─── Mot de passe oublié ─────────────────────────────────────────────────────
+# Hébergées dans schemas/auth.py (uniquement utilisées par routers/auth.py).
+# Re-export pour compatibilité avec les imports existants.
+from schemas.auth import (  # noqa: F401
+    MotDePasseOublieRequest,
+    MotDePasseOublieResponse,
+    ReinitialiserMotDePasseRequest,
+    ReinitialiserMotDePasseResponse,
+)

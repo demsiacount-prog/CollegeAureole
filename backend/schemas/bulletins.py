@@ -10,6 +10,24 @@ if TYPE_CHECKING:
 StatutBulletin = Literal["BROUILLON", "PUBLIE"]
 
 
+class BulletinErreurGenerer(BaseModel):
+    """Un élève pour lequel le bulletin n'a pas pu être généré (motif explicite)."""
+    matricule_eleve: str
+    motif: str
+
+
+class BulletinGenerationClasseResponse(BaseModel):
+    """Réponse de génération par classe : bulletins produits + élèves en échec.
+
+    La génération est partielle par nature (notes manquantes, garde jardin...) :
+    on documente TOUT, jamais une simple liste qui masque les élèves perdus.
+    """
+    bulletins: List["BulletinResponse"] = []
+    erreurs: List[BulletinErreurGenerer] = []
+    nb_succes: int
+    nb_erreurs: int
+
+
 class BulletinDetailResponse(BaseModel):
     id: int
     id_cours: int
@@ -49,7 +67,7 @@ class BulletinResponse(BaseModel):
     matricule_eleve: str
     id_trimestre: int
     id_classe: int
-    moyenne_generale: float
+    moyenne_generale: Optional[float] = None  # None si aucune matière coefficientée (persisté tel quel, jamais de 0.0 fallacieux)
     rang: Optional[int] = None
     appreciation: Optional[str] = Field(default=None, max_length=1000)
     statut: StatutBulletin = "BROUILLON"

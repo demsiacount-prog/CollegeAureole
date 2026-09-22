@@ -41,6 +41,18 @@ class TestCreation:
         resp = client.post("/api/tuteurs/", json={"nom": "X"}, headers=auth_headers)
         assert resp.status_code >= 400
 
+    def test_creer_tuteur_sans_email_ni_telephone(self, client, auth_headers):
+        """L'import de reprise peut créer des tuteurs sans coordonnées : email
+        et téléphone sont optionnels (stockés ''), le format n'est contrôlé que
+        lorsqu'une valeur non vide est fournie."""
+        resp = client.post("/api/tuteurs/", json={
+            "nom": "X", "prenom": "Y", "adresse": "", "profession": "",
+        }, headers=auth_headers)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["email"] == ""
+        assert body["telephone"] == ""
+
 
 class TestLecture:
     def test_liste_vide(self, client, auth_headers):
@@ -93,6 +105,68 @@ class TestModification:
         )
         assert resp.status_code == 200
         assert resp.json()["nom"] == "NouveauNom"
+
+    def test_modifier_tuteur_importe_aux_champs_vides(self, client, auth_headers, db_session):
+        """Un tuteur importé (email/téléphone vides en base) DOIT rester
+        modifiable : renvoyer '' ne doit pas être bloqué par la validation."""
+        from models.tuteurs import Tuteurs
+
+        tuteur = Tuteurs(
+            nom="Importé", prenom="Parent", email="", telephone="",
+            adresse="", profession="", lien_parente=None,
+        )
+        db_session.add(tuteur)
+        db_session.commit()
+        db_session.refresh(tuteur)
+
+        resp = client.put(
+            f"/api/tuteurs/{tuteur.id}",
+            json={
+                "nom": "Importé", "prenom": "Parent", "email": "",
+                "telephone": "", "adresse": "", "profession": "",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email"] == ""
+        assert resp.json()["telephone"] == ""
+        assert resp.json()["nom"] == "Importé"
+
+    def test_modifier_tuteur_renseigne_les_coordonnees(self, client, auth_headers, db_session):
+        """On peut aussi renseigner les coordonnées d'un tuteur importé."""
+        from models.tuteurs import Tuteurs
+
+        tuteur = Tuteurs(
+            nom="Importé", prenom="Parent", email="", telephone="",
+            adresse="", profession="", lien_parente=None,
+        )
+        db_session.add(tuteur)
+        db_session.commit()
+        db_session.refresh(tuteur)
+
+        resp = client.put(
+            f"/api/tuteurs/{tuteur.id}",
+            json={
+                "nom": "Importé", "prenom": "Parent",
+                "email": "parent@example.com", "telephone": "+223 66 00 11 22",
+                "adresse": "Bamako", "profession": "Commerçant",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "parent@example.com"
+        assert resp.json()["telephone"] == "+223 66 00 11 22"
+
+    def test_modifier_tuteur_email_invalide_422(self, client, auth_headers):
+        """Quand une valeur est fournie, le format est contrôlé même à la
+        modification."""
+        created = _creer_tuteur(client, auth_headers).json()
+        resp = client.put(
+            f"/api/tuteurs/{created['id']}",
+            json={**TUTEUR_DATA, "email": "pas-un-mail"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
 
 
 class TestSuppression:

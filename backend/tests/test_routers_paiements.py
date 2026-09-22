@@ -112,3 +112,227 @@ class TestStatsPaiements:
         resp = client.get("/api/paiements/stats", headers=auth_headers)
         assert resp.json()["montant_impaye"] == 7000.0
         assert resp.json()["nb_echeances_impayees"] == 1
+
+
+class TestTropPerçuTraçable:
+    def test_trop_percu_trace_et_total_encaisse_exact(self, client, auth_headers, db_session):
+        """Le trop-perçu est tracé par une ligne Paiements sans échéance et
+        total_encaisse ne compte jamais deux fois le crédit réutilisé."""
+        _, _, _, inscription = _seed_base(db_session)
+        ech1 = _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+
+        resp = client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 15000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["nb_paiements_crees"] == 2
+        assert body["credit_disponible"] == 5000.0
+        assert body["reste_global"] == 0.0
+
+        db_session.expire_all()
+        ech1 = db_session.get(models.Echeances, ech1.id)
+        assert ech1.montant_paye == 10000.0
+        assert ech1.statut == "SOLDE"
+
+        lignes = (
+            db_session.query(models.Paiements)
+            .filter(models.Paiements.id_inscription == inscription.id)
+            .all()
+        )
+        assert len(lignes) == 2
+        ligne_echeance = next(l for l in lignes if l.id_echeance == ech1.id)
+        ligne_trop_percu = next(l for l in lignes if l.id_echeance is None)
+        assert ligne_echeance.montant == 10000.0
+        assert ligne_trop_percu.montant == 5000.0
+
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["total_encaisse"] == 15000.0
+
+        # Réutilisation du crédit : pas de double comptage dans total_encaisse.
+        ech2 = _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Novembre")
+        db_session.commit()
+        resp = client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 3000,
+            "date": "2024-10-06", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["credit_disponible"] == 0.0
+        assert resp.json()["reste_global"] == 2000.0
+
+        db_session.expire_all()
+        ech2 = db_session.get(models.Echeances, ech2.id)
+        # 5000 de crédit + 3000 d'espèces = 8000 payés sur l'échéance
+        assert ech2.montant_paye == 8000.0
+        assert ech2.statut == "PARTIEL"
+
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["total_encaisse"] == 18000.0
+
+    def test_trop_percu_supprimable(self, client, auth_headers, db_session):
+        _, _, _, inscription = _seed_base(db_session)
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 15000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+
+        trop_percu = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance.is_(None),
+        ).first()
+        assert trop_percu is not None
+        resp = client.delete(f"/api/paiements/{trop_percu.id}", headers=auth_headers)
+        assert resp.status_code == 204
+
+        db_session.expire_all()
+        inscription = db_session.get(models.Inscriptions, inscription.id)
+        assert inscription.credit_disponible == 0.0
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["total_encaisse"] == 10000.0
+
+    def test_trop_percu_modifiable(self, client, auth_headers, db_session):
+        _, _, _, inscription = _seed_base(db_session)
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 15000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+
+        trop_percu = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance.is_(None),
+        ).first()
+        resp = client.put(f"/api/paiements/{trop_percu.id}", json={"montant": 3000}, headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+
+        db_session.expire_all()
+        inscription = db_session.get(models.Inscriptions, inscription.id)
+        assert inscription.credit_disponible == 3000.0
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["total_encaisse"] == 13000.0
+
+    def test_modifier_paiement_echeance_soldee_excedent_en_credit(self, client, auth_headers, db_session):
+        """Augmenter un paiement au-delà du montant_du n'écrase pas l'excédent :
+        il est versé au crédit disponible."""
+        _, _, _, inscription = _seed_base(db_session)
+        ech = _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 10000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+
+        paiement = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance == ech.id,
+        ).first()
+        resp = client.put(f"/api/paiements/{paiement.id}", json={"montant": 15000}, headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["montant"] == 15000.0
+
+        db_session.expire_all()
+        ech = db_session.get(models.Echeances, ech.id)
+        assert ech.montant_paye == 10000.0  # plafonné à montant_du
+        assert ech.statut == "SOLDE"
+        inscription = db_session.get(models.Inscriptions, inscription.id)
+        assert inscription.credit_disponible == 5000.0  # l'excédent n'est pas perdu
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["total_encaisse"] == 15000.0
+
+
+class TestEcheancesReportées:
+    def test_reportee_portee_payable_et_statut_maj(self, client, auth_headers, db_session):
+        """Une échéance REPORTE portée est payable ; son statut évolue
+        REPORTE → PARTIEL → SOLDE sans jamais toucher l'échéance source."""
+        _, _, _, inscription = _seed_base(db_session)
+        source = _echeance(db_session, inscription, "REPORTE", 10000, 0, id_echeance_origine=None)
+        portee = _echeance(
+            db_session, inscription, "REPORTE", 7000, 0,
+            mois="Octobre", id_echeance_origine=source.id,
+        )
+        db_session.commit()
+
+        resp = client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 3000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["reste_global"] == 4000.0
+
+        db_session.expire_all()
+        portee = db_session.get(models.Echeances, portee.id)
+        assert portee.montant_paye == 3000.0
+        assert portee.statut == "PARTIEL"
+        source = db_session.get(models.Echeances, source.id)
+        assert source.statut == "REPORTE"  # jamais ciblée par un paiement
+
+        resp = client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 4000,
+            "date": "2024-10-06", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["reste_global"] == 0.0
+
+        db_session.expire_all()
+        portee = db_session.get(models.Echeances, portee.id)
+        assert portee.statut == "SOLDE"
+        stats = client.get("/api/paiements/stats", headers=auth_headers).json()
+        assert stats["montant_impaye"] == 0.0
+        assert stats["nb_echeances_impayees"] == 0
+
+    def test_paiement_groupe_inclut_reportee_portee(self, client, auth_headers, db_session):
+        _, _, _, inscription = _seed_base(db_session)
+        source = _echeance(db_session, inscription, "REPORTE", 10000, 0, id_echeance_origine=None)
+        portee = _echeance(
+            db_session, inscription, "REPORTE", 5000, 0,
+            mois="Octobre", id_echeance_origine=source.id,
+        )
+        db_session.commit()
+        tuteur = db_session.query(models.Tuteurs).first()
+
+        resp = client.post("/api/paiements/groupes", json={
+            "id_tuteur": tuteur.id, "montant_total": 5000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["nb_paiements_crees"] == 1
+        assert resp.json()["reste_total"] == 0.0
+
+        db_session.expire_all()
+        portee = db_session.get(models.Echeances, portee.id)
+        assert portee.statut == "SOLDE"
+
+
+class TestRecuPaiement:
+    def test_recu_pdf_200(self, client, auth_headers, db_session):
+        _, _, _, inscription = _seed_base(db_session)
+        ech = _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.add(models.Paiements(
+            id_inscription=inscription.id, id_echeance=ech.id,
+            date=date(2024, 10, 5), montant=10000, mode="ESPECES",
+        ))
+        db_session.commit()
+
+        paiement = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance == ech.id,
+        ).first()
+        resp = client.get(f"/api/paiements/{paiement.id}/recu", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.headers["Content-Type"].startswith("application/pdf")
+
+        disposition = resp.headers["Content-Disposition"]
+        assert disposition.startswith("inline;")
+        assert f"recu-{paiement.code_paiement or paiement.id}.pdf" in disposition
+
+        # Invariant PDF réel (pas une erreur HTML/JSON) : en-tête %PDF.
+        assert resp.content[:5] == b"%PDF-"
+
+    def test_recu_404_inconnu(self, client, auth_headers):
+        resp = client.get("/api/paiements/999999/recu", headers=auth_headers)
+        assert resp.status_code == 404

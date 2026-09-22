@@ -61,7 +61,6 @@ export function ClasseFormDrawer({ open, onClose, classe }: Props) {
     const errs = validateFields({
       nom: required(form.nom, 'Le nom de la classe'),
       niveau: required(form.niveau, 'Le niveau'),
-      id_salle: required(idSalle, 'La salle'),
       frais_inscription: minNumber(form.frais_inscription, 0, "Les frais d'inscription"),
       mensualite: minNumber(form.mensualite, 0, 'La mensualité'),
     })
@@ -112,7 +111,7 @@ export function ClasseFormDrawer({ open, onClose, classe }: Props) {
         error={errors.nom}
       />
       <Select label="Niveau" value={form.niveau} onChange={set('niveau')} options={NIVEAUX} />
-      <Select label="Salle" value={idSalle} onChange={(e) => { setIdSalle(e.target.value); if (errors.id_salle) setErrors((prev) => ({ ...prev, id_salle: undefined })) }} required error={errors.id_salle}>
+      <Select label="Salle (optionnel)" value={idSalle} onChange={(e) => { setIdSalle(e.target.value); if (errors.id_salle) setErrors((prev) => ({ ...prev, id_salle: undefined })) }} error={errors.id_salle}>
         <option value="">— Aucune —</option>
         {salles.map((s) => (
           <option key={s.id} value={s.id}>

@@ -1,18 +1,41 @@
 from datetime import date as date_type
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func
 from database import get_db
 import models
 import schemas
 from security import get_current_user
+from services import pdf as pdf_service
 
 router = APIRouter(prefix="/api/paiements", tags=["Paiements"], dependencies=[Depends(get_current_user)])
 
+def _filtre_echeances_payables():
+    """Condition SQL des échéances réellement payables.
+
+    Sont payables : celles en attente/partielles ET les échéances REPORTE
+    portées (id_echeance_origine non NULL), issues d'un passage d'année. Les
+    échéances REPORTE sources (id_echeance_origine NULL) sont exclues : leur
+    impayé a été transféré vers une échéance portée, les compter serait un
+    double comptage."""
+    return or_(
+        models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+        and_(
+            models.Echeances.statut == "REPORTE",
+            models.Echeances.id_echeance_origine.isnot(None),
+        ),
+    )
+
+
 def _mettre_a_jour_statut(echeance: models.Echeances):
     if echeance.montant_paye <= 0:
-        echeance.statut = "EN_ATTENTE"
+        # Un impayé reporté non entamé conserve son statut REPORTE.
+        if echeance.statut == "REPORTE" or echeance.id_echeance_origine is not None:
+            echeance.statut = "REPORTE"
+        else:
+            echeance.statut = "EN_ATTENTE"
     elif echeance.montant_paye >= echeance.montant_du:
         echeance.statut = "SOLDE"
     else:
@@ -20,15 +43,20 @@ def _mettre_a_jour_statut(echeance: models.Echeances):
 
 
 def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, observation, ids_echeances=None) -> dict:
-    """Distribue le montant versé + le crédit disponible sur les échéances impayées.
-    Le surplus éventuel est conservé comme crédit pour un paiement futur.
-    Si ids_echeances est précisé, seules ces échéances/mois sont alimentés."""
-    reste = montant_verse + (inscription.credit_disponible or 0.0)
+    """Distribue le crédit disponible puis le montant versé sur les échéances
+    payables. Le crédit est consommé en premier ; seuls les règlements en
+    espèces affectés à une échéance donnent lieu à une ligne Paiements (évite
+    le double comptage de total_encaisse). Le cash non affecté reste en crédit
+    disponible et est tracé par une ligne Paiements sans échéance (trop-perçu),
+    donc annulable/modifiable. Si ids_echeances est précisé, seules ces
+    échéances/mois sont alimentés."""
+    credit = inscription.credit_disponible or 0.0
+    cash = montant_verse
     inscription.credit_disponible = 0.0
 
     query = (
         db.query(models.Echeances)
-        .filter(models.Echeances.id_inscription == inscription.id, models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]))
+        .filter(models.Echeances.id_inscription == inscription.id, _filtre_echeances_payables())
     )
     if ids_echeances:
         query = query.filter(models.Echeances.id.in_(ids_echeances))
@@ -37,38 +65,54 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, ob
     paiements_crees, echeances_maj = [], []
 
     for ech in echeances_impayees:
-        if reste <= 0:
+        if credit <= 0 and cash <= 0:
             break
         a_payer = ech.reste_a_payer
         if a_payer <= 0:
             continue  # échéance déjà soldée en mémoire : pas de paiement à 0
-        montant_sur_ech = min(reste, a_payer)
 
-        paiement = models.Paiements(
-            id_inscription=inscription.id, id_echeance=ech.id, date=date_paiement,
-            montant=montant_sur_ech, mode=mode, observation=observation,
-        )
-        db.add(paiement)
-        ech.montant_paye += montant_sur_ech
+        # 1) Le crédit existant couvre d'abord l'échéance…
+        part_credit = min(credit, a_payer)
+        credit -= part_credit
+        a_payer -= part_credit
+        # 2) …le cash ne règle que la part restante.
+        part_cash = min(cash, a_payer)
+        cash -= part_cash
+
+        if part_credit > 0:
+            ech.montant_paye += part_credit
+        if part_cash > 0:
+            paiement = models.Paiements(
+                id_inscription=inscription.id, id_echeance=ech.id, date=date_paiement,
+                montant=part_cash, mode=mode, observation=observation,
+            )
+            db.add(paiement)
+            paiements_crees.append(paiement)
+            ech.montant_paye += part_cash
         _mettre_a_jour_statut(ech)
-
-        reste -= montant_sur_ech
-        paiements_crees.append(paiement)
         echeances_maj.append(ech)
 
-    # Surplus après avoir soldé toutes les échéances connues -> crédit pour la suite
-    if reste > 0:
-        inscription.credit_disponible = reste
+    # Cash non affecté : conservé en crédit et tracé (donc annulable/modifiable).
+    if cash > 0:
+        paiement = models.Paiements(
+            id_inscription=inscription.id, id_echeance=None, date=date_paiement,
+            montant=cash, mode=mode, observation=observation,
+        )
+        db.add(paiement)
+        paiements_crees.append(paiement)
+
+    inscription.credit_disponible = credit + cash
 
     db.flush()
 
-    # Total des échéances encore dues sur l'inscription (toutes, y compris celles
-    # non ciblées par ids_echeances). Les montants mis à jour sont déjà flusher.
+    # Total des échéances encore dues sur l'inscription (toutes les payables,
+    # y compris celles non ciblées par ids_echeances). Les montants mis à jour
+    # sont déjà flushés.
     reste_global = (
         db.query(func.sum(models.Echeances.montant_du - models.Echeances.montant_paye))
         .filter(
             models.Echeances.id_inscription == inscription.id,
-            models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+            _filtre_echeances_payables(),
         )
         .scalar()
     ) or 0.0
@@ -321,6 +365,57 @@ def get_paiement_stats(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/{paiement_id}/recu")
+def telecharger_recu(paiement_id: int, db: Session = Depends(get_db)):
+    """PDF officiel d'un reçu de paiement (bouton « Reçu » du front).
+
+    Route déclarée AVANT `/{paiement_id}` : le segment `recu` est littéral,
+    donc sans ambiguïté avec le paramètre entier, mais l'ordre reste explicite
+    pour éviter toute capture par la route générique."""
+    paiement = (
+        db.query(models.Paiements)
+        .options(
+            joinedload(models.Paiements.inscription).joinedload(models.Inscriptions.eleve),
+            joinedload(models.Paiements.inscription).joinedload(models.Inscriptions.classe),
+            joinedload(models.Paiements.inscription).joinedload(models.Inscriptions.annee_scolaire),
+            joinedload(models.Paiements.echeance),
+        )
+        .filter(models.Paiements.id == paiement_id)
+        .first()
+    )
+    if not paiement:
+        raise HTTPException(status_code=404, detail="Paiement introuvable")
+
+    inscription = paiement.inscription
+    etab = db.query(models.Etablissement).first()
+    annee_label = inscription.annee_scolaire.libelle if inscription and inscription.annee_scolaire else None
+
+    reste_global = 0.0
+    if inscription:
+        reste_global = (
+            db.query(func.sum(models.Echeances.montant_du - models.Echeances.montant_paye))
+            .filter(
+                models.Echeances.id_inscription == inscription.id,
+                _filtre_echeances_payables(),
+            )
+            .scalar()
+        ) or 0.0
+
+    contenu = pdf_service.recu_paiement_pdf(
+        paiement,
+        etab,
+        annee_label=annee_label,
+        montant_total=float(inscription.montant_total or 0.0) if inscription else 0.0,
+        reste_global=float(reste_global),
+    )
+    fichier = f"recu-{paiement.code_paiement or paiement.id}.pdf"
+    return StreamingResponse(
+        content=iter([contenu]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{fichier}"'},
+    )
+
+
 @router.get("/{paiement_id}", response_model=schemas.PaiementResponse)
 def get_paiement(paiement_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Paiements).filter(models.Paiements.id == paiement_id).first()
@@ -344,7 +439,14 @@ def modifier_paiement(paiement_id: int, payload: schemas.PaiementUpdate, db: Ses
     if p.id_echeance:
         ech = db.query(models.Echeances).filter(models.Echeances.id == p.id_echeance).first()
         if ech:
-            ech.montant_paye = max(ech.montant_paye + delta, 0.0)
+            nouveau_paye = max(ech.montant_paye + delta, 0.0)
+            # Un paiement ne peut pas rendre une échéance « sur-soldée » :
+            # l'excédent est versé au crédit disponible au lieu d'être perdu.
+            if nouveau_paye > ech.montant_du:
+                if inscription:
+                    inscription.credit_disponible = (inscription.credit_disponible or 0.0) + (nouveau_paye - ech.montant_du)
+                nouveau_paye = ech.montant_du
+            ech.montant_paye = nouveau_paye
             _mettre_a_jour_statut(ech)
     elif delta != 0 and inscription:
         inscription.credit_disponible = max((inscription.credit_disponible or 0.0) + delta, 0.0)
@@ -508,7 +610,7 @@ def enregistrer_paiement_groupe(payload: schemas.PaiementGroupeCreate,
                 db.query(func.sum(models.Echeances.montant_du - models.Echeances.montant_paye))
                 .filter(
                     models.Echeances.id_inscription == insc.id,
-                    models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+                    _filtre_echeances_payables(),
                 )
                 .scalar()
             ) or 0.0
@@ -535,7 +637,7 @@ def enregistrer_paiement_groupe(payload: schemas.PaiementGroupeCreate,
         (db.query(func.sum(models.Echeances.montant_du - models.Echeances.montant_paye))
          .filter(
              models.Echeances.id_inscription == insc.id,
-             models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+             _filtre_echeances_payables(),
          ).scalar() or 0.0)
         for insc in inscriptions
     )

@@ -61,13 +61,24 @@ export default function UtilisateursTab() {
 
   const statutMut = useMutation({
     mutationFn: ({ id, actif }: { id: number; actif: boolean }) => modifierStatutUtilisateur(id, actif),
-    onSuccess: (u) => { toast(`Compte ${u.actif ? 'activé' : 'désactivé'}`); qc.invalidateQueries({ queryKey: ['utilisateurs'] }) },
+    onSuccess: (u) => {
+      toast(
+        u.actif
+          ? 'Compte activé — le verrouillage éventuel a été levé.'
+          : 'Compte désactivé.',
+      )
+      qc.invalidateQueries({ queryKey: ['utilisateurs'] })
+    },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 
   const resetMut = useMutation({
     mutationFn: ({ id, mdp }: { id: number; mdp: string }) => reinitialiserMotDePasse(id, mdp),
-    onSuccess: () => { toast('Mot de passe réinitialisé'); qc.invalidateQueries({ queryKey: ['utilisateurs'] }); setResetUser(null) },
+    onSuccess: () => {
+      toast('Mot de passe réinitialisé — le compte est déverrouillé.')
+      qc.invalidateQueries({ queryKey: ['utilisateurs'] })
+      setResetUser(null)
+    },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 

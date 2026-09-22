@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { fetchEleves } from '@/features/eleves/api'
 import { fetchCours } from '@/features/cours/api'
+import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
 import { required, validateFields, hasErrors, type Errors } from '@/lib/validation'
 import type { AbsenceCreateInput } from './types'
 
@@ -17,7 +18,13 @@ interface Props {
 }
 
 export default function AbsenceFormDrawer({ open, onClose, onSubmit }: Props) {
-  const { data: eleves = [] } = useQuery({ queryKey: ['eleves', 'select'], queryFn: () => fetchEleves({ limit: 5000 }) })
+  const { data: anneeActive } = useAnneeActive()
+  const anneeActiveId = anneeActive?.id
+  const { data: eleves = [] } = useQuery({
+    queryKey: ['eleves', 'select', anneeActiveId],
+    queryFn: () => fetchEleves({ limit: 5000, id_annee_scolaire: anneeActiveId }),
+    enabled: anneeActiveId != null,
+  })
   const { data: cours = [] } = useQuery({ queryKey: ['cours'], queryFn: fetchCours })
 
   const [matriculeEleve, setMatriculeEleve] = useState('')
@@ -27,7 +34,9 @@ export default function AbsenceFormDrawer({ open, onClose, onSubmit }: Props) {
   const [errors, setErrors] = useState<Errors>({})
 
   const eleve = eleves.find((el) => el.matricule === matriculeEleve) ?? null
-  const classeId = eleve?.classe?.id ?? null
+  // Cours rattachés à la classe de l'inscription pour l'année active (et non la
+  // classe actuelle de l'élève, qui peut avoir changé depuis).
+  const classeId = eleve?.classe_annee?.id ?? null
   const coursClasse = classeId
     ? cours.filter((c) => c.classes.some((cl) => cl.id === classeId))
     : []

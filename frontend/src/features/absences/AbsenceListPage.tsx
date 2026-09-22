@@ -82,7 +82,10 @@ export default function AbsenceListPage() {
   const createMut = useMutation({
     mutationFn: (data: AbsenceCreateInput) => createAbsence(data),
     onSuccess: () => { toast('Absence enregistrée'); qc.invalidateQueries({ queryKey: ['absences'] }); setDrawerOpen(false) },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: (e) => {
+      const status = (e as { response?: { status?: number } } | undefined)?.response?.status
+      toast(status === 409 ? 'Cette absence est déjà enregistrée pour cet élève, ce cours et cette date.' : extractErrorMessage(e), 'error')
+    },
   })
 
   const justifierMut = useMutation({

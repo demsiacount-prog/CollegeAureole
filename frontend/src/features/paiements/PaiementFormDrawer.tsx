@@ -43,6 +43,11 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
   const [remiseDrawerOpen, setRemiseDrawerOpen] = useState(false)
   const [selectedEcheance, setSelectedEcheance] = useState<Echeance | null>(null)
   const [remisesParEcheance, setRemisesParEcheance] = useState<Record<number, RemiseParEcheance>>({})
+  // Résultat du dernier paiement enregistré : source de vérité (reste_global,
+  // credit_disponible, échéances mises à jour) renvoyée par le backend — pas
+  // d'estimation locale après un enregistrement.
+  const [resultat, setResultat] = useState<PaiementResult | null>(null)
+  const [echeancesLocal, setEcheancesLocal] = useState<Echeance[] | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -56,6 +61,8 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
       setIdTuteur('')
       setMontantGroupe('')
       setRemisesParEcheance({})
+      setResultat(null)
+      setEcheancesLocal(null)
       setError('')
       setErrors({})
     }
@@ -81,8 +88,26 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
     enabled: open && typePaiement === 'individuel' && inscriptionId !== null,
   })
 
-  const echeancesImpayees = echeances.filter((e) => e.statut !== 'SOLDE')
-  const resteGlobal = echeancesImpayees.reduce((s, e) => s + e.reste_a_payer, 0)
+  // Échéances réellement payables au sens du backend (_filtre_echeances_payables) :
+  // en attente/partielles + les REPORTE portées (id_echeance_origine non nul).
+  // Les REPORTE sources (id_echeance_origine nul) ne sont plus montrées : leur
+  // impayé a été transféré vers l'échéance portée, les compter ferait un double.
+  const echeancesActuelles = echeancesLocal ?? echeances
+  const echeancesPayables = echeancesActuelles.filter(
+    (e) => e.statut === 'EN_ATTENTE' || e.statut === 'PARTIEL'
+      || (e.statut === 'REPORTE' && e.id_echeance_origine != null),
+  )
+  // Reste affiché : valeur backend du dernier paiement si disponible, sinon
+  // somme des restes des échéances payables telles que renvoyées par l'API.
+  const restePayable = echeancesPayables.reduce((s, e) => s + e.reste_a_payer, 0)
+  const resteAffiche = resultat?.reste_global ?? restePayable
+  const inscriptionSelectionnee = inscriptions.find((i) => i.id === inscriptionId)
+  const creditAffiche = resultat?.credit_disponible ?? inscriptionSelectionnee?.credit_disponible ?? 0
+
+  const echeanceLibelle = (ech: Echeance) => {
+    const base = ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois
+    return ech.statut === 'REPORTE' ? `${base} (reporté)` : base
+  }
 
   const toggleEcheance = (id: number) => {
     setIdsEcheances((prev) =>
@@ -115,11 +140,25 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
       qc.invalidateQueries({ queryKey: ['echeances'] })
       if (isEdit) {
         toast('Paiement modifié.')
-      } else {
-        const r = result as Awaited<ReturnType<typeof createPaiement>>
-        toast(`Paiement enregistré — ${r.nb_paiements_crees} tranche${r.nb_paiements_crees > 1 ? 's' : ''}, reste ${formatMontant(r.reste_global)}.`)
+        onClose()
+        return
       }
-      onClose()
+      const r = result as Awaited<ReturnType<typeof createPaiement>>
+      toast(`Paiement enregistré — ${r.nb_paiements_crees} tranche${r.nb_paiements_crees > 1 ? 's' : ''}, reste ${formatMontant(r.reste_global)}, crédit ${formatMontant(r.credit_disponible)}.`)
+      // Rafraîchit l'affichage avec la réponse backend (pas d'estimation locale)
+      // et laisse le drawer ouvert pour un éventuel règlement suivant.
+      setResultat(r)
+      setEcheancesLocal((prev) => {
+        const base = prev ?? echeances
+        const maj = new Map(r.echeances_mises_a_jour.map((e) => [e.id, e]))
+        return base.map((e) => maj.get(e.id) ?? e)
+      })
+      setIdsEcheances([])
+      setMontant('')
+      setRemisesParEcheance({})
+      setObservation('')
+      setErrors({})
+      setError('')
     },
     onError: (err) => setError(extractErrorMessage(err)),
   })
@@ -206,7 +245,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                 <SearchableSelect
                   label="Élève (inscription)"
                   value={idInscription !== '' ? String(idInscription) : ''}
-                  onChange={(v) => { setIdInscription(v ? Number(v) : ''); setIdsEcheances([]) }}
+                  onChange={(v) => { setIdInscription(v ? Number(v) : ''); setIdsEcheances([]); setResultat(null); setEcheancesLocal(null) }}
                   options={inscriptions.map((i) => ({
                     value: String(i.id),
                     label: `${i.eleve_nom ?? ''} ${i.eleve_prenom ?? ''}`.trim(),
@@ -224,14 +263,14 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                   <p className="text-xs font-medium text-[var(--ink-dim)]">Échéances impayées</p>
                   {loadingEcheances ? (
                     <div className="mt-2 flex justify-center"><Spinner /></div>
-                  ) : echeancesImpayees.length === 0 ? (
+                  ) : echeancesPayables.length === 0 ? (
                     <p className="mt-1 text-sm text-[var(--ink-faint)]">Toutes les échéances sont soldées.</p>
                   ) : (
                     <ul className="mt-2 space-y-1">
-                      {echeancesImpayees.map((ech) => (
+                      {echeancesPayables.map((ech) => (
                         <li key={ech.id} className="flex items-center justify-between text-sm">
                           <span className="text-[var(--ink)]">
-                            {ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois}
+                            {echeanceLibelle(ech)}
                           </span>
                           <div className="flex items-center gap-2">
                             {ech.total_remises > 0 && (
@@ -250,11 +289,16 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                       ))}
                     </ul>
                   )}
-                  {resteGlobal > 0 && (
-                    <p className="mt-2 border-t border-[var(--border-soft)] pt-2 text-sm font-medium text-[var(--ink)]">
-                      Reste total : {formatMontant(resteGlobal)}
+                  <div className="mt-2 space-y-1 border-t border-[var(--border-soft)] pt-2">
+                    <p className="text-sm font-medium text-[var(--ink)]">
+                      Reste total : {formatMontant(resteAffiche)}
                     </p>
-                  )}
+                    {creditAffiche > 0 && (
+                      <p className="text-sm font-medium text-[var(--success)]">
+                        Crédit disponible : {formatMontant(creditAffiche)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -265,11 +309,11 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                   <p className="mt-1 text-sm text-[var(--ink-faint)]">Sélectionnez d'abord un élève.</p>
                 ) : loadingEcheances ? (
                   <div className="mt-2 flex justify-center"><Spinner /></div>
-                ) : echeancesImpayees.length === 0 ? (
+                ) : echeancesPayables.length === 0 ? (
                   <p className="mt-1 text-sm text-[var(--ink-faint)]">Toutes les échéances sont soldées.</p>
                 ) : (
                   <div className="mt-1.5 space-y-1.5">
-                    {echeancesImpayees.map((ech) => {
+                    {echeancesPayables.map((ech) => {
                       const checked = idsEcheances.includes(ech.id)
                       const remise = remisesParEcheance[ech.id]
                       return (
@@ -282,7 +326,7 @@ export default function PaiementFormDrawer({ open, onClose, paiement, modeGroupe
                               className="accent-[var(--action)]"
                             />
                             <span className="flex-1 text-sm text-[var(--ink)]">
-                              {ech.type_echeance === 'INSCRIPTION' ? 'Inscription' : ech.mois}
+                              {echeanceLibelle(ech)}
                             </span>
                             {ech.total_remises > 0 && (
                               <span className="text-xs text-[var(--success)]">-{formatMontant(ech.total_remises)}</span>

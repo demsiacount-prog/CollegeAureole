@@ -6,3 +6,6 @@ export interface AnneeScolaireCreateInput {
   date_fin: string
   active?: boolean
 }
+
+/** Corps du PUT /api/anneesScolaires/{id}. `active` omis conserve l'état courant. */
+export type AnneeScolaireUpdateInput = AnneeScolaireCreateInput

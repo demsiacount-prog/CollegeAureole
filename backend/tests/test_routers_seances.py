@@ -194,6 +194,41 @@ class TestModification:
         resp = client.put(f"/api/seances/{b['id']}", json={"jour_semaine": "Lundi"}, headers=auth_headers)
         assert resp.status_code == 409
 
+    def test_modifier_seance_heures_inversees_422(self, client, auth_headers):
+        """À la modification aussi, heure_fin > heure_debut doit être vérifié
+        (même validation qu'à la création), pas seulement à la création."""
+        base = _creer_base(client, auth_headers)
+        created = client.post("/api/seances/", json={
+            "id_cours": base["cours"]["id"],
+            "id_classe": base["classe"]["id"],
+            "id_annee_scolaire": base["annee"]["id"],
+            "jour_semaine": "Lundi",
+            "heure_debut": "08:00",
+            "heure_fin": "10:00",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/seances/{created['id']}", json={
+            "heure_debut": "10:00",
+            "heure_fin": "08:00",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+
+    def test_modifier_seance_une_bonne_heure_seule_ok(self, client, auth_headers):
+        """Un update partiel qui ne fournit qu'une seule borne ne doit pas être
+        rejeté : la validation n'est appliquée qu'aux champs fournis."""
+        base = _creer_base(client, auth_headers)
+        created = client.post("/api/seances/", json={
+            "id_cours": base["cours"]["id"],
+            "id_classe": base["classe"]["id"],
+            "id_annee_scolaire": base["annee"]["id"],
+            "jour_semaine": "Lundi",
+            "heure_debut": "08:00",
+            "heure_fin": "10:00",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/seances/{created['id']}", json={"heure_debut": "09:00"}, headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["heure_debut"] == "09:00:00"
+        assert resp.json()["heure_fin"] == "10:00:00"
+
 
 class TestCapacite:
     def test_capacite_selon_inscriptions_de_l_annee(self, client, auth_headers, db_session):

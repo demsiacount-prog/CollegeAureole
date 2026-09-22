@@ -423,10 +423,11 @@ def test_generation_classe_union_inscription_et_effectifs(db_session):
     resultats = generer_bulletins_classe(
         BulletinGenerateClasseRequest(id_classe=s.classe.id, id_trimestre=periode.id), db_session
     )
-    matricules = sorted(r.matricule_eleve for r in resultats)
+    matricules = sorted(r.matricule_eleve for r in resultats.bulletins)
     assert s.eleve.matricule in matricules
     assert eleve2.matricule in matricules
     assert eleve3.matricule not in matricules
+    assert resultats.erreurs == []
 
 
 def test_bulletin_annuel_utilise_classe_inscription_annee(db_session):
@@ -469,4 +470,177 @@ def test_bulletin_annuel_utilise_classe_inscription_annee(db_session):
     assert payload["classe"]["id"] == s.classe.id
     assert payload["classe"]["nom"] == s.classe.nom
     assert payload["officiel"] is False  # Seconde → liste dynamique
+
+
+def test_coefficient_nul_moyenne_generale_none_persistee(db_session):
+    """Aucune matière coefficientée (coefficient 0) → moyenne None, pas un 0.0
+    fallacieux, et le bulletin est DÉSORMAIS ENREGISTRÉ tel quel (colonne
+    `moyenne_generale` désormais nullable)."""
+    from routers.bulletins import _upsert_bulletin
+
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")
+    s = _Seed(db_session, "7ème", periode)
+    db_session.query(models.AffectationCoursClasse).update({"coefficient": 0.0})
+    s.ajouter_note(s.cours[0][0], 16.0)
+    s.ajouter_note(s.cours[1][0], 12.0)
+    s.ajouter_note(s.cours[2][0], 10.0)
+    db_session.commit()
+
+    calcul = _calculer_bulletin(db_session, s.eleve.matricule, periode.id)
+    assert calcul["moyenne_generale"] is None
+    assert calcul["appreciation"] is None
+
+    bulletin = _upsert_bulletin(db_session, calcul)
+    db_session.commit()
+    db_session.refresh(bulletin)
+    assert bulletin.moyenne_generale is None
+    assert len(bulletin.details) == 3
+    # Toujours aucun 0.0 falsifié en base.
+    assert bulletin.moyenne_generale != 0.0
+
+
+def test_generation_par_classe_partielle_documente_les_erreurs(db_session):
+    """Bug 3 : la génération par classe retourne une réponse structurée avec
+    les élèves en échec (motif), jamais une liste qui les masque."""
+    from schemas import BulletinGenerateClasseRequest
+    from routers.bulletins import generer_bulletins_classe
+
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")
+    s = _Seed(db_session, "7ème", periode)
+    s.ajouter_note(s.cours[0][0], 16.0)
+    s.ajouter_note(s.cours[1][0], 12.0)
+    s.ajouter_note(s.cours[2][0], 10.0)
+
+    # Élève 2 : dans la classe (classe_id) mais AUCUNE note → échec documenté.
+    eleve2 = models.Eleves(
+        nom="Diallo", prenom="Moussa", date_de_naissance=date(2012, 1, 1),
+        lieu_de_naissance="Dakar", sexe="M", statut="actif",
+        tuteur_id=s.tuteur.id, classe_id=s.classe.id,
+    )
+    db_session.add(eleve2)
+    db_session.commit()
+
+    resultats = generer_bulletins_classe(
+        BulletinGenerateClasseRequest(id_classe=s.classe.id, id_trimestre=periode.id), db_session
+    )
+    assert resultats.nb_succes == 1
+    assert resultats.nb_erreurs == 1
+    assert [r.matricule_eleve for r in resultats.bulletins] == [s.eleve.matricule]
+    assert resultats.erreurs[0].matricule_eleve == eleve2.matricule
+    assert resultats.erreurs[0].motif  # motif explicite (Aucune note / notes manquantes)
+
+
+def test_rangs_uniquement_pour_bulletins_publies(db_session):
+    """Bug 5 : seuls les bulletins PUBLIÉS portent un rang ; les brouillons
+    gardent rang=None. Le classement affiché = version officielle."""
+    from routers.bulletins import _calculer_rangs_classe
+
+    periode = _periode(db_session, "1er Trimestre", "TRIMESTRE")
+    s = _Seed(db_session, "7ème", periode)
+
+    publie = models.Bulletins(
+        matricule_eleve=s.eleve.matricule, id_trimestre=periode.id, id_classe=s.classe.id,
+        moyenne_generale=12.0, statut="PUBLIE",
+    )
+    db_session.add(publie)
+    # Brouillon : un AUTRE élève de la même classe (contrainte d'unicité bulletin/trimestre).
+    eleve2 = models.Eleves(
+        nom="Diallo", prenom="Moussa", date_de_naissance=date(2012, 1, 1),
+        lieu_de_naissance="Dakar", sexe="M", statut="actif",
+        tuteur_id=s.tuteur.id, classe_id=s.classe.id,
+    )
+    db_session.add(eleve2)
+    db_session.flush()
+    brouillon = models.Bulletins(
+        matricule_eleve=eleve2.matricule, id_trimestre=periode.id, id_classe=s.classe.id,
+        moyenne_generale=15.0, statut="BROUILLON",
+    )
+    db_session.add(brouillon)
+    db_session.commit()
+
+    _calculer_rangs_classe(db_session, s.classe.id, periode.id)
+    db_session.commit()
+    db_session.expire_all()
+
+    publie = (
+        db_session.query(models.Bulletins)
+        .filter(models.Bulletins.id == publie.id).first()
+    )
+    brouillon = (
+        db_session.query(models.Bulletins)
+        .filter(models.Bulletins.id == brouillon.id).first()
+    )
+    assert publie.rang == 1
+    assert brouillon.rang is None
+
+
+def test_publier_depublier_verrouille_annee_cloturee(db_session):
+    """Bug 4 : publier/dépublier est refusé (409) si l'année du trimestre est clôturée."""
+    from schemas import BulletinPublierRequest
+    from routers.bulletins import publier_bulletins_classe, depublier_bulletins_classe
+
+    annee = models.AnneesScolaires(
+        libelle="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 6, 30),
+        active=True, cloturee=True,
+    )
+    db_session.add(annee)
+    db_session.flush()
+    t = models.Trimestres(
+        nom="1er Trimestre", type="TRIMESTRE",
+        date_debut=date(2025, 9, 1), date_fin=date(2025, 12, 20),
+        annee_scolaire_id=annee.id,
+    )
+    db_session.add(t)
+    db_session.commit()
+    payload = BulletinPublierRequest(id_classe=1, id_trimestre=t.id)
+
+    for fn in (publier_bulletins_classe, depublier_bulletins_classe):
+        try:
+            fn(payload, db_session)
+        except HTTPException as exc:
+            assert exc.status_code == 409
+        else:
+            raise AssertionError("Un refus 409 était attendu")
+
+
+def test_liste_filtre_par_annee(db_session, client, auth_headers):
+    """GET /api/bulletins/ accepte `id_annee_scolaire` (alias de `annee_id`) :
+    consultation d'une année passée stricte, sans casser les appels existants."""
+    annee1 = models.AnneesScolaires(
+        libelle="2023-2024", date_debut=date(2023, 9, 1), date_fin=date(2024, 6, 30), active=True
+    )
+    annee2 = models.AnneesScolaires(
+        libelle="2024-2025", date_debut=date(2024, 9, 1), date_fin=date(2025, 6, 30), active=False
+    )
+    db_session.add_all([annee1, annee2])
+    db_session.flush()
+    t1 = models.Trimestres(
+        nom="1er Trimestre", type="TRIMESTRE",
+        date_debut=date(2023, 9, 1), date_fin=date(2023, 12, 20), annee_scolaire_id=annee1.id,
+    )
+    t2 = models.Trimestres(
+        nom="1er Trimestre", type="TRIMESTRE",
+        date_debut=date(2024, 9, 1), date_fin=date(2024, 12, 20), annee_scolaire_id=annee2.id,
+    )
+    db_session.add_all([t1, t2])
+    db_session.flush()
+    s = _Seed(db_session, "7ème", t1)
+    db_session.add(models.Bulletins(
+        matricule_eleve=s.eleve.matricule, id_trimestre=t1.id, id_classe=s.classe.id,
+        moyenne_generale=12.0, rang=1, statut="BROUILLON",
+    ))
+    db_session.add(models.Bulletins(
+        matricule_eleve=s.eleve.matricule, id_trimestre=t2.id, id_classe=s.classe.id,
+        moyenne_generale=15.0, rang=1, statut="BROUILLON",
+    ))
+    db_session.commit()
+
+    resp = client.get("/api/bulletins/", params={"id_annee_scolaire": annee1.id}, headers=auth_headers)
+    assert resp.status_code == 200
+    assert [b["moyenne_generale"] for b in resp.json()] == [12.0]
+    resp = client.get("/api/bulletins/", params={"annee_id": annee2.id}, headers=auth_headers)
+    assert [b["moyenne_generale"] for b in resp.json()] == [15.0]
+    # Sans filtre année, les autres filtres continuent de fonctionner.
+    resp = client.get("/api/bulletins/", params={"id_classe": s.classe.id}, headers=auth_headers)
+    assert {b["moyenne_generale"] for b in resp.json()} == {12.0, 15.0}
 

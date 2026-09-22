@@ -18,6 +18,8 @@ export interface ResultatsClasse {
   effectif: number
   compteurs: Record<StatutPassage, number>
   eleves: EleveResultat[]
+  annee_cloturee: boolean
+  peut_decider: boolean
 }
 
 export interface DetailRapportAuto {

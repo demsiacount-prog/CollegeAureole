@@ -1,8 +1,13 @@
 import { api } from '@/lib/api'
 import type { RapportAuto, ResultatsClasse, StatutPassage } from './types'
 
-export async function fetchResultatsClasse(idClasse: number): Promise<ResultatsClasse> {
-  const res = await api.get<ResultatsClasse>(`/api/resultats/${idClasse}`)
+export async function fetchResultatsClasse(
+  idClasse: number,
+  anneeId?: number,
+): Promise<ResultatsClasse> {
+  const res = await api.get<ResultatsClasse>(`/api/resultats/${idClasse}`, {
+    params: anneeId != null ? { annee_id: anneeId } : {},
+  })
   return res.data
 }
 

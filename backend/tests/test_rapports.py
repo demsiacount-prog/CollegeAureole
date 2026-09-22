@@ -146,7 +146,7 @@ class _Seed:
         bulletin = models.Bulletins(
             matricule_eleve=matricule, id_trimestre=trimestre.id,
             id_classe=self._classe_de(matricule).id,
-            moyenne_generale=moyenne, statut="BROUILLON",
+            moyenne_generale=moyenne, statut="PUBLIE",
         )
         self.db.add(bulletin)
         self.db.flush()

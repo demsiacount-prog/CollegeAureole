@@ -9,6 +9,7 @@ import models
 import schemas
 from models.echeances import MOIS_ANNEE_SCOLAIRE
 from security import get_current_user
+from routers.paiements import _filtre_echeances_payables, _mettre_a_jour_statut
 
 router = APIRouter(prefix="/api/inscriptions", tags=["Inscriptions"], dependencies=[Depends(get_current_user)])
 
@@ -78,15 +79,18 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
 
     credit = ancienne.credit_disponible or 0.0
 
+    # Échéances payables au sens des paiements : en attente/partielles + les
+    # REPORTE portées d'une année antérieure (qui re-reportent leur reste).
     impayes = db.query(models.Echeances).filter(
         models.Echeances.id_inscription == ancienne.id,
-        models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]),
+        _filtre_echeances_payables(),
     ).all()
 
     for ech in impayes:
         reste = max(ech.montant_du - ech.montant_paye, 0.0)
         if reste <= 0:
             continue
+        # Le crédit non consommé sert d'abord à couvrir les impayés reportés.
         if credit > 0:
             couvert = min(credit, reste)
             reste -= couvert
@@ -115,7 +119,11 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
         ech.statut = "REPORTE"
         nouvelle_inscription.montant_total += reste
 
-    ancienne.credit_disponible = credit
+    # Le crédit restant est transféré sur la nouvelle inscription (couvrira ses
+    # propres échéances ou sera utilisé au prochain règlement) ; l'ancienne n'en
+    # conserve rien (il n'est pas perdu).
+    nouvelle_inscription.credit_disponible = (nouvelle_inscription.credit_disponible or 0.0) + credit
+    ancienne.credit_disponible = 0.0
 
 
 @router.post("/", response_model=schemas.InscriptionResponse, status_code=status.HTTP_201_CREATED)
@@ -326,17 +334,25 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
     if changement_classe:
         nouvelle_classe = db.query(models.Classes).filter(models.Classes.id == inscription.id_classe).first()
         if nouvelle_classe:
-            nb_mensualites = 0
             for echeance in inscription.echeances:
-                if echeance.type_echeance == "MENSUALITE":
-                    nb_mensualites += 1
-                if echeance.statut != "SOLDE":
-                    echeance.montant_du = (
-                        nouvelle_classe.frais_inscription
-                        if echeance.type_echeance == "INSCRIPTION"
-                        else nouvelle_classe.mensualite
-                    )
-            inscription.montant_total = nouvelle_classe.frais_inscription + (nouvelle_classe.mensualite * nb_mensualites)
+                # L'échéance suit l'inscription dans la nouvelle classe.
+                echeance.id_classe = inscription.id_classe
+                # Les échéances déjà soldées conservent leur montant figé : seule
+                # la classe est mise à jour (pas de recalcul rétroactif).
+                if echeance.statut == "SOLDE":
+                    continue
+                echeance.montant_du = (
+                    nouvelle_classe.frais_inscription
+                    if echeance.type_echeance == "INSCRIPTION"
+                    else nouvelle_classe.mensualite
+                )
+                # Une baisse de tarif ne doit pas « annuler » du payé : l'excédent
+                # devient du crédit disponible au lieu d'être perdu.
+                if echeance.montant_paye > echeance.montant_du:
+                    inscription.credit_disponible = (inscription.credit_disponible or 0.0) + (echeance.montant_paye - echeance.montant_du)
+                    echeance.montant_paye = echeance.montant_du
+                _mettre_a_jour_statut(echeance)
+            inscription.montant_total = sum(e.montant_du for e in inscription.echeances)
 
     _synchroniser_classe_eleve(db, inscription.matricule_eleve, inscription.statut, inscription.id_classe)
     db.commit()
@@ -360,6 +376,19 @@ def supprimer_inscription(inscription_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=409,
             detail=f"Impossible de supprimer cette inscription : {nb_paiements} paiement(s) y sont rattaché(s).",
+        )
+    # Les remises (rattachées via les échéances) sont en cascade delete-orphan :
+    # les supprimer silencieusement effacerait l'historique des réductions.
+    nb_remises = (
+        db.query(models.Remises)
+        .join(models.Echeances, models.Remises.id_echeance == models.Echeances.id)
+        .filter(models.Echeances.id_inscription == inscription_id)
+        .count()
+    )
+    if nb_remises:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Impossible de supprimer cette inscription : {nb_remises} remise(s) y sont rattachée(s).",
         )
     db.delete(insc)
     db.commit()

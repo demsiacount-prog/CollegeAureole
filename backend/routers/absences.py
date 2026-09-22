@@ -12,12 +12,32 @@ from security import get_current_user
 router = APIRouter(prefix="/api/absences", tags=["Absences"], dependencies=[Depends(get_current_user)])
 
 
+def _absence_existante(db: Session, matricule_eleve: str, id_cours: Optional[int], date_absence: date, id_exclue: Optional[int] = None):
+    """Recherche un doublon d'absence (même élève, même cours, même date).
+
+    `id_cours` peut être NULL : SQL ne compare jamais NULL à NULL avec `==`,
+    d'où un filtre `IS NULL` explicite pour ces absences sans cours."""
+    query = db.query(models.Absences).filter(
+        models.Absences.matricule_eleve == matricule_eleve,
+        models.Absences.date_absence == date_absence,
+    )
+    if id_cours is None:
+        query = query.filter(models.Absences.id_cours.is_(None))
+    else:
+        query = query.filter(models.Absences.id_cours == id_cours)
+    if id_exclue is not None:
+        query = query.filter(models.Absences.id != id_exclue)
+    return query.first()
+
+
 @router.post("/", response_model=schemas.AbsenceResponse, status_code=status.HTTP_201_CREATED)
 def creer_absence(payload: schemas.AbsenceCreate, db: Session = Depends(get_db)):
     if not db.query(models.Eleves).filter(models.Eleves.matricule == payload.matricule_eleve).first():
         raise HTTPException(status_code=404, detail="Élève introuvable")
     if payload.id_cours and not db.query(models.Cours).filter(models.Cours.id == payload.id_cours).first():
         raise HTTPException(status_code=404, detail="Cours introuvable")
+    if _absence_existante(db, payload.matricule_eleve, payload.id_cours, payload.date_absence):
+        raise HTTPException(status_code=409, detail="Absence déjà enregistrée pour cet élève, ce cours et cette date")
 
     nouvelle_absence = models.Absences(**payload.model_dump())
     db.add(nouvelle_absence)
@@ -156,6 +176,8 @@ def update_absence(absence_id: int, payload: schemas.AbsenceCreate, db: Session 
     absence = db.query(models.Absences).filter(models.Absences.id == absence_id).first()
     if not absence:
         raise HTTPException(status_code=404, detail="Absence introuvable")
+    if _absence_existante(db, payload.matricule_eleve, payload.id_cours, payload.date_absence, id_exclue=absence.id):
+        raise HTTPException(status_code=409, detail="Absence déjà enregistrée pour cet élève, ce cours et cette date")
     for key, value in payload.model_dump().items():
         setattr(absence, key, value)
     db.commit()

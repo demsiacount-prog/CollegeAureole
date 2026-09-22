@@ -1,7 +1,6 @@
 import { api } from '@/lib/api'
 import type {
   Document,
-  DocumentAvecEntite,
   DocumentCategorieKey,
   DocumentRead,
   EntiteDocument,
@@ -116,7 +115,7 @@ export async function fetchDocumentsTuteur(codeTuteur: string): Promise<Document
   return res.data
 }
 
-export async function fetchTousDocuments(): Promise<DocumentAvecEntite[]> {
-  const res = await api.get<DocumentAvecEntite[]>('/api/documents/')
+export async function fetchTousDocuments(): Promise<DocumentRead[]> {
+  const res = await api.get<DocumentRead[]>('/api/documents/')
   return res.data
 }

@@ -182,6 +182,49 @@ class TestModification:
         assert resp.status_code == 200
         assert resp.json()["nom"] == "NouveauNom"
 
+    def test_modifier_identite_eleve(self, client, auth_headers):
+        """date_de_naissance / sexe / lieu_de_naissance doivent être corrigibles
+        après création (mêmes validations qu'à la création)."""
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        created = _creer_eleve(client, auth_headers, tuteur_id=tuteur["id"]).json()
+        resp = client.put(
+            f"/api/eleves/{created['matricule']}",
+            json={"date_de_naissance": "2011-01-01", "sexe": "F", "lieu_de_naissance": "Ségou"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["date_de_naissance"] == "2011-01-01"
+        assert body["sexe"] == "F"
+        assert body["lieu_de_naissance"] == "Ségou"
+        # Le matricule n'est pas modifiable : il reste celui d'origine.
+        assert body["matricule"] == created["matricule"]
+
+    def test_modifier_sexe_invalide_422(self, client, auth_headers):
+        """La validation à la modification est la même qu'à la création : un
+        sexe hors de M/F est refusé."""
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        created = _creer_eleve(client, auth_headers, tuteur_id=tuteur["id"]).json()
+        resp = client.put(
+            f"/api/eleves/{created['matricule']}",
+            json={"sexe": "X"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    def test_matricule_present_dans_payload_invalide(self, client, auth_headers):
+        """Le corps d'une mise à jour ne doit pas exposer le matricule : fournir
+        un champ inconnu est ignoré ou refusé, jamais appliqué."""
+        tuteur = _creer_tuteur(client, auth_headers).json()
+        created = _creer_eleve(client, auth_headers, tuteur_id=tuteur["id"]).json()
+        resp = client.put(
+            f"/api/eleves/{created['matricule']}",
+            json={"nom": "Autre"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["matricule"] == created["matricule"]
+
 
 class TestActivationDesactivation:
     def test_desactiver_eleve(self, client, auth_headers):

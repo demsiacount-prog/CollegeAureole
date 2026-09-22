@@ -21,6 +21,20 @@ def _passage_jardin_automatique(insc: models.Inscriptions) -> bool:
     return insc.classe is not None and est_jardin(insc.classe.niveau) and insc.statut_passage != "EXCLU"
 
 
+def _est_diplome(insc: models.Inscriptions) -> bool:
+    """Diplômé = statut ADMIS ET (drapeau diplôme posé OU fin de cycle).
+
+    En fin de cycle (9ème année du fondamental), l'admission vaut diplôme :
+    on ne cherche PAS une classe suivante (qui n'existe pas) — l'élève
+    sort du système et quitte sa classe.
+    """
+    if insc.statut_passage != "ADMIS":
+        return False
+    if insc.diplome:
+        return True
+    return insc.classe is not None and niveau_ordre(insc.classe.niveau) == 9
+
+
 def _construire_index_classes(db: Session) -> dict:
     """Charge TOUTES les classes une seule fois et retourne un index par id.
 
@@ -67,7 +81,7 @@ def _action_prevue(insc: models.Inscriptions, classe_dest=None, auto_jardin=Fals
         return "Admis – passage (classe suivante non créée)"
     sp = insc.statut_passage
     if sp == "ADMIS":
-        if insc.diplome:
+        if _est_diplome(insc):
             return "Diplômé – sortie du système"
         if classe_dest is not None:
             return f"Admis – passage en {classe_dest.niveau} {classe_dest.nom}"
@@ -113,7 +127,7 @@ def preview_cloture(db: Session = Depends(get_db)):
         elif auto_jardin:
             compteurs.ADMIS_PASSAGE += 1
         elif sp == "ADMIS":
-            if insc.diplome:
+            if _est_diplome(insc):
                 compteurs.ADMIS_DIPLOME += 1
             else:
                 compteurs.ADMIS_PASSAGE += 1
@@ -125,7 +139,7 @@ def preview_cloture(db: Session = Depends(get_db)):
         classe_dest = _classe_suivante_depuis_index(classe, index_classes)
         # FIX (élèves orphelins) : un élève admis sans classe de destination ne
         # sera pas réinscrit à la clôture — on le signale avant l'exécution.
-        a_besoin_classe = (auto_jardin or sp == "ADMIS") and not insc.diplome
+        a_besoin_classe = (auto_jardin or sp == "ADMIS") and not _est_diplome(insc)
         classe_manquante = bool(a_besoin_classe and classe_dest is None)
         if classe_manquante:
             nb_classes_manquantes += 1
@@ -138,7 +152,7 @@ def preview_cloture(db: Session = Depends(get_db)):
             classe_nom=classe.nom if classe else None,
             niveau=classe.niveau if classe else None,
             statut_passage="ADMIS" if auto_jardin else sp,
-            diplome=insc.diplome,
+            diplome=_est_diplome(insc),
             action_prevue=_action_prevue(insc, classe_dest, auto_jardin),
             inscription_id=insc.id,
             classe_manquante=classe_manquante,
@@ -187,7 +201,22 @@ def executer_cloture(
 
         en_attente = [i for i in inscriptions if i.statut_passage == "EN_ATTENTE" and not _passage_jardin_automatique(i)]
         if en_attente:
-            raise HTTPException(status_code=409, detail="Élèves en attente")
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Élèves en attente : la clôture reste bloquée tant qu'un statut de passage n'a pas été décidé.",
+                    "eleves": [
+                        {
+                            "matricule": i.matricule_eleve,
+                            "nom": i.eleve.nom if i.eleve else "",
+                            "prenom": i.eleve.prenom if i.eleve else "",
+                            "statut_passage": i.statut_passage,
+                        }
+                        for i in en_attente
+                    ],
+                    "nb_bloquants": len(en_attente),
+                },
+            )
 
         doublon = db.query(models.AnneesScolaires).filter(
             models.AnneesScolaires.libelle == payload.nouvelle_annee.libelle
@@ -266,7 +295,12 @@ def executer_cloture(
                 classe_dest = _classe_suivante_depuis_index(insc.classe, index_classes)
 
             elif sp == "ADMIS":
-                if insc.diplome:
+                if _est_diplome(insc):
+                    if eleve:
+                        # Bug 10 : sortie définitive du système → l'élève est
+                        # détaché de sa classe (sinon il reste "effectif" de la
+                        # classe, visible au registre, dans les bulletins, etc.).
+                        eleve.classe_id = None
                     rapport.admis_diplome += 1
                     rapport.eleves_diplomes.append(_eleve_cloture(insc))
                     continue

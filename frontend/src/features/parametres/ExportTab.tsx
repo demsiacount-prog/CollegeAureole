@@ -21,7 +21,7 @@ import {
  *  sauvegardes serveur et restauration symétrique (import). */
 export default function ExportTab() {
   const qc = useQueryClient()
-  const { data: sauvegardes = [], isFetching } = useQuery({
+  const { data: sauvegardes = [], isFetching, isError, error } = useQuery({
     queryKey: ['sauvegardes'],
     queryFn: fetchSauvegardesServeur,
   })
@@ -140,7 +140,13 @@ export default function ExportTab() {
             </Button>
           </div>
         </div>
-        {sauvegardes.length === 0 ? (
+        {isError ? (
+          <div className="p-5 pt-0">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/20 bg-[var(--danger-w)] px-4 py-3 text-sm text-[var(--danger)]">
+              {extractErrorMessage(error, 'Impossible de charger les sauvegardes du serveur.')}
+            </div>
+          </div>
+        ) : sauvegardes.length === 0 ? (
           <div className="p-5 pt-0">
             <EmptyState message="Aucune sauvegarde sur le serveur pour le moment." />
           </div>

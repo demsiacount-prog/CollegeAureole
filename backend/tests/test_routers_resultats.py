@@ -67,6 +67,28 @@ class TestResultatsClasse:
         assert body["effectif"] == 1
         assert body["classe"]["id"] == cl["id"]
 
+    def test_annee_active_peut_decider(self, client, auth_headers, db_session):
+        annee = _creer_annee(client, auth_headers).json()
+        t = _creer_tuteur(client, auth_headers).json()
+        cl = _creer_classe(client, auth_headers).json()
+        _creer_eleve_et_inscription(db_session, client, auth_headers, t["id"], cl["id"], annee["id"])
+        body = client.get(f"/api/resultats/{cl['id']}", headers=auth_headers).json()
+        assert body["peut_decider"] is True
+        assert body["annee_cloturee"] is False
+
+    def test_annee_cloturee_peut_decider_false(self, client, auth_headers, db_session):
+        annee = _creer_annee(client, auth_headers).json()
+        t = _creer_tuteur(client, auth_headers).json()
+        cl = _creer_classe(client, auth_headers).json()
+        _creer_eleve_et_inscription(db_session, client, auth_headers, t["id"], cl["id"], annee["id"])
+        db_session.query(models.AnneesScolaires).filter(
+            models.AnneesScolaires.id == annee["id"]
+        ).update({models.AnneesScolaires.cloturee: True})
+        db_session.commit()
+        body = client.get(f"/api/resultats/{cl['id']}?annee_id={annee['id']}", headers=auth_headers).json()
+        assert body["peut_decider"] is False
+        assert body["annee_cloturee"] is True
+
     def test_classe_introuvable_404(self, client, auth_headers):
         _creer_annee(client, auth_headers)
         resp = client.get("/api/resultats/99999", headers=auth_headers)
@@ -115,6 +137,22 @@ class TestModificationStatut:
         }, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["statut_passage"] == "ADMIS"
+        assert resp.json()["diplome"] is False  # 7ème : pas fin de cycle
+
+    def test_admis_fin_cycle_est_diplome(self, client, auth_headers, db_session):
+        """Bug 8 : un ADMIS en fin de cycle (9ème) est automatiquement diplômé."""
+        annee = _creer_annee(client, auth_headers).json()
+        t = _creer_tuteur(client, auth_headers).json()
+        cl = _creer_classe(client, auth_headers, niveau="9ème Année", nom="A").json()
+        _, insc = _creer_eleve_et_inscription(db_session, client, auth_headers, t["id"], cl["id"], annee["id"])
+        admis = client.put(f"/api/resultats/statut/{insc['id']}", json={"statut": "ADMIS"}, headers=auth_headers)
+        assert admis.status_code == 200
+        assert admis.json()["diplome"] is True
+
+        recale = client.put(f"/api/resultats/statut/{insc['id']}", json={"statut": "RECALE"}, headers=auth_headers)
+        assert recale.status_code == 200
+        assert recale.json()["statut_passage"] == "RECALE"
+        assert recale.json()["diplome"] is False
 
     def test_inscription_introuvable_404(self, client, auth_headers):
         resp = client.put("/api/resultats/statut/99999", json={"statut": "ADMIS"}, headers=auth_headers)

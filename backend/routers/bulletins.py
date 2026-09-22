@@ -11,6 +11,7 @@ from security import get_current_user
 from bareme import appreciation_for_moyenne, bareme_niveau, est_jardin, utilise_coefficient
 from services import pdf as pdf_service
 from helpers import get_annee_ou_active
+from schemas.bulletins import BulletinGenerationClasseResponse
 
 router = APIRouter(prefix="/api/bulletins", tags=["Bulletins"], dependencies=[Depends(get_current_user)])
 
@@ -165,16 +166,24 @@ def _calculer_bulletin(db: Session, matricule_eleve: str, id_trimestre: int) -> 
         nb_matieres += 1
 
     if utilise_coeff:
-        moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else 0.0
+        # Aucune matière coefficientée (ex. tous les coefficients à 0) : la
+        # moyenne n'a pas de sens → None plutôt qu'un 0.0 fallacieux inscrit au
+        # bulletin officiel. La colonne est désormais nullable : `None` est
+        # enregistré tel quel, sans valeur arbitraire.
+        moyenne_generale = round(total_pondere / total_coefficients, 2) if total_coefficients else None
     else:
-        moyenne_generale = round(total_simple / nb_matieres, 2) if nb_matieres else 0.0
+        moyenne_generale = round(total_simple / nb_matieres, 2) if nb_matieres else None
 
     return {
         "matricule_eleve": matricule_eleve,
         "id_trimestre": id_trimestre,
         "id_classe": id_classe,
         "moyenne_generale": moyenne_generale,
-        "appreciation": appreciation_for_moyenne(moyenne_generale, bareme),
+        "appreciation": (
+            appreciation_for_moyenne(moyenne_generale, bareme)
+            if moyenne_generale is not None
+            else None
+        ),
         "details": details,
     }
 
@@ -230,13 +239,24 @@ def _upsert_bulletin(db: Session, calcul: dict) -> models.Bulletins:
 
 
 def _calculer_rangs_classe(db: Session, id_classe: int, id_trimestre: int) -> None:
-    """Calcule le rang de tous les bulletins de la classe/trimestre, y compris
-    les brouillons, afin de permettre un contrôle du classement avant publication."""
+    """Calcule le rang des bulletins PUBLIÉS de la classe/trimestre.
+
+    Les brouillons n'ont PAS de rang : le classement affiché est celui de la
+    version officielle diffusée aux familles. Un brouillon régénéré après une
+    publication n'écrase pas les rangs publiés (ni dans l'affichage PDF, ni
+    dans le bulletin annuel).
+    """
+    db.query(models.Bulletins).filter(
+        models.Bulletins.id_classe == id_classe,
+        models.Bulletins.id_trimestre == id_trimestre,
+        models.Bulletins.statut != "PUBLIE",
+    ).update({models.Bulletins.rang: None})
     bulletins = (
         db.query(models.Bulletins)
         .filter(
             models.Bulletins.id_classe == id_classe,
             models.Bulletins.id_trimestre == id_trimestre,
+            models.Bulletins.statut == "PUBLIE",
         )
         .order_by(models.Bulletins.moyenne_generale.desc())
         .all()
@@ -264,7 +284,7 @@ def generer_bulletin(payload: schemas.BulletinGenerateRequest, db: Session = Dep
     return bulletin
 
 
-@router.post("/generer-classe", response_model=List[schemas.BulletinResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/generer-classe", response_model=BulletinGenerationClasseResponse, status_code=status.HTTP_201_CREATED)
 def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db: Session = Depends(get_db)):
     classe = db.query(models.Classes).filter(models.Classes.id == payload.id_classe).first()
     if not classe:
@@ -315,7 +335,7 @@ def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db:
             calcul = _calculer_bulletin(db, matricule, payload.id_trimestre)
             bulletins_generes.append(_upsert_bulletin(db, calcul))
         except HTTPException as exc:
-            erreurs.append({"matricule_eleve": matricule, "detail": exc.detail})
+            erreurs.append({"matricule_eleve": matricule, "motif": str(exc.detail)})
 
     _calculer_rangs_classe(db, payload.id_classe, payload.id_trimestre)
     db.commit()
@@ -323,15 +343,36 @@ def generer_bulletins_classe(payload: schemas.BulletinGenerateClasseRequest, db:
         db.refresh(bulletin)
 
     if erreurs and not bulletins_generes:
-        raise HTTPException(status_code=400, detail="Aucun bulletin généré")
+        motifs = "; ".join(e["motif"] for e in erreurs)
+        raise HTTPException(status_code=400, detail=f"Aucun bulletin généré ({len(erreurs)} élève(s)) : {motifs}")
 
-    return bulletins_generes
+    return BulletinGenerationClasseResponse(
+        bulletins=bulletins_generes,
+        erreurs=erreurs,
+        nb_succes=len(bulletins_generes),
+        nb_erreurs=len(erreurs),
+    )
+
+
+def _verifier_trimestre_pas_cloture(payload: schemas.BulletinPublierRequest, db: Session):
+    """Publier/dépublier modifie des bulletins officiels : refus sur année clôturée."""
+    trimestre = db.query(models.Trimestres).options(
+        joinedload(models.Trimestres.annee_scolaire)
+    ).filter(models.Trimestres.id == payload.id_trimestre).first()
+    if not trimestre:
+        raise HTTPException(status_code=404, detail="Trimestre introuvable")
+    if trimestre.annee_scolaire and trimestre.annee_scolaire.cloturee:
+        raise HTTPException(
+            status_code=409,
+            detail="Année scolaire clôturée : le statut des bulletins ne peut plus être modifié.",
+        )
 
 
 @router.post("/publier", response_model=List[schemas.BulletinResponse])
 def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Session = Depends(get_db)):
     """Verrouille les bulletins d'une classe/trimestre : ils deviennent visibles
     et ne peuvent plus être régénérés sans dépublication explicite."""
+    _verifier_trimestre_pas_cloture(payload, db)
     bulletins = (
         db.query(models.Bulletins)
         .filter(models.Bulletins.id_classe == payload.id_classe, models.Bulletins.id_trimestre == payload.id_trimestre)
@@ -352,6 +393,7 @@ def publier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Sessio
 
 @router.post("/depublier", response_model=List[schemas.BulletinResponse])
 def depublier_bulletins_classe(payload: schemas.BulletinPublierRequest, db: Session = Depends(get_db)):
+    _verifier_trimestre_pas_cloture(payload, db)
     bulletins = (
         db.query(models.Bulletins)
         .filter(models.Bulletins.id_classe == payload.id_classe, models.Bulletins.id_trimestre == payload.id_trimestre)
@@ -455,6 +497,7 @@ def get_all_bulletins(
     id_classe: Optional[int] = None,
     id_trimestre: Optional[int] = None,
     annee_id: Optional[int] = Query(None, description="Filtrer par année scolaire (défaut : active)"),
+    id_annee_scolaire: Optional[int] = Query(None, description="Alias de `annee_id` (consultation d'une année passée)"),
     skip: int = 0,
     limit: int = Query(default=200, le=500),
     db: Session = Depends(get_db),
@@ -464,6 +507,8 @@ def get_all_bulletins(
         joinedload(models.Bulletins.details).joinedload(models.BulletinDetails.cours)
     )
 
+    if annee_id is None:
+        annee_id = id_annee_scolaire
     if annee_id is not None:
         query = query.join(
             models.Trimestres,

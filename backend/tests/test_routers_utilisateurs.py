@@ -88,10 +88,60 @@ class TestStatut:
         )
         assert resp.status_code == 403
 
+    def test_reactiver_leve_le_verrouillage(self, client, auth_headers):
+        """Réactiver un compte verrouillé (tentatives échouées) le déverrouille."""
+        created = _creer(client, auth_headers).json()
+        for _ in range(5):
+            client.post(
+                "/api/auth/connexion",
+                json={"email": "aminata@ecole.ml", "mot_de_passe": "MauvaisMotDePasse!"},
+            )
+        # Compte verrouillé : même le bon mot de passe est refusé (403).
+        resp = client.post(
+            "/api/auth/connexion",
+            json={"email": "aminata@ecole.ml", "mot_de_passe": ADMIN_PASSWORD},
+        )
+        assert resp.status_code == 403
+        client.patch(
+            f"/api/utilisateurs/{created['id']}/statut",
+            json={"actif": True},
+            headers=auth_headers,
+        )
+        resp = client.post(
+            "/api/auth/connexion",
+            json={"email": "aminata@ecole.ml", "mot_de_passe": ADMIN_PASSWORD},
+        )
+        assert resp.status_code == 200
+
 
 class TestMotDePasse:
     def test_reinitialiser_et_se_connecter(self, client, auth_headers):
         created = _creer(client, auth_headers).json()
+        resp = client.put(
+            f"/api/utilisateurs/{created['id']}/mot-de-passe",
+            json={"nouveau_mot_de_passe": "NouveauMotDePasse123!"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 204
+        connexion = client.post(
+            "/api/auth/connexion",
+            json={"email": "aminata@ecole.ml", "mot_de_passe": "NouveauMotDePasse123!"},
+        )
+        assert connexion.status_code == 200
+
+    def test_reinitialiser_deverrouille_le_compte(self, client, auth_headers):
+        """Réinitialiser le mot de passe lève aussi le verrouillage."""
+        created = _creer(client, auth_headers).json()
+        for _ in range(5):
+            client.post(
+                "/api/auth/connexion",
+                json={"email": "aminata@ecole.ml", "mot_de_passe": "MauvaisMotDePasse!"},
+            )
+        resp = client.post(
+            "/api/auth/connexion",
+            json={"email": "aminata@ecole.ml", "mot_de_passe": ADMIN_PASSWORD},
+        )
+        assert resp.status_code == 403
         resp = client.put(
             f"/api/utilisateurs/{created['id']}/mot-de-passe",
             json={"nouveau_mot_de_passe": "NouveauMotDePasse123!"},

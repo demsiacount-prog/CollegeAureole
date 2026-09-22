@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Search, FileText, Loader2 } from 'lucide-react'
+import { Download, Search, FileText, Loader2, ScrollText } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -29,7 +30,12 @@ import {
   downloadBulletinPdf,
   downloadBulletinsClassePdf,
   fetchBulletinPdf,
+  fetchBulletinAnnuel,
 } from './api'
+import type { BulletinGenerationClasse } from './types'
+import { BulletinAnnuelDocument } from './BulletinAnnuelDocument'
+import { BulletinNoteDocument } from './BulletinNoteDocument'
+import { DocumentPrintModal } from './DocumentPrintModal'
 import { PdfViewerModal } from '@/components/pdf/PdfViewerModal'
 
 function noteColor(n: number | null, bareme: number = 20): string {
@@ -62,6 +68,7 @@ export default function BulletinListPage() {
   const [anneeId, setAnneeId] = useState('')
   const [classeId, setClasseId] = useState('')
   const [trimestreId, setTrimestreId] = useState('')
+  const [anneeChoisie, setAnneeChoisie] = useState(false)
   const [search, setSearch] = useState('')
 
   const selectedAnnee = annees.find((a) => String(a.id) === anneeId)
@@ -70,15 +77,21 @@ export default function BulletinListPage() {
   const prevClasseRef = useRef(classeId)
 
   useEffect(() => {
-    if (activeAnnee) {
+    // Année par défaut : l'année active — sans jamais effacer la sélection que
+    // l'utilisateur aurait déjà faite (les listes "années" et "classes"
+    // arrivent en parallèle ; réinitialiser ici casserait la période).
+    if (activeAnnee && !anneeChoisie) {
       setAnneeId(String(activeAnnee.id))
     }
-  }, [activeAnnee])
+  }, [activeAnnee, anneeChoisie])
 
   useEffect(() => {
-    setClasseId('')
-    setTrimestreId('')
-  }, [anneeId])
+    // Seule une année CHOSIE par l'utilisateur réinitialise la sélection.
+    if (anneeChoisie && anneeId) {
+      setClasseId('')
+      setTrimestreId('')
+    }
+  }, [anneeId, anneeChoisie])
 
   const { data: trimestres = [] } = useQuery({
     queryKey: ['trimestres', anneeId],
@@ -116,11 +129,21 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
     onDownload: () => void
   } | null>(null)
   const [apercuLoading, setApercuLoading] = useState<string | null>(null)
+  // Dernier résultat de génération structurée (nb_succes + erreurs par élève).
+  const [generation, setGeneration] = useState<BulletinGenerationClasse | null>(null)
+  // Aperçu du bulletin annuel d'un élève (endpoint /api/bulletins/annuel/{matricule}).
+  const [annuelOuvert, setAnnuelOuvert] = useState<{
+    matricule: string
+    nom: string
+    prenom: string
+  } | null>(null)
+  // Format d'impression du bulletin annuel : moderne ou bulletin de note officiel.
+  const [formatAnnuel, setFormatAnnuel] = useState<'moderne' | 'officiel'>('moderne')
 
   const { data: bulletins = [], isLoading, isError } = useQuery({
     queryKey: ['bulletins', anneeId, classeId, trimestreId],
     queryFn: () => fetchBulletins({
-      ...(anneeId ? { annee_id: Number(anneeId) } : {}),
+      ...(anneeId ? { id_annee_scolaire: Number(anneeId) } : {}),
       ...(classeId ? { id_classe: Number(classeId) } : {}),
       ...(trimestreId ? { id_trimestre: Number(trimestreId) } : {}),
     }),
@@ -155,11 +178,27 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
   const genererMut = useMutation({
     mutationFn: genererBulletinClasse,
     onSuccess: (data) => {
-      toast(`${data.length} bulletin(s) généré(s)`)
+      setGeneration(data)
       qc.invalidateQueries({ queryKey: ['bulletins'] })
+      if (data.nb_erreurs > 0) {
+        toast(`${data.nb_succes} bulletin(s) généré(s) · ${data.nb_erreurs} erreur(s)`)
+      } else {
+        toast(`${data.nb_succes} bulletin(s) généré(s)`)
+      }
     },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: (e) => toast(extractErrorMessage(e, 'La génération des bulletins a échoué.'), 'error'),
   })
+
+  // 409 : année du trimestre déjà clôturée — publier/dépublier est refusé par
+  // le backend. On affiche le message et on rafraîchit l'état local.
+  const conflitAnneeCloturee = (e: unknown) => {
+    const message =
+      axios.isAxiosError(e) && e.response?.status === 409
+        ? extractErrorMessage(e, 'Année scolaire clôturée : action impossible.')
+        : extractErrorMessage(e, 'Action impossible.')
+    toast(message, 'error')
+    qc.invalidateQueries({ queryKey: ['bulletins'] })
+  }
 
   const publierMut = useMutation({
     mutationFn: publierBulletins,
@@ -167,7 +206,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
       toast(`${data.length} bulletin(s) publié(s)`)
       qc.invalidateQueries({ queryKey: ['bulletins'] })
     },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: conflitAnneeCloturee,
   })
 
   const depublierMut = useMutation({
@@ -176,7 +215,7 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
       toast('Bulletins dépubliés')
       qc.invalidateQueries({ queryKey: ['bulletins'] })
     },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: conflitAnneeCloturee,
   })
 
   const filtered = useMemo(() => {
@@ -241,19 +280,19 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
         />
 
         <div className="flex flex-wrap items-end gap-3">
-          <Select label="Année" value={anneeId} onChange={(e) => setAnneeId(e.target.value)} disabled={!annees.length}>
+          <Select label="Année" value={anneeId} onChange={(e) => { setAnneeChoisie(true); setAnneeId(e.target.value); setGeneration(null) }} disabled={!annees.length}>
             <option value="">— Choisir une année —</option>
             {annees.map((a) => (
               <option key={a.id} value={a.id}>{a.libelle}{a.cloturee ? ' (archivée)' : ''}</option>
             ))}
           </Select>
-          <Select label="Classe" value={classeId} onChange={(e) => setClasseId(e.target.value)} disabled={!classes.length}>
+          <Select label="Classe" value={classeId} onChange={(e) => { setClasseId(e.target.value); setGeneration(null) }} disabled={!classes.length}>
             <option value="">— Choisir une classe —</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>{c.niveau} — {c.nom}</option>
             ))}
           </Select>
-          <Select label="Période" value={trimestreId} onChange={(e) => setTrimestreId(e.target.value)} disabled={!classeId || !filteredTrimestres.length}>
+          <Select label="Période" value={trimestreId} onChange={(e) => { setTrimestreId(e.target.value); setGeneration(null) }} disabled={!classeId || !filteredTrimestres.length}>
             <option value="">— Choisir une période —</option>
             {filteredTrimestres.map((t) => (
               <option key={t.id} value={t.id}>{t.nom}</option>
@@ -293,6 +332,34 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
             </>
           )}
         </div>
+
+        {generation && (
+          <Card
+            className={`p-4 ${
+              generation.nb_erreurs > 0 ? 'border-[var(--warning)]' : 'border-[var(--success)]'
+            }`}
+          >
+            <p className="text-sm font-medium text-[var(--ink)]">
+              Génération : {generation.nb_succes} bulletin(s) réussi(s)
+              {generation.nb_erreurs > 0 ? ` · ${generation.nb_erreurs} élève(s) en erreur` : ''}
+            </p>
+            {generation.erreurs.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-xs text-[var(--ink-dim)]">
+                {generation.erreurs.map((e) => (
+                  <li key={e.matricule_eleve}>
+                    <span className="font-medium text-[var(--ink)]">{e.matricule_eleve}</span>
+                    {' — '}
+                    {e.motif}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-xs text-[var(--ink-dim)]">
+                Aucune erreur : tous les bulletins ont été générés pour cette classe.
+              </p>
+            )}
+          </Card>
+        )}
 
         {anneeCloturee && (
           <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-soft)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--ink-dim)]">
@@ -410,45 +477,61 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            {bulletin ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <Tooltip content="Télécharger ce bulletin en PDF">
+                            <div className="flex items-center justify-end gap-1">
+                              {bulletin && (
+                                <>
+                                  <Tooltip content="Télécharger ce bulletin en PDF">
+                                  <button
+                                    disabled={downloading === bulletin.id}
+                                    onClick={() => telechargerUn(bulletin.id)}
+                                    aria-label="Télécharger ce bulletin en PDF"
+                                    className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                                  >
+                                    {downloading === bulletin.id ? (
+                                      <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                                    ) : (
+                                      <Download size={14} strokeWidth={1.75} />
+                                    )}
+                                  </button>
+                                  </Tooltip>
+                                  <Tooltip content="Aperçu">
+                                  <button
+                                    disabled={apercuLoading === `b-${bulletin.id}`}
+                                    onClick={() => void ouvrirPdf(
+                                      `b-${bulletin.id}`,
+                                      `Bulletin · ${eleve.prenom} ${eleve.nom} · ${trimestreLabel?.nom ?? ''}`,
+                                      () => fetchBulletinPdf(bulletin.id),
+                                      () => void telechargerUn(bulletin.id),
+                                    )}
+                                    aria-label="Aperçu"
+                                    className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
+                                  >
+                                    {apercuLoading === `b-${bulletin.id}` ? (
+                                      <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
+                                    ) : (
+                                      <FileText size={14} strokeWidth={1.75} />
+                                    )}
+                                  </button>
+                                  </Tooltip>
+                                </>
+                              )}
+                              <Tooltip content="Bulletin annuel de l'élève (imprimable)">
                                 <button
-                                  disabled={downloading === bulletin.id}
-                                  onClick={() => telechargerUn(bulletin.id)}
-                                  aria-label="Télécharger ce bulletin en PDF"
+                                  onClick={() => {
+                                    setFormatAnnuel('moderne')
+                                    setAnnuelOuvert({
+                                      matricule: eleve.matricule,
+                                      nom: eleve.nom,
+                                      prenom: eleve.prenom,
+                                    })
+                                  }}
+                                  aria-label={`Bulletin annuel de ${eleve.prenom} ${eleve.nom}`}
                                   className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
                                 >
-                                  {downloading === bulletin.id ? (
-                                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                                  ) : (
-                                    <Download size={14} strokeWidth={1.75} />
-                                  )}
+                                  <ScrollText size={14} strokeWidth={1.75} />
                                 </button>
-                                </Tooltip>
-                                <Tooltip content="Aperçu">
-                                <button
-                                  disabled={apercuLoading === `b-${bulletin.id}`}
-                                  onClick={() => void ouvrirPdf(
-                                    `b-${bulletin.id}`,
-                                    `Bulletin · ${eleve.prenom} ${eleve.nom} · ${trimestreLabel?.nom ?? ''}`,
-                                    () => fetchBulletinPdf(bulletin.id),
-                                    () => void telechargerUn(bulletin.id),
-                                  )}
-                                  aria-label="Aperçu"
-                                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--ink)]"
-                                >
-                                  {apercuLoading === `b-${bulletin.id}` ? (
-                                    <Loader2 size={14} strokeWidth={1.75} className="animate-spin" />
-                                  ) : (
-                                    <FileText size={14} strokeWidth={1.75} />
-                                  )}
-                                </button>
-                                </Tooltip>
-                              </div>
-                            ) : (
-                              <span className="text-[var(--ink-faint)]">—</span>
-                            )}
+                              </Tooltip>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -461,6 +544,19 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
         )}
       </div>
 
+      {annuelOuvert && anneeId && (
+        <BulletinAnnuelModal
+          matricule={annuelOuvert.matricule}
+          nom={annuelOuvert.nom}
+          prenom={annuelOuvert.prenom}
+          anneeId={Number(anneeId)}
+          anneeLabel={selectedAnnee?.libelle ?? null}
+          format={formatAnnuel}
+          onFormatChange={setFormatAnnuel}
+          onClose={() => setAnnuelOuvert(null)}
+        />
+      )}
+
       {apercuPdf && (
         <PdfViewerModal
           data={apercuPdf.data}
@@ -472,5 +568,62 @@ const selectedClasse = classes.find((c) => c.id === Number(classeId))
         />
       )}
     </div>
+  )
+}
+
+function BulletinAnnuelModal({
+  matricule,
+  nom,
+  prenom,
+  anneeId,
+  anneeLabel,
+  format,
+  onFormatChange,
+  onClose,
+}: {
+  matricule: string
+  nom: string
+  prenom: string
+  anneeId: number
+  anneeLabel: string | null
+  format: 'moderne' | 'officiel'
+  onFormatChange: (format: 'moderne' | 'officiel') => void
+  onClose: () => void
+}) {
+  const { data: annuel, isLoading, isError } = useQuery({
+    queryKey: ['bulletin-annuel', matricule, anneeId],
+    queryFn: () => fetchBulletinAnnuel(matricule, anneeId),
+    enabled: matricule != null && anneeId != null,
+  })
+
+  return (
+    <DocumentPrintModal
+      title={`Bulletin annuel · ${prenom} ${nom}${anneeLabel ? ` · ${anneeLabel}` : ''}`}
+      onClose={onClose}
+      toolbar={
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant={format === 'moderne' ? 'primary' : 'ghost'} onClick={() => onFormatChange('moderne')}>
+            Annuel
+          </Button>
+          <Button size="sm" variant={format === 'officiel' ? 'primary' : 'ghost'} onClick={() => onFormatChange('officiel')}>
+            Officiel
+          </Button>
+        </div>
+      }
+    >
+      {isLoading ? (
+        <div className="py-16 text-center text-sm text-[var(--ink-dim)]">
+          Chargement du bulletin annuel…
+        </div>
+      ) : isError || !annuel ? (
+        <div className="py-16 text-center text-sm text-[var(--danger)]">
+          Impossible de charger le bulletin annuel de cet élève.
+        </div>
+      ) : format === 'officiel' ? (
+        <BulletinNoteDocument annuel={annuel} anneeLabel={anneeLabel ?? undefined} />
+      ) : (
+        <BulletinAnnuelDocument annuel={annuel} anneeLabel={anneeLabel ?? undefined} />
+      )}
+    </DocumentPrintModal>
   )
 }

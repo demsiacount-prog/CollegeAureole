@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Spinner } from '@/components/ui/Spinner'
 import {
   Table,
@@ -51,11 +53,23 @@ export function FicheSuiviSection({ matricule }: { matricule: string }) {
   }
 
   if (isError || !fiche) {
+    // Un élève de 7ème-9ème sans inscription active dans l'année consultée n'a
+    // pas de classe (niveau nul) : le backend renvoie 403 pour signaler que la
+    // fiche de suivi ne s'applique pas. On présente un état vide explicite plutôt
+    // qu'une erreur brute.
+    const estSansInscription = axios.isAxiosError(error) && error.response?.status === 403
     return (
       <Card className="mb-4 w-full p-4">
-        <p className="text-sm text-[var(--ink-dim)]">
-          {extractErrorMessage(error, 'Impossible de charger la fiche de suivi.')}
-        </p>
+        {estSansInscription ? (
+          <EmptyState
+            title="Fiche de suivi indisponible"
+            message="Cet élève n'a pas d'inscription active dans l'année consultée. La fiche de suivi s'adresse aux élèves du second cycle (7ème, 8ème et 9ème année) ; vérifiez son inscription."
+          />
+        ) : (
+          <p className="text-sm text-[var(--ink-dim)]">
+            {extractErrorMessage(error, 'Impossible de charger la fiche de suivi.')}
+          </p>
+        )}
       </Card>
     )
   }

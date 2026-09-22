@@ -226,7 +226,7 @@ export default function SetupWizard() {
     setError('')
     setFieldErrors({})
     setStep('running')
-    setProgress({ run_id: null, en_cours: true, etape: 0, nb_etapes: 5, message: 'Initialisation lancée…', pourcent: 0, termine: false, erreur: null })
+    setProgress({ run_id: null, en_cours: true, etape: 0, nb_etapes: 4, message: 'Initialisation lancée…', pourcent: 0, termine: false, erreur: null })
     try {
       const res = await api.post(
         '/api/setup/run',
@@ -254,7 +254,7 @@ export default function SetupWizard() {
         window.location.href = '/connexion'
       } else if (message.includes('en cours')) {
         setError(message)
-        setProgress({ run_id: null, en_cours: false, etape: 0, nb_etapes: 5, message: '', pourcent: 0, termine: true, erreur: message })
+        setProgress({ run_id: null, en_cours: false, etape: 0, nb_etapes: 4, message: '', pourcent: 0, termine: true, erreur: message })
       } else {
         setError(message)
         setStep('form')
@@ -272,8 +272,7 @@ export default function SetupWizard() {
     emailVal(etEmail) === undefined &&
     phone(etTelephone) === undefined &&
     etAcademie.trim().length >= 1 &&
-    etCap.trim().length >= 1 &&
-    etLogo.trim().length >= 1
+    etCap.trim().length >= 1
   const adminValide =
     nom.trim().length >= 2 && prenom.trim().length >= 2 &&
     emailVal(email) === undefined && password.length >= 8
@@ -288,7 +287,6 @@ export default function SetupWizard() {
       et_email: required(etEmail, 'L’e-mail de contact') ?? emailVal(etEmail),
       et_academie: required(etAcademie, 'L’académie'),
       et_cap: required(etCap, 'Le CAP'),
-      et_logo: required(etLogo, 'Le logo'),
     })
     setFieldErrors(errs)
     return !hasErrors(errs)
@@ -504,7 +502,7 @@ export default function SetupWizard() {
                       />
                     </div>
                     <p className="mt-2 text-xs text-[var(--ink-faint)]">
-                      Étape {progress?.etape ?? 0}/{progress?.nb_etapes ?? 5}
+                      Étape {progress?.etape ?? 0}/{progress?.nb_etapes ?? 4}
                     </p>
                   </div>
                 )}
@@ -671,7 +669,7 @@ export default function SetupWizard() {
 
                         <div>
                           <div className="mb-1 text-xs font-medium text-[var(--ink-dim)]">
-                            Logo de l’établissement 
+                            Logo de l’établissement (optionnel)
                           </div>
                           <input
                             ref={logoFileRef}
@@ -704,7 +702,7 @@ export default function SetupWizard() {
                                 {logoUploading ? 'Envoi du logo…' : etLogo ? 'Modifier le logo' : 'Importer le logo de l’établissement'}
                               </span>
                               <span className="mt-0.5 block text-[11px] text-[var(--ink-faint)]">
-                                PNG, JPG, WebP ou GIF — 2 Mo maximum. 
+                                Optionnel — PNG, JPG, WebP ou GIF, 2 Mo maximum.
                               </span>
                             </span>
                             {etLogo && !logoUploading && (

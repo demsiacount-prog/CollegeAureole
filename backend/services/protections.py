@@ -77,11 +77,34 @@ def verifier_enseignant(db: Session, matricule: str, nom: str = ""):
 
 
 def verifier_annee_scolaire(db: Session, annee_id: int, nom: str = ""):
+    """Garde la suppression d'une année scolaire.
+
+    Les trimestres/compositions auto-générés ne bloquent pas : ils sont
+    emportés par la cascade contrôlée lors du delete (relationship
+    cascade="all, delete-orphan", FK ondelete=CASCADE). Ne bloquent que les
+    données métier réellement rattachées (inscriptions, séances, notes et
+    bulletins portés par les trimestres de l'année, fiche d'infrastructures).
+    """
     nb_inscriptions = db.query(models.Inscriptions).filter(models.Inscriptions.id_annee_scolaire == annee_id).count()
-    nb_trimestres = db.query(models.Trimestres).filter(models.Trimestres.annee_scolaire_id == annee_id).count()
     nb_seances = db.query(models.Seances).filter(models.Seances.id_annee_scolaire == annee_id).count()
-    if nb_inscriptions or nb_trimestres or nb_seances:
-        _bloquer("cette année scolaire", f"Impossible de supprimer cette année scolaire : {nb_inscriptions} inscription(s), {nb_trimestres} trimestre(s) et {nb_seances} séance(s) y sont lié(s).")
+    ids_trimestres = db.query(models.Trimestres.id).filter(models.Trimestres.annee_scolaire_id == annee_id)
+    nb_notes = db.query(models.Notes).filter(models.Notes.id_trimestre.in_(ids_trimestres)).count()
+    nb_bulletins = db.query(models.Bulletins).filter(models.Bulletins.id_trimestre.in_(ids_trimestres)).count()
+    nb_infrastructures = db.query(models.EtablissementInfrastructures).filter(models.EtablissementInfrastructures.id_annee_scolaire == annee_id).count()
+
+    details = []
+    if nb_inscriptions:
+        details.append(f"{nb_inscriptions} inscription(s)")
+    if nb_seances:
+        details.append(f"{nb_seances} séance(s)")
+    if nb_notes:
+        details.append(f"{nb_notes} note(s)")
+    if nb_bulletins:
+        details.append(f"{nb_bulletins} bulletin(s)")
+    if nb_infrastructures:
+        details.append(f"{nb_infrastructures} fiche(s) d'infrastructures")
+    if details:
+        _bloquer("cette année scolaire", f"Impossible de supprimer cette année scolaire : {', '.join(details)} y sont rattaché(s).")
 
 
 def verifier_trimestre(db: Session, trimestre_id: int, nom: str = ""):

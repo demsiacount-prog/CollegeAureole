@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import {
   ChevronLeft, ChevronRight, CheckCircle, User, Users, School, FileText,
   AlertCircle, Upload, Check, X,
@@ -172,7 +173,19 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
       setSubmitted(true)
       setTimeout(() => onComplete(), 2000)
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de l'enregistrement."))
+      // Erreurs métier du backend : 409 (inscription/année clôturée), 400
+      // (dossier invalide), 404 (ressource introuvable) — on garde l'utilisateur
+      // sur l'étape en cours pour corriger avant de relancer.
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      if (status === 409) {
+        setError(extractErrorMessage(err, "Cette inscription existe déjà pour cette année scolaire."))
+      } else if (status === 400) {
+        setError(extractErrorMessage(err, 'Le dossier ne peut pas être enregistré : vérifiez les informations saisies.'))
+      } else if (status === 404) {
+        setError(extractErrorMessage(err, "Une ressource référencée est introuvable (élève, classe, année scolaire ou tuteur)."))
+      } else {
+        setError(extractErrorMessage(err, "Erreur lors de l'enregistrement."))
+      }
       setSubmitting(false)
     }
   }

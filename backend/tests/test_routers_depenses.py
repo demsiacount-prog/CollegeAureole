@@ -6,6 +6,8 @@ catégorie et dates, code auto-généré.
 import pytest
 from datetime import date
 
+import models
+
 
 class TestCreation:
     def test_creer_depense(self, client, auth_headers):
@@ -115,3 +117,44 @@ class TestAuthRequis:
     def test_sans_token_401(self, client):
         resp = client.get("/api/depenses/")
         assert resp.status_code == 401
+
+
+class TestAnneeCloturee:
+    def _creer_annee_cloturee(self, db_session):
+        db_session.add(models.AnneesScolaires(
+            libelle="2024-2025", date_debut=date(2024, 9, 1), date_fin=date(2025, 6, 30),
+            active=False, cloturee=True,
+        ))
+        db_session.commit()
+
+    def test_creation_historique_permise(self, client, auth_headers, db_session):
+        """On peut saisir une dépense historique même si l'année est clôturée."""
+        self._creer_annee_cloturee(db_session)
+        resp = client.post("/api/depenses/", json={
+            "libelle": "Historique", "montant": 10000, "date": "2025-01-15",
+        }, headers=auth_headers)
+        assert resp.status_code == 201
+
+    def test_modification_refusee_sur_annee_cloturee(self, client, auth_headers, db_session):
+        self._creer_annee_cloturee(db_session)
+        created = client.post("/api/depenses/", json={
+            "libelle": "D1", "montant": 10000, "date": "2025-01-15",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/depenses/{created['id']}", json={"montant": 5000}, headers=auth_headers)
+        assert resp.status_code == 409
+        assert "clôturée" in resp.json()["detail"]
+
+    def test_suppression_refusee_sur_annee_cloturee(self, client, auth_headers, db_session):
+        self._creer_annee_cloturee(db_session)
+        created = client.post("/api/depenses/", json={
+            "libelle": "D1", "montant": 10000, "date": "2025-01-15",
+        }, headers=auth_headers).json()
+        resp = client.delete(f"/api/depenses/{created['id']}", headers=auth_headers)
+        assert resp.status_code == 409
+
+    def test_montant_zero_ou_negatif_refuse_en_update(self, client, auth_headers):
+        created = client.post("/api/depenses/", json={
+            "libelle": "D1", "montant": 1000, "date": "2025-10-01",
+        }, headers=auth_headers).json()
+        resp = client.put(f"/api/depenses/{created['id']}", json={"montant": 0}, headers=auth_headers)
+        assert resp.status_code == 422

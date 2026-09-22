@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { BookOpen, ClipboardList, CreditCard, GraduationCap, Pencil, Search, User, type LucideIcon } from 'lucide-react'
 import { clsx } from 'clsx'
 import { allNavItems } from '@/routes/nav'
+import { useAuth } from '@/auth/useAuth'
 import { fetchEleves } from '@/features/eleves/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
 import type { Eleve } from '@/features/eleves/types'
@@ -53,6 +54,7 @@ export function CommandPalette({
   const listRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { user } = useAuth()
 
   // §40 — recherche API élèves/enseignants, debounce 250 ms (dès 2 caractères).
   useEffect(() => {
@@ -87,14 +89,14 @@ export function CommandPalette({
 
   const pages: PaletteEntry[] = useMemo(
     () =>
-      allNavItems().map((item) => ({
+      allNavItems(user?.role).map((item) => ({
         id: item.id,
         label: item.label,
         hint: item.path,
         icon: item.icon,
         to: item.path,
       })),
-    [],
+    [user?.role],
   )
 
   const entries = useMemo(() => {

@@ -89,7 +89,7 @@ class _Seed:
     def ajouter_bulletin(self, trimestre, moyenne):
         self.db.add(models.Bulletins(
             matricule_eleve=self.eleve.matricule, id_trimestre=trimestre.id,
-            id_classe=self.classe.id, moyenne_generale=moyenne, statut="BROUILLON",
+            id_classe=self.classe.id, moyenne_generale=moyenne, statut="PUBLIE",
         ))
 
 

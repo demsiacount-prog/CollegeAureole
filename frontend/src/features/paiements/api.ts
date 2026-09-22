@@ -51,6 +51,11 @@ export async function deletePaiement(id: number): Promise<void> {
   await api.delete(`/api/paiements/${id}`)
 }
 
+export async function fetchRecuPaiement(id: number): Promise<Blob> {
+  const res = await api.get<Blob>(`/api/paiements/${id}/recu`, { responseType: 'blob' })
+  return res.data
+}
+
 export async function fetchRemises(idEcheance: number): Promise<Remise[]> {
   const res = await api.get<Remise[]>(`/api/paiements/echeances/${idEcheance}/remises`)
   return res.data

@@ -12,8 +12,27 @@ from security import get_current_user
 router = APIRouter(prefix="/api/depenses", tags=["Dépenses"], dependencies=[Depends(get_current_user)])
 
 
+def _dans_annee_cloturee(db: Session, date_depense: date_type) -> bool:
+    """Une dépense n'est pas liée directement à une année scolaire : on déduit
+    l'année concernée de sa date pour savoir si elle tombe dans une année
+    clôturée (dans ce cas, elle est figée)."""
+    if not date_depense:
+        return False
+    return (
+        db.query(models.AnneesScolaires)
+        .filter(
+            models.AnneesScolaires.cloturee.is_(True),
+            models.AnneesScolaires.date_debut <= date_depense,
+            models.AnneesScolaires.date_fin >= date_depense,
+        )
+        .first()
+    ) is not None
+
+
 @router.post("/", response_model=schemas.DepenseResponse, status_code=status.HTTP_201_CREATED)
 def creer_depense(payload: schemas.DepenseCreate, db: Session = Depends(get_db)):
+    # La création reste permise (saisie d'une dépense historique), seule la
+    # modification/suppression est bloquée sur une année clôturée.
     depense = models.Depenses(**payload.model_dump())
     db.add(depense)
     db.commit()
@@ -79,7 +98,11 @@ def modifier_depense(depense_id: int, payload: schemas.DepenseUpdate, db: Sessio
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
         raise HTTPException(status_code=404, detail="Dépense introuvable")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    donnees = payload.model_dump(exclude_unset=True)
+    nouveau_date = donnees.get("date")
+    if _dans_annee_cloturee(db, dep.date) or (nouveau_date and _dans_annee_cloturee(db, nouveau_date)):
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée : modification de la dépense impossible.")
+    for k, v in donnees.items():
         setattr(dep, k, v)
     db.commit()
     db.refresh(dep)
@@ -91,6 +114,8 @@ def supprimer_depense(depense_id: int, db: Session = Depends(get_db)):
     dep = db.query(models.Depenses).filter(models.Depenses.id == depense_id).first()
     if not dep:
         raise HTTPException(status_code=404, detail="Dépense introuvable")
+    if _dans_annee_cloturee(db, dep.date):
+        raise HTTPException(status_code=409, detail="Année scolaire clôturée : suppression de la dépense impossible.")
     db.delete(dep)
     db.commit()
     return None

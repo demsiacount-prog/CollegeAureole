@@ -121,15 +121,16 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
       nom: required(form.nom, 'Le nom'),
       lieu_de_naissance: required(form.lieu_de_naissance, 'Le lieu de naissance'),
     }
+    rules.date_de_naissance = required(form.date_de_naissance, 'La date de naissance')
     if (!isEdit) {
-      rules.date_de_naissance = required(form.date_de_naissance, 'La date de naissance')
       rules.classe_id = required(form.classe_id, 'La classe')
     }
     if (form.tuteur_mode === 'create') {
       rules.tuteur_prenom = required(form.tuteur_prenom, 'Le prénom du tuteur')
       rules.tuteur_nom = required(form.tuteur_nom, 'Le nom du tuteur')
-      rules.tuteur_telephone = required(form.tuteur_telephone, 'Le téléphone du tuteur') ?? phone(form.tuteur_telephone)
-      rules.tuteur_email = required(form.tuteur_email, "L'e-mail du tuteur") ?? email(form.tuteur_email)
+      // Coordonnées facultatives : format validé seulement si renseignées.
+      rules.tuteur_telephone = phone(form.tuteur_telephone)
+      rules.tuteur_email = email(form.tuteur_email)
     } else {
       rules.tuteur_id = required(form.tuteur_id, 'Le tuteur')
     }
@@ -144,6 +145,8 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
           nom: form.nom,
           prenom: form.prenom,
           photo: form.photo,
+          date_de_naissance: form.date_de_naissance,
+          sexe: form.sexe,
           lieu_de_naissance: form.lieu_de_naissance,
           adresse: form.adresse || null,
           statut: form.statut,
@@ -257,26 +260,24 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
           />
         </div>
 
-        {!isEdit && (
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Date de naissance"
-              type="date"
-              max={new Date().toISOString().split('T')[0]}
-              value={form.date_de_naissance}
-              onChange={(e) => {
-                setForm({ ...form, date_de_naissance: e.target.value })
-                if (errors.date_de_naissance) setErrors((prev) => ({ ...prev, date_de_naissance: undefined }))
-              }}
-              required
-              error={errors.date_de_naissance}
-            />
-            <Select label="Sexe" value={form.sexe} onChange={(e) => setForm({ ...form, sexe: e.target.value })}>
-              <option value="M">Masculin</option>
-              <option value="F">Féminin</option>
-            </Select>
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Date de naissance"
+            type="date"
+            max={new Date().toISOString().split('T')[0]}
+            value={form.date_de_naissance}
+            onChange={(e) => {
+              setForm({ ...form, date_de_naissance: e.target.value })
+              if (errors.date_de_naissance) setErrors((prev) => ({ ...prev, date_de_naissance: undefined }))
+            }}
+            required
+            error={errors.date_de_naissance}
+          />
+          <Select label="Sexe" value={form.sexe} onChange={(e) => setForm({ ...form, sexe: e.target.value })}>
+            <option value="M">Masculin</option>
+            <option value="F">Féminin</option>
+          </Select>
+        </div>
 
         <Input
           label="Lieu de naissance"
@@ -517,7 +518,6 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
                     setForm({ ...form, tuteur_telephone: e.target.value })
                     if (errors.tuteur_telephone) setErrors((prev) => ({ ...prev, tuteur_telephone: undefined }))
                   }}
-                  required
                   error={errors.tuteur_telephone}
                 />
                 <Input
@@ -529,7 +529,6 @@ export function EleveFormDrawer({ open, onClose, eleve, onCreate, onUpdate, canI
                     setForm({ ...form, tuteur_email: e.target.value })
                     if (errors.tuteur_email) setErrors((prev) => ({ ...prev, tuteur_email: undefined }))
                   }}
-                  required
                   error={errors.tuteur_email}
                 />
                 <div className="grid grid-cols-2 gap-3">

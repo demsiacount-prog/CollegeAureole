@@ -15,7 +15,7 @@ class Bulletins(Base):
     id_trimestre = Column(Integer, ForeignKey("trimestres.id", ondelete="CASCADE"), nullable=False)
     id_classe = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
 
-    moyenne_generale = Column(Float, nullable=False)
+    moyenne_generale = Column(Float, nullable=True)  # nullable : aucune matière coefficientée → moyenne non applicable
     rang = Column(Integer, nullable=True)
     appreciation = Column(String, nullable=True)
     # Étape de relecture par la direction avant diffusion aux familles

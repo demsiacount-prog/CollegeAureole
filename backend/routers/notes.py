@@ -8,6 +8,7 @@ import schemas
 from security import get_current_user
 from bareme import bareme_niveau, est_jardin
 from helpers import get_annee_ou_active
+from schemas.notes import NoteSaisieAutoriseeResponse, NoteSaisieTrimestre
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"], dependencies=[Depends(get_current_user)])
 
@@ -18,11 +19,48 @@ _EAGER = (
     joinedload(models.Notes.cours),
     joinedload(models.Notes.classe),
     joinedload(models.Notes.enseignant),
-    joinedload(models.Notes.trimestre),
+    joinedload(models.Notes.trimestre).joinedload(models.Trimestres.annee_scolaire),
 )
 
 
+def _verifier_trimestre_ecriture(note, db: Session) -> None:
+    """Verrouillage d'écriture : toute note est rattachée à UN trimestre.
+
+    - absent → 422 : impossible de savoir si la période est saisissable ;
+    - introuvable → 404 ;
+    - trimestre verrouillé → 423 : saisie bloquée pour cette période ;
+    - trimestre rattaché à une année clôturée → 423 : bloqué.
+    """
+    if note.id_trimestre is None:
+        raise HTTPException(
+            status_code=422,
+            detail="id_trimestre requis : une note doit être rattachée à une période.",
+        )
+    trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
+    if not trimestre:
+        raise HTTPException(status_code=404, detail="Trimestre introuvable")
+    if trimestre.verrouille:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Trimestre verrouillé",
+        )
+    annee = (
+        db.query(models.AnneesScolaires)
+        .filter(models.AnneesScolaires.id == trimestre.annee_scolaire_id)
+        .first()
+    )
+    if annee is not None and annee.cloturee:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=(
+                "Année scolaire clôturée : toute saisie de note est bloquée. "
+                "Rouvrez l'année pour pouvoir enregistrer."
+            ),
+        )
+
+
 def _verifier_references(note, db: Session):
+    _verifier_trimestre_ecriture(note, db)
     if not db.query(models.Eleves).filter(models.Eleves.matricule == note.matricule_eleve).first():
         raise HTTPException(status_code=404, detail="Élève introuvable")
     cours = db.query(models.Cours).filter(models.Cours.id == note.id_cours).first()
@@ -39,15 +77,6 @@ def _verifier_references(note, db: Session):
         raise HTTPException(status_code=400, detail="Cours non affecté")
     if cours.matricule_enseignant and cours.matricule_enseignant != note.matricule_enseignant:
         raise HTTPException(status_code=400, detail="Enseignant non assigné")
-    if note.id_trimestre is not None:
-        trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
-        if not trimestre:
-            raise HTTPException(status_code=404, detail="Trimestre introuvable")
-        if trimestre.verrouille:
-            raise HTTPException(
-                status_code=status.HTTP_423_LOCKED,
-                detail="Trimestre verrouillé",
-            )
 
 
 def _verifier_doublon(note, db: Session, exclure_id: Optional[int] = None):
@@ -72,17 +101,35 @@ def _trouver_classe(db: Session, id_classe: int):
     return classe
 
 
-def _valider_bareme(classe, note: float, note_classe: Optional[float]):
+def _valider_bareme(classe, note: Optional[float], note_classe: Optional[float]):
     if est_jardin(classe.niveau):
         raise HTTPException(
             status_code=400,
             detail="Les sections du jardin d'enfants sont évaluées par appréciation manuelle, pas par notes.",
         )
     bareme = bareme_niveau(classe.niveau)
-    if note > bareme:
+    if note is not None and note > bareme:
         raise HTTPException(status_code=422, detail="Note dépasse le barème")
     if note_classe is not None and note_classe > bareme:
         raise HTTPException(status_code=422, detail="Note de classe dépasse le barème")
+
+
+def _peut_saisir_note(note, db: Session) -> bool:
+    """Vrai si la note est rééditable (trimestre non verrouillé, année non clôturée)."""
+    if note.id_trimestre is None:
+        return True
+    trimestre = note.trimestre
+    if trimestre is None:
+        trimestre = db.query(models.Trimestres).options(
+            joinedload(models.Trimestres.annee_scolaire)
+        ).filter(models.Trimestres.id == note.id_trimestre).first()
+    if trimestre is None:
+        return True
+    if trimestre.verrouille:
+        return False
+    if trimestre.annee_scolaire is not None and trimestre.annee_scolaire.cloturee:
+        return False
+    return True
 
 
 def _creer_note(note: schemas.NoteCreate, db: Session, commit: bool = True):
@@ -101,10 +148,7 @@ def _creer_note(note: schemas.NoteCreate, db: Session, commit: bool = True):
         models.Notes.matricule_eleve == note.matricule_eleve,
         models.Notes.id_cours == note.id_cours,
     )
-    if note.id_trimestre is not None:
-        query = query.filter(models.Notes.id_trimestre == note.id_trimestre)
-    else:
-        query = query.filter(models.Notes.id_trimestre.is_(None))
+    query = query.filter(models.Notes.id_trimestre == note.id_trimestre)
     existante = query.first()
 
     if existante is not None:
@@ -118,6 +162,7 @@ def _creer_note(note: schemas.NoteCreate, db: Session, commit: bool = True):
             db.refresh(existante)
         else:
             db.flush()  # rend l'objet exploitable (id, etc.) sans valider la transaction
+        existante.peut_saisir = _peut_saisir_note(existante, db)
         return existante, False
 
     data = note.model_dump()
@@ -130,6 +175,7 @@ def _creer_note(note: schemas.NoteCreate, db: Session, commit: bool = True):
         db.refresh(nouvelle_note)
     else:
         db.flush()  # rend l'objet exploitable (id, etc.) sans valider la transaction
+    nouvelle_note.peut_saisir = _peut_saisir_note(nouvelle_note, db)
     return nouvelle_note, True
 
 
@@ -151,21 +197,12 @@ def _modifier_note(note_id: int, note: schemas.NoteCreate, db: Session, commit: 
         db.refresh(db_note)
     else:
         db.flush()
+    db_note.peut_saisir = _peut_saisir_note(db_note, db)
     return db_note
 
 
 @router.post("/", response_model=schemas.NoteResponse, status_code=status.HTTP_201_CREATED)
 def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
-    if note.id_trimestre is not None:
-        tr = db.query(models.Trimestres).filter(models.Trimestres.id == note.id_trimestre).first()
-        if tr is not None and tr.annee_scolaire is not None and tr.annee_scolaire.cloturee:
-            raise HTTPException(
-                status_code=status.HTTP_423_LOCKED,
-                detail=(
-                    "Année scolaire clôturée : toute saisie de note est bloquée. "
-                    "Rouvrez l'année pour pouvoir enregistrer."
-                ),
-            )
     nouvelle_note, _ = _creer_note(note, db)
     return nouvelle_note
 
@@ -177,12 +214,15 @@ def get_all_notes(
     id_cours: Optional[int] = None,
     id_trimestre: Optional[int] = None,
     annee_id: Optional[int] = Query(None, description="Filtrer par année scolaire (défaut : active)"),
+    id_annee_scolaire: Optional[int] = Query(None, description="Alias de `annee_id` (consultation d'une année passée)"),
     skip: int = 0,
     limit: int = Query(default=200, le=500),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Notes).options(*_EAGER)
 
+    if annee_id is None:
+        annee_id = id_annee_scolaire
     if annee_id is not None:
         # Filtrer les notes dont le trimestre appartient à cette année
         query = query.join(
@@ -201,7 +241,48 @@ def get_all_notes(
     if id_trimestre:
         query = query.filter(models.Notes.id_trimestre == id_trimestre)
 
-    return query.order_by(models.Notes.id).offset(skip).limit(limit).all()
+    notes = query.order_by(models.Notes.id).offset(skip).limit(limit).all()
+    for note in notes:
+        note.peut_saisir = _peut_saisir_note(note, db)
+    return notes
+
+
+@router.get("/saisie-autorisee", response_model=NoteSaisieAutoriseeResponse)
+def get_saisie_autorisee(
+    annee_id: Optional[int] = Query(None, description="Année à consulter (défaut : active)"),
+    db: Session = Depends(get_db),
+):
+    """État de saisie par trimestre de l'année (verrou/saisie autorisée).
+
+    Le verrouillage est global par trimestre (verrouillé / année clôturée) :
+    le front peut désactiver les champs de notes ET masquer les messages de
+    conflit sur cette seule réponse, sans lire note par note.
+    """
+    annee = get_annee_ou_active(db, annee_id)
+    trimestres = (
+        db.query(models.Trimestres)
+        .filter(models.Trimestres.annee_scolaire_id == annee.id)
+        .order_by(models.Trimestres.date_debut.asc())
+        .all()
+    )
+    liste = []
+    for tr in trimestres:
+        peut = (not tr.verrouille) and (not annee.cloturee)
+        liste.append(NoteSaisieTrimestre(
+            id=tr.id,
+            nom=tr.nom,
+            type=tr.type,
+            verrouille=bool(tr.verrouille),
+            annee_cloturee=bool(annee.cloturee),
+            peut_saisir=peut,
+        ))
+    return NoteSaisieAutoriseeResponse(
+        annee_id=annee.id,
+        annee_libelle=annee.libelle,
+        annee_cloturee=bool(annee.cloturee),
+        trimestres=liste,
+        peut_saisir=(not annee.cloturee) and any(t.peut_saisir for t in liste),
+    )
 
 
 @router.get("/registre", response_model=schemas.RegistreNotesResponse)
@@ -225,6 +306,7 @@ def get_note(note_id: int, db: Session = Depends(get_db)):
     db_note = db.query(models.Notes).options(*_EAGER).filter(models.Notes.id == note_id).first()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note introuvable")
+    db_note.peut_saisir = _peut_saisir_note(db_note, db)
     return db_note
 
 
@@ -241,14 +323,27 @@ def patch_note(note_id: int, note_update: schemas.NotePatch, db: Session = Depen
         raise HTTPException(status_code=404, detail="Note introuvable")
 
     changes = note_update.model_dump(exclude_unset=True)
+    id_trimestre = changes.get("id_trimestre", db_note.id_trimestre)
+    if id_trimestre is None:
+        raise HTTPException(
+            status_code=422,
+            detail="id_trimestre requis : une note doit être rattachée à une période.",
+        )
+    merged_note = changes.get("note", db_note.note)
+    merged_note_classe = changes.get("note_classe", db_note.note_classe)
+    if merged_note is None and merged_note_classe is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Au moins une note (note ou note_classe) est requise",
+        )
     merged = schemas.NoteCreate(
         matricule_eleve=changes.get("matricule_eleve", db_note.matricule_eleve),
         id_cours=changes.get("id_cours", db_note.id_cours),
         id_classe=changes.get("id_classe", db_note.id_classe),
         matricule_enseignant=changes.get("matricule_enseignant", db_note.matricule_enseignant),
-        id_trimestre=changes.get("id_trimestre", db_note.id_trimestre),
-        note=changes.get("note", db_note.note),
-        note_classe=changes.get("note_classe", db_note.note_classe),
+        id_trimestre=id_trimestre,
+        note=merged_note,
+        note_classe=merged_note_classe,
     )
     _verifier_references(merged, db)
     classe = _trouver_classe(db, merged.id_classe)
@@ -260,6 +355,7 @@ def patch_note(note_id: int, note_update: schemas.NotePatch, db: Session = Depen
     db_note.updated_at = now_utc()
     db.commit()
     db.refresh(db_note)
+    db_note.peut_saisir = _peut_saisir_note(db_note, db)
     return db_note
 
 
@@ -295,6 +391,7 @@ def bulk_notes(payload: schemas.NoteBulkRequest, db: Session = Depends(get_db)):
         raise
     for note in enregistrees:
         db.refresh(note)
+        note.peut_saisir = _peut_saisir_note(note, db)
     return schemas.NoteBulkResponse(notes=enregistrees, creees=creees, modifiees=modifiees)
 
 
@@ -304,9 +401,16 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
     if not db_note:
         raise HTTPException(status_code=404, detail="Note introuvable")
     if db_note.id_trimestre:
-        trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == db_note.id_trimestre).first()
+        trimestre = db.query(models.Trimestres).options(
+            joinedload(models.Trimestres.annee_scolaire)
+        ).filter(models.Trimestres.id == db_note.id_trimestre).first()
         if trimestre and trimestre.verrouille:
             raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Trimestre verrouillé")
+        if trimestre and trimestre.annee_scolaire and trimestre.annee_scolaire.cloturee:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Année scolaire clôturée : suppression de note bloquée.",
+            )
     db.delete(db_note)
     db.commit()
     return None

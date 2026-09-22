@@ -20,7 +20,7 @@ class DepenseCreate(DepenseBase):
 
 class DepenseUpdate(BaseModel):
     libelle:     Optional[str]             = None
-    montant:     Optional[float]           = None
+    montant:     Optional[float]           = Field(default=None, gt=0)
     categorie:   Optional[CategorieDepense] = None
     date:        Optional[date]            = None
     description: Optional[str]            = None

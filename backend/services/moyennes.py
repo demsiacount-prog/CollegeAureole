@@ -12,12 +12,18 @@ import schemas
 
 
 def calculer_moyenne_annuelle(db: Session, matricule_eleve: str, id_annee_scolaire: int) -> Optional[float]:
-    """Moyenne annuelle d'un élève (basée sur les bulletins trimestriels)."""
+    """Moyenne annuelle d'un élève (basée sur les bulletins trimestriels).
+
+    Ne tient compte que des bulletins PUBLIÉS : un brouillon en cours de
+    relecture ne doit ni influencer les résultats de passage, ni les
+    moyennes consultées.
+    """
     result = (
         db.query(func.avg(models.Bulletins.moyenne_generale))
         .join(models.Trimestres, models.Bulletins.id_trimestre == models.Trimestres.id)
         .filter(
             models.Bulletins.matricule_eleve == matricule_eleve,
+            models.Bulletins.statut == "PUBLIE",
             models.Trimestres.annee_scolaire_id == id_annee_scolaire,
         )
         .scalar()
@@ -53,16 +59,18 @@ def calculer_moyennes_par_trimestre(db: Session, matricule_eleve: str, id_annee_
             .filter(
                 models.Bulletins.matricule_eleve == matricule_eleve,
                 models.Bulletins.id_trimestre == trimestre.id,
+                models.Bulletins.statut == "PUBLIE",
             )
             .first()
         )
         if bulletin is None:
-            # Cherche un bulletin sur un trimestre doublon (même nom)
+            # Cherche un bulletin publié sur un trimestre doublon (même nom)
             bulletin = (
                 db.query(models.Bulletins)
                 .join(models.Trimestres, models.Bulletins.id_trimestre == models.Trimestres.id)
                 .filter(
                     models.Bulletins.matricule_eleve == matricule_eleve,
+                    models.Bulletins.statut == "PUBLIE",
                     models.Trimestres.annee_scolaire_id == id_annee_scolaire,
                     models.Trimestres.nom == trimestre.nom,
                 )

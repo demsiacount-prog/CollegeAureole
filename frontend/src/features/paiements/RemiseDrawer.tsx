@@ -33,7 +33,11 @@ export default function RemiseDrawer({ open, onClose, echeance }: {
   })
 
   const totalRemises = remises.reduce((s, r) => s + r.montant, 0)
-  const resteApresRemises = echeance ? echeance.montant_du - echeance.montant_paye - totalRemises : 0
+  // `montant_du` est déjà réduit des remises appliquées côté backend
+  // (_appliquer_remise diminue montant_du) : le plafond d'une nouvelle remise
+  // est donc le reste à payer renvoyé par l'API, sans soustraire une nouvelle
+  // fois totalRemises (ce qui plafonnerait la 2e remise deux fois trop bas).
+  const resteApresRemises = echeance ? echeance.reste_a_payer : 0
 
   const createMut = useMutation({
     mutationFn: () => createRemise(echeance!.id, {

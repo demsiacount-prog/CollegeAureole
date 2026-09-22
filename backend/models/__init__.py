@@ -22,6 +22,7 @@ from models.documents import Documents
 from models.etablissement import Etablissement
 from models.infrastructures import EtablissementInfrastructures
 from models.cloture_alertes import ClotureAlertes
+from models.mot_de_passe_reinitialisation import MotDePasseReinitialisation
 __all__ = [
     "Tuteurs", "Enseignants", "Utilisateurs",
     "AnneesScolaires", "Trimestres", "Classes", "AffectationCoursClasse", "Cours",
@@ -30,4 +31,5 @@ __all__ = [
     "EtablissementInfrastructures",
     "Salles", "Seances", "Depenses", "Documents", "Etablissement",
     "ClotureAlertes",
+    "MotDePasseReinitialisation",
 ]

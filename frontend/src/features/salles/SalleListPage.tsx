@@ -13,6 +13,13 @@ import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import { fetchSalles, createSalle, updateSalle, deleteSalle } from './api'
 import SalleFormDrawer from './SalleFormDrawer'
 import type { Salle, SalleCreateInput } from './types'
+
+function messageErreurSalle(e: unknown): string {
+  const status = (e as { response?: { status?: number } } | undefined)?.response?.status
+  if (status === 409) return 'Ce nom de salle est déjà utilisé par une autre salle.'
+  return extractErrorMessage(e)
+}
+
 export default function SalleListPage() {
   const canWrite = true
   const canDelete = true
@@ -27,13 +34,13 @@ export default function SalleListPage() {
   const createMut = useMutation({
     mutationFn: (data: SalleCreateInput) => createSalle(data),
     onSuccess: () => { toast('Salle créée'); qc.invalidateQueries({ queryKey: ['salles'] }); setDrawerOpen(false) },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: (e) => toast(messageErreurSalle(e), 'error'),
   })
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: SalleCreateInput }) => updateSalle(id, data),
     onSuccess: () => { toast('Salle mise à jour'); qc.invalidateQueries({ queryKey: ['salles'] }); setDrawerOpen(false); setEditing(null) },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: (e) => toast(messageErreurSalle(e), 'error'),
   })
 
   const deleteMut = useMutation({

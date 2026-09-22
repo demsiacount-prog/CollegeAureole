@@ -538,3 +538,134 @@ def bulletins_classe_pdf(
 
 def _text_p(text: str, style: ParagraphStyle) -> Paragraph:
     return Paragraph(text, style)
+
+
+# ─── Reçu de paiement ────────────────────────────────────────────────────────
+
+def _montant_fcfa(n: float | None) -> str:
+    return "—" if n is None else f"{n:,.0f} FCFA"
+
+
+def _recu_bandeau(code_paiement: str, le_jour: date) -> list:
+    top = Table([[""]], colWidths=[None])
+    top.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 2.2, _INK)]))
+    bottom = Table([[""]], colWidths=[None])
+    bottom.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, 0), 2.2, _INK)]))
+    sous = _text_p(
+        f"Reçu n° {_assainir(code_paiement, "—")} · {_date_francaise(le_jour)}",
+        ST_TITRE_SUB,
+    )
+    return [
+        Spacer(1, 6),
+        top,
+        Spacer(1, 3),
+        _text_p("REÇU DE PAIEMENT", ST_TITRE),
+        sous,
+        Spacer(1, 3),
+        bottom,
+    ]
+
+
+def _recu_grille(
+    paiement: models.Paiements,
+    inscription: models.Inscriptions | None,
+    eleve: models.Eleves | None,
+    classe: models.Classes | None,
+    echeance: models.Echeances | None,
+    annee_label: str | None,
+) -> Table:
+    def cellule(label: str, valeur: str | None):
+        return [_text_p(label, ST_LABEL), _text_p(valeur or "—", ST_VALUE)]
+
+    nom_eleve = f"{eleve.nom} {eleve.prenom}" if eleve else None
+    classe_libelle = f"{classe.niveau} {classe.nom}" if classe else None
+
+    row1 = [
+        cellule("Reçu n°", paiement.code_paiement),
+        cellule("Date", _date_francaise(paiement.date)),
+        cellule("Mode", paiement.mode),
+        cellule("Montant", _montant_fcfa(paiement.montant)),
+    ]
+    row2 = [
+        cellule("Matricule", inscription.matricule_eleve if inscription else None),
+        cellule("Nom & Prénom", nom_eleve),
+        cellule("Classe", classe_libelle),
+        cellule("Année scolaire", annee_label),
+    ]
+    row3 = [
+        cellule("Inscription", inscription.code_inscription if inscription else None),
+        cellule("Échéance", echeance.type_echeance if echeance else None),
+        cellule("Mois", echeance.mois if echeance else None),
+        cellule("Échéance prévue le", _date_francaise(echeance.date_echeance) if echeance else None),
+    ]
+
+    table = Table(
+        [row1, row2, row3],
+        colWidths=[46.5 * mm] * 4,
+        hAlign="CENTER",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.5, _LINE),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    return table
+
+
+def _recu_totaux(montant_total: float, reste_global: float) -> Table:
+    def item(label: str, valeur: str):
+        return [_text_p(label, ST_SUMMARY_LABEL), _text_p(valeur, ST_SUMMARY_VALUE)]
+
+    table = Table(
+        [
+            [
+                item("Total dû (inscription)", _montant_fcfa(montant_total)),
+                item("Restant à payer", _montant_fcfa(reste_global)),
+            ]
+        ],
+        colWidths=[93 * mm] * 2,
+        hAlign="CENTER",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 1.4, _INK),
+                ("LINEAFTER", (0, 0), (-2, -1), 0.7, _LINE),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    return table
+
+
+def recu_paiement_pdf(
+    paiement: models.Paiements,
+    etab: models.Etablissement | None,
+    *,
+    annee_label: str | None = None,
+    montant_total: float,
+    reste_global: float,
+) -> bytes:
+    """PDF officiel d'un reçu de paiement (une page A4 propre)."""
+    inscription = paiement.inscription
+    eleve = inscription.eleve if inscription else None
+    classe = inscription.classe if inscription else None
+    echeance = paiement.echeance
+
+    histoire: list = []
+    histoire += _en_tete(etab, annee_label)
+    histoire += _recu_bandeau(paiement.code_paiement or "—", paiement.date)
+    histoire += [Spacer(1, 6), _recu_grille(paiement, inscription, eleve, classe, echeance, annee_label)]
+    histoire += [Spacer(1, 8), _recu_totaux(montant_total or 0.0, reste_global or 0.0)]
+    histoire += [Spacer(1, 12), _pied_de_page(etab, paiement.date)]
+    histoire += [Spacer(1, 18), _signatures()]
+    return _document("Reçu de paiement", histoire)

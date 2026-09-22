@@ -4,7 +4,7 @@ from typing import List
 from database import get_db
 import models
 import schemas
-from security import get_current_user
+from security import get_current_user, require_admin
 from periodes import generer_periodes_par_defaut
 from services.protections import verifier_trimestre
 
@@ -12,7 +12,11 @@ router = APIRouter(prefix="/api/trimestres", tags=["Trimestres"], dependencies=[
 
 
 @router.post("/generer", response_model=schemas.TrimestresGenererResponse)
-def generer_periodes_par_defaut_pour_annee(payload: schemas.TrimestresGenererRequest, db: Session = Depends(get_db)):
+def generer_periodes_par_defaut_pour_annee(
+    payload: schemas.TrimestresGenererRequest,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     """Crée le jeu de périodes par défaut (trimestres + compositions) d'une année.
 
     Idempotent : un type déjà présent dans l'année n'est pas dupliqué.
@@ -28,7 +32,11 @@ def generer_periodes_par_defaut_pour_annee(payload: schemas.TrimestresGenererReq
 
 
 @router.post("/", response_model=schemas.TrimestreResponse, status_code=status.HTTP_201_CREATED)
-def create_trimestre(payload: schemas.TrimestreCreate, db: Session = Depends(get_db)):
+def create_trimestre(
+    payload: schemas.TrimestreCreate,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     if not db.query(models.AnneesScolaires).filter(models.AnneesScolaires.id == payload.annee_scolaire_id).first():
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     trimestre = models.Trimestres(**payload.model_dump())
@@ -55,7 +63,11 @@ def get_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{trimestre_id}/verrouiller", response_model=schemas.TrimestreResponse)
-def verrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
+def verrouiller_trimestre(
+    trimestre_id: int,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     """Bloque toute nouvelle saisie/modification de notes pour ce trimestre
     (typiquement une fois les bulletins publiés)."""
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
@@ -68,7 +80,11 @@ def verrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{trimestre_id}/deverrouiller", response_model=schemas.TrimestreResponse)
-def deverrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
+def deverrouiller_trimestre(
+    trimestre_id: int,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
     if not trimestre:
         raise HTTPException(status_code=404, detail="Trimestre introuvable")
@@ -79,7 +95,11 @@ def deverrouiller_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{trimestre_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_trimestre(trimestre_id: int, db: Session = Depends(get_db)):
+def delete_trimestre(
+    trimestre_id: int,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     trimestre = db.query(models.Trimestres).filter(models.Trimestres.id == trimestre_id).first()
     if not trimestre:
         raise HTTPException(status_code=404, detail="Trimestre introuvable")

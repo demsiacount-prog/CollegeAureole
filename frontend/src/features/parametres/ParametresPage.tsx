@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, Power, Lock, CalendarOff,
-  Sparkles, Building2, Download, Users, Warehouse,
+  Sparkles, Building2, Download, Users, Warehouse, Pencil, Files,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -16,10 +16,10 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
-import { scheduleDeleteWithUndo } from '@/lib/undoDelete'
 import {
   fetchAnneesScolaires,
   createAnneeScolaire,
+  updateAnneeScolaire,
   deleteAnneeScolaire,
   activerAnneeScolaire,
   cloturerAnneeScolaire,
@@ -30,15 +30,17 @@ import FicheEtablissementTab from '@/features/etablissement/FicheEtablissementTa
 import InfrastructuresTab from '@/features/etablissement/InfrastructuresTab'
 import ExportTab from '@/features/parametres/ExportTab'
 import UtilisateursTab from '@/features/parametres/UtilisateursTab'
+import GestionDocumentaireTab from '@/features/documents/GestionDocumentaireTab'
 import type { AnneeScolaire, AnneeScolaireCreateInput } from '@/features/annees_scolaires/types'
 
-type Tab = 'fiche' | 'annees' | 'infrastructures' | 'utilisateurs' | 'export'
+type Tab = 'fiche' | 'annees' | 'infrastructures' | 'utilisateurs' | 'documents' | 'export'
 
 const tabs: { id: Tab; label: string; icon: typeof Lock }[] = [
   { id: 'fiche', label: "Fiche établissement", icon: Building2 },
   { id: 'annees', label: 'Années scolaires', icon: CalendarOff },
   { id: 'infrastructures', label: 'Infrastructures', icon: Warehouse },
   { id: 'utilisateurs', label: 'Utilisateurs', icon: Users },
+  { id: 'documents', label: 'Gestion documentaire', icon: Files },
   { id: 'export', label: 'Export des données', icon: Download },
 ]
 
@@ -85,6 +87,7 @@ export default function ParametresPage() {
             {activeTab === 'annees' && <AnneesTab />}
             {activeTab === 'infrastructures' && <InfrastructuresTab />}
             {activeTab === 'utilisateurs' && <UtilisateursTab />}
+            {activeTab === 'documents' && <GestionDocumentaireTab />}
             {activeTab === 'export' && <ExportTab />}
             
           </div>
@@ -112,11 +115,18 @@ function AnneesTab() {
   const { data: annees = [], isLoading, isError } = useQuery({ queryKey: ['annees-scolaires'], queryFn: fetchAnneesScolaires })
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editing, setEditing] = useState<AnneeScolaire | null>(null)
   const [deleting, setDeleting] = useState<AnneeScolaire | null>(null)
 
   const createMut = useMutation({
     mutationFn: (data: AnneeScolaireCreateInput) => createAnneeScolaire(data),
     onSuccess: () => { toast('Année scolaire créée'); qc.invalidateQueries({ queryKey: ['annees-scolaires'] }); setDrawerOpen(false) },
+    onError: (e) => toast(extractErrorMessage(e), 'error'),
+  })
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: AnneeScolaireCreateInput }) => updateAnneeScolaire(id, data),
+    onSuccess: () => { toast('Année scolaire modifiée'); qc.invalidateQueries({ queryKey: ['annees-scolaires'] }); setEditing(null) },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
 
@@ -244,6 +254,18 @@ function AnneesTab() {
                         </Tooltip>
                       )}
                       {!a.cloturee && (
+                        <Tooltip content="Modifier le libellé et les dates">
+                          <Button
+                            variant="icon"
+                            size="icon"
+                            aria-label="Modifier l'année scolaire"
+                            onClick={() => setEditing(a)}
+                          >
+                            <Pencil size={14} strokeWidth={1.75} />
+                          </Button>
+                        </Tooltip>
+                      )}
+                      {!a.cloturee && (
                         <Tooltip content="Supprimer">
                           <Button
                             variant="icon"
@@ -269,19 +291,31 @@ function AnneesTab() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onSubmit={(data) => createMut.mutate(data)}
+        isLoading={createMut.isPending}
+      />
+
+      <AnneeScolaireFormDrawer
+        open={!!editing}
+        annee={editing}
+        onClose={() => setEditing(null)}
+        onSubmit={(data) => {
+          if (editing) updateMut.mutate({ id: editing.id, data })
+        }}
+        isLoading={updateMut.isPending}
       />
 
       <ConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={() => {
-          if (deleting) {
-            setDeleting(null)
-            scheduleDeleteWithUndo(() => deleteMut.mutate(deleting.id), `Année scolaire « ${deleting.libelle} » supprimée.`)
-          }
+          // La suppression n'est confirmée qu'après la réponse du serveur : le
+          // backend refuse en 409 si l'année porte encore des données métier
+          // (le message détaillé est alors affiché par le toast d'erreur).
+          if (deleting) deleteMut.mutate(deleting.id)
         }}
+        isLoading={deleteMut.isPending}
         title="Supprimer cette année scolaire ?"
-        description={`Supprimer "${deleting?.libelle}" supprimera aussi tous les trimestres associés.`}
+        description={`Supprimer "${deleting?.libelle}" supprimera aussi ses trimestres. Si des inscriptions, séances, notes ou bulletins y sont rattachés, la suppression sera refusée.`}
         confirmLabel="Supprimer"
         variant="danger"
       />

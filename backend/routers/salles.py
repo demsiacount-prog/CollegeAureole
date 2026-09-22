@@ -31,6 +31,8 @@ def update_salle(salle_id: int, payload: schemas.SalleCreate, db: Session = Depe
     salle = db.query(models.Salles).filter(models.Salles.id == salle_id).first()
     if not salle:
         raise HTTPException(status_code=404, detail="Salle introuvable")
+    if payload.nom != salle.nom and db.query(models.Salles).filter(models.Salles.nom == payload.nom).first():
+        raise HTTPException(status_code=409, detail="Nom de salle déjà utilisé par une autre salle")
     for key, value in payload.model_dump().items():
         setattr(salle, key, value)
     db.commit()

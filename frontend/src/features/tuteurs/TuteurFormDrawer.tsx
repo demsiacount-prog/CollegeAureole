@@ -75,8 +75,10 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
     const errs = validateFields({
       prenom: required(form.prenom, 'Le prénom'),
       nom: required(form.nom, 'Le nom'),
-      telephone: required(form.telephone, 'Le téléphone') ?? phone(form.telephone),
-      email: required(form.email, "L'e-mail") ?? email(form.email),
+      // Les tuteurs importés peuvent ne pas avoir de coordonnées : le format
+      // n'est validé que lorsqu'une valeur non vide est saisie.
+      telephone: phone(form.telephone),
+      email: email(form.email),
       profession: required(form.profession, 'La profession'),
       adresse: required(form.adresse, "L'adresse"),
     })
@@ -125,7 +127,6 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
             if (errors.telephone) setErrors((prev) => ({ ...prev, telephone: undefined }))
           }}
           placeholder="+223 XX XX XX XX"
-          required
           error={errors.telephone}
         />
         <Input

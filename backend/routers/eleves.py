@@ -2,37 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_
 from typing import List, Optional
-from datetime import date
-from pydantic import BaseModel
 from database import get_db
 import models
 import schemas
 from security import get_current_user
+from schemas.eleves import EleveUpdate
 from services.moyennes import calculer_moyenne_annuelle, calculer_moyennes_par_trimestre, calculer_notes_par_matiere
 
 router = APIRouter(prefix="/api/eleves", tags=["Élèves"], dependencies=[Depends(get_current_user)])
-
-
-class EleveUpdate(BaseModel):
-    nom: Optional[str] = None
-    prenom: Optional[str] = None
-    lieu_de_naissance: Optional[str] = None
-    adresse: Optional[str] = None
-    classe_id: Optional[int] = None
-    statut: Optional[str] = None
-    photo: Optional[str] = None
-    acte_naissance: Optional[bool] = None
-    carnet_sante: Optional[bool] = None
-    numero_acte: Optional[str] = None
-    jugement_suppletif: Optional[str] = None
-    date_acte: Optional[date] = None
-    delivre_par: Optional[str] = None
-    nom_pere: Optional[str] = None
-    prenom_pere: Optional[str] = None
-    fonction_pere: Optional[str] = None
-    nom_mere: Optional[str] = None
-    prenom_mere: Optional[str] = None
-    fonction_mere: Optional[str] = None
 
 
 def _resoudre_annee_inscription(db: Session, annee_scolaire_id: Optional[int]) -> int:

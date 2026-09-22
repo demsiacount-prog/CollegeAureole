@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, Ban, CalendarClock, Check, CheckCircle2, Clock, GraduationCap, Lock, Repeat } from 'lucide-react'
@@ -15,7 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/components/ui/toast'
 import { extractErrorMessage } from '@/lib/api'
 import { executerCloture, fetchClotureAlertes, fetchCloturePreview, resoudreAlerteCloture } from './api'
-import type { ClotureExecuterResponse, EleveCloture, EleveErreurCloture } from './types'
+import type { ClotureBloquantsErreur, ClotureExecuterResponse, EleveCloture, EleveErreurCloture } from './types'
 
 const COMPTEUR_CARDS: { key: keyof import('./types').CompteursPreview; label: string; icon: typeof CheckCircle2 }[] = [
   { key: 'ADMIS_PASSAGE', label: 'Admis — passage', icon: ArrowRight },
@@ -28,6 +29,22 @@ const COMPTEUR_CARDS: { key: keyof import('./types').CompteursPreview; label: st
 const today = new Date()
 const defaultLibelle = `${today.getFullYear()}–${today.getFullYear() + 1}`
 
+/** Extrait le corps structuré de la réponse 409 de `POST /api/cloture/executer`
+ *  (élèves encore en attente) : `{ message, eleves, nb_bloquants }`. */
+function extraireErreurBloquants(e: unknown): ClotureBloquantsErreur | null {
+  if (!axios.isAxiosError(e) || e.response?.status !== 409) return null
+  const data = e.response.data as { detail?: unknown } | undefined
+  const detail = data?.detail
+  if (
+    detail &&
+    typeof detail === 'object' &&
+    Array.isArray((detail as ClotureBloquantsErreur).eleves)
+  ) {
+    return detail as ClotureBloquantsErreur
+  }
+  return null
+}
+
 export default function CloturePage() {
   const qc = useQueryClient()
   const { data: preview, isLoading, isError, error } = useQuery({ queryKey: ['cloture-preview'], queryFn: fetchCloturePreview })
@@ -39,15 +56,24 @@ export default function CloturePage() {
   })
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [rapport, setRapport] = useState<ClotureExecuterResponse | null>(null)
+  const [bloquants, setBloquants] = useState<ClotureBloquantsErreur | null>(null)
 
   const executerMutation = useMutation({
     mutationFn: () => executerCloture(form),
     onSuccess: (data) => {
       setRapport(data)
+      setBloquants(null)
       toast('Année scolaire clôturée avec succès.')
       qc.invalidateQueries()
     },
-    onError: (e) => toast(extractErrorMessage(e), 'error'),
+    onError: (e) => {
+      const bloquants409 = extraireErreurBloquants(e)
+      if (bloquants409) {
+        setBloquants(bloquants409)
+        return
+      }
+      toast(extractErrorMessage(e), 'error')
+    },
   })
 
   const { data: alertesDonnees } = useQuery({ queryKey: ['cloture-alertes'], queryFn: fetchClotureAlertes, retry: false })
@@ -231,6 +257,46 @@ export default function CloturePage() {
         </Card>
       )}
 
+      {bloquants && (
+        <Card className="border-[var(--danger)]/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="size-4 text-[var(--danger)]" />
+              Élèves en attente de décision ({bloquants.nb_bloquants})
+            </CardTitle>
+          </CardHeader>
+          <p className="mb-3 px-4 text-sm text-[var(--ink-dim)]">{bloquants.message}</p>
+          <TableContainer className="rounded-none border-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Matricule</TableHead>
+                  <TableHead>Élève</TableHead>
+                  <TableHead>Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bloquants.eleves.map((e) => (
+                  <TableRow key={e.matricule}>
+                    <TableCell className="font-medium text-[var(--ink)]">
+                      <Link to={`/app/eleves/${e.matricule}`} className="hover:text-[var(--action-bright)]">
+                        {e.matricule}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-[var(--ink)]">
+                      {e.prenom} {e.nom}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone="danger">En attente</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
+
       {preview.total_eleves === 0 ? (
         <div className="py-16">
           <EmptyState message="Aucune inscription pour l'année active — rien à clôturer." />
@@ -348,6 +414,7 @@ export default function CloturePage() {
         onClose={() => setConfirmOpen(false)}
         onConfirm={() => {
           setConfirmOpen(false)
+          setBloquants(null)
           executerMutation.mutate()
         }}
         title="Confirmer la clôture d'année ?"

@@ -40,6 +40,34 @@ class EleveCreate(EleveBase):
     annee_scolaire_id: Optional[int] = None
 
 
+class EleveUpdate(BaseModel):
+    """Modification partielle d'un élève (PUT par matricule).
+
+    Champs facultatifs, validés comme à la création. Le matricule n'est JAMAIS
+    modifiable : il est le numéro d'ordre annuel généré à la création."""
+    nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    prenom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    photo: Optional[str] = None
+    date_de_naissance: Optional[date] = None
+    lieu_de_naissance: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    sexe: Optional[Literal["M", "F"]] = None
+    adresse: Optional[str] = Field(default=None, max_length=300)
+    statut: Optional[Literal["actif", "inactif"]] = None
+    acte_naissance: Optional[bool] = None
+    carnet_sante: Optional[bool] = None
+    numero_acte: Optional[str] = Field(default=None, max_length=100)
+    jugement_suppletif: Optional[str] = Field(default=None, max_length=100)
+    date_acte: Optional[date] = None
+    delivre_par: Optional[str] = Field(default=None, max_length=200)
+    nom_pere: Optional[str] = Field(default=None, max_length=100)
+    prenom_pere: Optional[str] = Field(default=None, max_length=100)
+    fonction_pere: Optional[str] = Field(default=None, max_length=100)
+    nom_mere: Optional[str] = Field(default=None, max_length=100)
+    prenom_mere: Optional[str] = Field(default=None, max_length=100)
+    fonction_mere: Optional[str] = Field(default=None, max_length=100)
+    classe_id: Optional[int] = None
+
+
 class EleveResponse(EleveBase):
     matricule: str
     created_at: datetime

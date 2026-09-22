@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAnneeActive } from '@/features/annees_scolaires/useAnneeActive'
-import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, patchNote, deleteNote, saveNotesBulk } from './api'
+import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
+import { fetchClasses, fetchClasseDetail, fetchTrimestres, fetchExistingNotes, createNote, patchNote, deleteNote, saveNotesBulk, fetchSaisieAutorisee, fetchRegistreNotes } from './api'
 import type { Note, NoteBulkItem } from './api'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
@@ -15,9 +15,11 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/ui/Avatar'
 import { extractErrorMessage } from '@/lib/api'
 import { toast } from '@/components/ui/toast'
-import { Save } from 'lucide-react'
+import { Save, FileText, Lock } from 'lucide-react'
 import { baremeNiveau } from '@/lib/bareme'
 import { estNiveauJardin } from '@/lib/niveaux'
+import { RegistreDocument } from './RegistreDocument'
+import { DocumentPrintModal } from './DocumentPrintModal'
 
 const EMPTY_ARRAY: [] = []
 
@@ -92,7 +94,6 @@ interface StudentRow {
 }
 
 export default function NoteListPage() {
-  const canWrite = true
   const queryClient = useQueryClient()
 
   const [classeId, setClasseId] = useState<number | null>(null)
@@ -102,6 +103,7 @@ export default function NoteListPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [afficherEcartsType, setAfficherEcartsType] = useState(false)
+  const [registreOuvert, setRegistreOuvert] = useState(false)
   const inputRefs = useRef(new Map<string, HTMLInputElement>())
 
   const registerRef = useCallback((key: string, el: HTMLInputElement | null) => {
@@ -131,15 +133,39 @@ export default function NoteListPage() {
   }, [])
 
   const { data: classes = EMPTY_ARRAY } = useQuery({ queryKey: ['classes'], queryFn: fetchClasses })
-  const { data: activeAnnee } = useAnneeActive()
+  const { data: annees = EMPTY_ARRAY } = useQuery({
+    queryKey: ['anneesScolaires'],
+    queryFn: fetchAnneesScolaires,
+  })
 
   const [filterAnnee, setFilterAnnee] = useState('')
-  const activeAnneeId = activeAnnee?.id
+  const activeAnnee = annees.find((a) => a.active)
   useEffect(() => {
-    if (activeAnneeId != null && String(activeAnneeId) !== filterAnnee) {
-      setFilterAnnee(String(activeAnneeId))
+    // Année par défaut : l'année active — mais l'utilisateur reste libre de
+    // consulter des années antérieures (archivées) via le sélecteur.
+    if (activeAnnee && filterAnnee === '') {
+      setFilterAnnee(String(activeAnnee.id))
     }
-  }, [activeAnneeId])
+  }, [activeAnnee, filterAnnee])
+
+  const anneeLibelle = annees.find((a) => String(a.id) === filterAnnee)?.libelle ?? null
+
+  const { data: saisieAutorisee } = useQuery({
+    queryKey: ['notes-saisie-autorisee', filterAnnee],
+    queryFn: () => fetchSaisieAutorisee(filterAnnee ? Number(filterAnnee) : undefined),
+    enabled: !!filterAnnee,
+  })
+
+  // Saisie réellement autorisée : trimestre non verrouillé ET année non clôturée.
+  const trimestreSaisie = useMemo(() => {
+    if (trimestreId == null || !saisieAutorisee) return null
+    return saisieAutorisee.trimestres.find((t) => t.id === trimestreId) ?? null
+  }, [trimestreId, saisieAutorisee])
+  const canWrite =
+    !!saisieAutorisee &&
+    !saisieAutorisee.annee_cloturee &&
+    saisieAutorisee.peut_saisir &&
+    (trimestreId == null || !!trimestreSaisie?.peut_saisir)
 
   const { data: trimestres = EMPTY_ARRAY } = useQuery({
     queryKey: ['trimestres', filterAnnee],
@@ -199,11 +225,14 @@ export default function NoteListPage() {
     return filteredTrimestres.find((t) => t.id === trimestreId)?.nom ?? null
   }, [trimestreId, filteredTrimestres])
 
-  const anneeLibelle = activeAnnee?.libelle ?? null
-
   const { data: existingNotes = EMPTY_ARRAY, isLoading: loadingNotes, isError: erreurNotes } = useQuery({
-    queryKey: ['existing-notes', classeId, coursId, trimestreId],
-    queryFn: () => fetchExistingNotes({ id_classe: classeId!, id_cours: coursId!, id_trimestre: trimestreId! }),
+    queryKey: ['existing-notes', classeId, coursId, trimestreId, filterAnnee],
+    queryFn: () => fetchExistingNotes({
+      id_classe: classeId!,
+      id_cours: coursId!,
+      id_trimestre: trimestreId!,
+      id_annee_scolaire: filterAnnee ? Number(filterAnnee) : undefined,
+    }),
     enabled: classeId != null && coursId != null && trimestreId != null,
   })
 
@@ -291,14 +320,14 @@ export default function NoteListPage() {
           if (row.existingNote) aSupprimer.push(row.existingNote.id)
           continue
         }
-        if (val == null || isNaN(val) || val < 0 || val > bareme) continue
+        if (val != null && (isNaN(val) || val < 0 || val > bareme)) continue
         if (valClasse != null && (isNaN(valClasse) || valClasse < 0 || valClasse > bareme)) continue
 
         items.push({
           ...base,
           id: row.existingNote?.id,
           note: val,
-          note_classe: valClasse ?? undefined,
+          note_classe: valClasse ?? null,
           matricule_eleve: row.matricule,
         })
       }
@@ -309,7 +338,7 @@ export default function NoteListPage() {
     onSuccess: () => {
       setSaveError(null)
       toast('Notes enregistrées.')
-      queryClient.invalidateQueries({ queryKey: ['existing-notes', classeId, coursId, trimestreId] })
+      queryClient.invalidateQueries({ queryKey: ['existing-notes', classeId, coursId, trimestreId, filterAnnee] })
     },
     onError: (err: Error) => {
       setSaveError(extractErrorMessage(err, "Erreur lors de l'enregistrement."))
@@ -369,7 +398,6 @@ export default function NoteListPage() {
         }
         return 'unchanged'
       }
-      if (val == null) return 'unchanged'
 
       if (row.existingNote) {
         return await patchNote(row.existingNote.id, {
@@ -474,7 +502,7 @@ export default function NoteListPage() {
   }, [ready, classeDetail, selectedCours])
 
   useEffect(() => {
-    if (!ready || estJardin) return
+    if (!ready || estJardin || !canWrite) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return
       const k = e.key.toLowerCase()
@@ -498,7 +526,7 @@ export default function NoteListPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [ready, estJardin, hasChanges, mutation, filteredRows, autosaveMutation])
+  }, [ready, estJardin, hasChanges, mutation, filteredRows, autosaveMutation, canWrite])
 
   return (
     <div className="w-full">
@@ -511,6 +539,16 @@ export default function NoteListPage() {
               <p className="mt-1 truncate text-sm text-[var(--ink-dim)]">{headerSubtitle}</p>
             }
           />
+          {ready && !estJardin && classeId != null && coursId != null && filterAnnee && (
+            <Button
+              variant="secondary"
+              onClick={() => setRegistreOuvert(true)}
+              title="Registre de notes de la matière pour l'année sélectionnée (toutes périodes)"
+            >
+              <FileText strokeWidth={1.75} className="size-4" />
+              Registre de notes
+            </Button>
+          )}
           {canWrite && ready && rows.length > 0 && !estJardin && (
             <Button
               variant="primary"
@@ -525,6 +563,26 @@ export default function NoteListPage() {
         </div>
 
         <div className="flex flex-wrap gap-4">
+          <div className="w-48">
+            <Select
+              label="Année"
+              value={filterAnnee}
+              onChange={(e) => {
+                setFilterAnnee(e.target.value)
+                setTrimestreId(null)
+                resetSelections()
+              }}
+              disabled={!annees.length}
+            >
+              <option value="">— Choisir une année —</option>
+              {annees.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.libelle}{a.cloturee ? ' (archivée)' : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
+
           <div className="w-48">
             <Select
               label="Classe"
@@ -581,6 +639,19 @@ export default function NoteListPage() {
             </Select>
           </div>
         </div>
+
+        {saisieAutorisee != null && !canWrite && (
+          <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--action-w)] bg-[var(--action-w)] px-4 py-3 text-sm text-[var(--action)]">
+            <Lock className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+            <p>
+              {saisieAutorisee.annee_cloturee
+                ? `${anneeLibelle ?? "Cette année"} est clôturée : consultation en lecture seule — aucune note ne peut être saisie ni modifiée.`
+                : trimestreSaisie?.verrouille || (trimestreId != null && !trimestreSaisie?.peut_saisir)
+                  ? `La période « ${trimestreNom ?? ''} » est verrouillée : la saisie des notes y est désactivée.`
+                  : 'La saisie des notes est actuellement désactivée pour cette période.'}
+            </p>
+          </div>
+        )}
 
         {estJardin ? (
           <div className="py-16">
@@ -796,6 +867,60 @@ export default function NoteListPage() {
           </>
         )}
       </div>
+
+      {registreOuvert && (
+        <RegistreApercuModal
+          classeId={classeId}
+          coursId={coursId}
+          anneeId={filterAnnee ? Number(filterAnnee) : null}
+          anneeLabel={anneeLibelle}
+          onClose={() => setRegistreOuvert(false)}
+        />
+      )}
     </div>
+  )
+}
+
+function RegistreApercuModal({
+  classeId,
+  coursId,
+  anneeId,
+  anneeLabel,
+  onClose,
+}: {
+  classeId: number | null
+  coursId: number | null
+  anneeId: number | null
+  anneeLabel: string | null
+  onClose: () => void
+}) {
+  const { data: registre, isLoading, isError } = useQuery({
+    queryKey: ['registre-notes', classeId, coursId, anneeId],
+    queryFn: () =>
+      fetchRegistreNotes({
+        classe_id: classeId!,
+        cours_id: coursId!,
+        annee_id: anneeId!,
+      }),
+    enabled: classeId != null && coursId != null && anneeId != null,
+  })
+
+  return (
+    <DocumentPrintModal
+      title="Registre de notes"
+      onClose={onClose}
+    >
+      {isLoading ? (
+        <div className="py-16 text-center text-sm text-[var(--ink-dim)]">
+          Chargement du registre…
+        </div>
+      ) : isError || !registre ? (
+        <div className="py-16 text-center text-sm text-[var(--danger)]">
+          Impossible de charger le registre de notes pour cette matière.
+        </div>
+      ) : (
+        <RegistreDocument registre={registre} anneeLabel={anneeLabel ?? undefined} />
+      )}
+    </DocumentPrintModal>
   )
 }

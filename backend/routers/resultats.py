@@ -30,6 +30,7 @@ class ResultatsClasseResponse(BaseModel):
     compteurs: dict
     eleves: List[EleveResultat]
     annee_cloturee: bool = False  # indique si l'année consultée est clôturée (lecture seule)
+    peut_decider: bool = False  # le front n'a besoin QUE de ce drapeau pour activer/désactiver TOUS les contrôles de modification
 
 
 class DetailRapportAuto(BaseModel):
@@ -126,6 +127,7 @@ def get_resultats_classe(
         compteurs=compteurs,
         eleves=eleves_out,
         annee_cloturee=annee.cloturee,
+        peut_decider=not annee.cloturee,
     )
 
 
@@ -239,7 +241,8 @@ def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, 
     FIX SÉCURITÉ : bloqué sur une inscription d'une année clôturée.
     """
     insc = db.query(models.Inscriptions).options(
-        joinedload(models.Inscriptions.annee_scolaire)
+        joinedload(models.Inscriptions.annee_scolaire),
+        joinedload(models.Inscriptions.classe),
     ).filter(models.Inscriptions.id == inscription_id).first()
     if not insc:
         raise HTTPException(status_code=404, detail="Inscription introuvable")
@@ -251,7 +254,13 @@ def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, 
             detail="Année scolaire clôturée : le statut de passage ne peut plus être modifié.",
         )
 
+    # Bug 8 : un ADMIS en fin de cycle (ex. 9ème année du fondamental) est
+    # automatiquement diplômé — le diplôme suit le statut, jamais le contraire.
+    est_fin_cycle = (
+        insc.classe is not None and niveau_ordre(insc.classe.niveau) == 9
+    )
     insc.statut_passage = payload.statut
+    insc.diplome = payload.statut == "ADMIS" and est_fin_cycle
     db.commit()
     db.refresh(insc)
     return insc

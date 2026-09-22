@@ -9,7 +9,7 @@ from database import get_db
 import magicbytes
 import models
 import schemas
-from security import get_current_user
+from security import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"], dependencies=[Depends(get_current_user)])
 
@@ -29,6 +29,25 @@ _ENTITES = {
     "enseignant": ("matricule_enseignant", models.Enseignants, "matricule"),
     "tuteur": ("code_tuteur", models.Tuteurs, "code_tuteur"),
 }
+
+
+def _est_admin(user: models.Utilisateurs) -> bool:
+    return (user.role or "").strip().upper() == "ADMIN"
+
+
+def _est_sensible(doc: models.Documents) -> bool:
+    """Document de nature médicale : réservé à la lecture des administrateurs.
+
+    Le modèle ne connaît qu'un marqueur fiable : la catégorie Type K
+    « medical ». Les uploads rétro-compat gardent `categorie='autre'` avec un
+    `type_document` libre, impossible à classer de façon fiable ici.
+    """
+    return (doc.categorie or "").strip().lower() == "medical"
+
+
+def _verifier_lecture(user: models.Utilisateurs, doc: models.Documents) -> None:
+    if _est_sensible(doc) and not _est_admin(user):
+        raise HTTPException(status_code=403, detail="Document réservé à l'administrateur")
 
 
 def _nettoyer_filename(filename: str) -> str:
@@ -237,6 +256,7 @@ def _creer_document(
 def lister_documents(
     entite_type: Optional[str] = None,
     entite_id: Optional[str] = None,
+    user: models.Utilisateurs = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Liste globale (§46) ou filtrée par entité via `?entite_type=&entite_id=`."""
@@ -249,6 +269,10 @@ def lister_documents(
         cle = _ENTITES[entite_type][0]
         query = query.filter(getattr(models.Documents, cle) == entite_id)
     docs = query.order_by(models.Documents.uploaded_at.desc(), models.Documents.id.desc()).all()
+
+    # Les documents médicaux ne sont lisibles que par les administrateurs.
+    if not _est_admin(user):
+        docs = [d for d in docs if not _est_sensible(d)]
 
     # Libellés d'entité en une passe (liste globale uniquement).
     eleves, enseignants, tuteurs = {}, {}, {}
@@ -280,6 +304,7 @@ def upload_document(
     nom: Optional[str] = Form(None),
     categorie: str = Form("autre"),
     db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
 ):
     doc = _creer_document(
         db,
@@ -297,6 +322,7 @@ def modifier_document(
     document_id: int,
     payload: schemas.DocumentUpdate,
     db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
 ):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
@@ -313,18 +339,28 @@ def modifier_document(
 
 
 @router.get("/{document_id}/preview")
-def preview_document(document_id: int, db: Session = Depends(get_db)):
+def preview_document(
+    document_id: int,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
+    _verifier_lecture(user, doc)
     return _servir_document(doc, disposition="inline")
 
 
 @router.get("/{document_id}/fichier")
-def telecharger_document(document_id: int, db: Session = Depends(get_db)):
+def telecharger_document(
+    document_id: int,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
+    _verifier_lecture(user, doc)
     return _servir_document(doc, disposition="attachment")
 
 
@@ -358,7 +394,7 @@ def _servir_document(doc: models.Documents, *, disposition: str):
 
 
 # ── Uploads rétro-compat (par entité, champ type_document) ──────────────────
-_UPLOAD = [Depends(get_current_user)]
+_UPLOAD = [Depends(require_admin)]
 
 
 @router.post("/upload", response_model=schemas.DocumentRead, status_code=status.HTTP_201_CREATED, dependencies=_UPLOAD)
@@ -399,50 +435,77 @@ def upload_document_tuteur_legacy(
 
 # ── Récupération par entité (rétro-compat) ───────────────────────────────────
 @router.get("/enseignant/{matricule}", response_model=List[schemas.DocumentRead])
-def lister_documents_enseignant(matricule: str, db: Session = Depends(get_db)):
-    return [
-        _to_read(doc, entite_label=_charger_entite_label(db, doc))
-        for doc in db.query(models.Documents)
+def lister_documents_enseignant(
+    matricule: str,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    docs = (
+        db.query(models.Documents)
         .filter(models.Documents.matricule_enseignant == matricule)
         .order_by(models.Documents.uploaded_at.desc())
         .all()
-    ]
+    )
+    if not _est_admin(user):
+        docs = [d for d in docs if not _est_sensible(d)]
+    return [_to_read(doc, entite_label=_charger_entite_label(db, doc)) for doc in docs]
 
 
 @router.get("/tuteur/{code}", response_model=List[schemas.DocumentRead])
-def lister_documents_tuteur(code: str, db: Session = Depends(get_db)):
-    return [
-        _to_read(doc, entite_label=_charger_entite_label(db, doc))
-        for doc in db.query(models.Documents)
+def lister_documents_tuteur(
+    code: str,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    docs = (
+        db.query(models.Documents)
         .filter(models.Documents.code_tuteur == code)
         .order_by(models.Documents.uploaded_at.desc())
         .all()
-    ]
+    )
+    if not _est_admin(user):
+        docs = [d for d in docs if not _est_sensible(d)]
+    return [_to_read(doc, entite_label=_charger_entite_label(db, doc)) for doc in docs]
 
 
 @router.get("/file/{document_id}")
-def telecharger_document_legacy(document_id: int, db: Session = Depends(get_db)):
+def telecharger_document_legacy(
+    document_id: int,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
+    _verifier_lecture(user, doc)
     return _servir_document(doc, disposition="attachment")
 
 
 # ── Routes par matricule (strictement après /enseignant, /tuteur, /file) ──────
 @router.get("/{matricule}", response_model=List[schemas.DocumentRead])
-def lister_documents_eleve(matricule: str, db: Session = Depends(get_db)):
-    return [
-        _to_read(doc, entite_label=_charger_entite_label(db, doc))
-        for doc in db.query(models.Documents)
+def lister_documents_eleve(
+    matricule: str,
+    user: models.Utilisateurs = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    docs = (
+        db.query(models.Documents)
         .filter(models.Documents.matricule_eleve == matricule)
         .order_by(models.Documents.uploaded_at.desc())
         .all()
-    ]
+    )
+    if not _est_admin(user):
+        docs = [d for d in docs if not _est_sensible(d)]
+    return [_to_read(doc, entite_label=_charger_entite_label(db, doc)) for doc in docs]
 
 
 # ── Suppression ──────────────────────────────────────────────────────────────
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def supprimer_document(document_id: int, db: Session = Depends(get_db)):
+def supprimer_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    _admin: models.Utilisateurs = Depends(require_admin),
+):
     doc = db.query(models.Documents).filter(models.Documents.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")

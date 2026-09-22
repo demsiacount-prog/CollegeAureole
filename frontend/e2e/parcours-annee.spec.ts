@@ -208,12 +208,14 @@ async function pickCombobox(page: Page, value: string) {
     const bulRow = page.locator('tbody tr', { hasText: ROW_REF })
     await expect(bulRow).toBeVisible({ timeout: 15_000 })
     await expect(bulRow).toContainText('8.00 / 10')
-    await expect(bulRow).toContainText('1er')
+    await expect(bulRow).toContainText('Très bien')
     await expect(bulRow).toContainText('Brouillon')
 
+    // Le rang n'est affiché qu'après publication (rangs calculés à la publication).
     await page.getByRole('button', { name: 'Publier', exact: true }).click()
     await expect(page.getByText('1 bulletin(s) publié(s)')).toBeVisible({ timeout: 15_000 })
     await expect(bulRow).toContainText('Publié', { timeout: 15_000 })
+    await expect(bulRow).toContainText('1er', { timeout: 15_000 })
   })
 
   test('consultation du dossier élève : profil, résultats et bulletin', async ({ page }) => {

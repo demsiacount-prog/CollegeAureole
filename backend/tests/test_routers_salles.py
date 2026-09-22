@@ -67,6 +67,25 @@ class TestModification:
         assert resp.json()["nom"] == "A101bis"
         assert resp.json()["capacite"] == 45
 
+    def test_renommer_vers_nom_existant_409(self, client, auth_headers):
+        """Renommer une salle vers le nom d'une autre doit être refusé (409),
+        pas un IntegrityError/500."""
+        _creer_salle(client, auth_headers, nom="A101")
+        autre = _creer_salle(client, auth_headers, nom="A102").json()
+        resp = client.put(
+            f"/api/salles/{autre['id']}",
+            json={"nom": "A101", "capacite": 30},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 409
+        # Conserver son propre nom (modification « neutre ») reste permis.
+        resp = client.put(
+            f"/api/salles/{autre['id']}",
+            json={"nom": "A102", "capacite": 35},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
 
 class TestSuppression:
     def test_supprimer_une_salle(self, client, auth_headers):

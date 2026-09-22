@@ -25,6 +25,8 @@ export interface NavItem {
   label: string
   path: string
   icon: LucideIcon
+  /** Réservé aux administrateurs (masqué pour les autres rôles). */
+  adminOnly?: boolean
 }
 
 export interface NavSection {
@@ -93,8 +95,8 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'salles', label: 'Salles', path: '/app/salles', icon: DoorOpen },
       { id: 'documents', label: 'Documents administratifs', path: '/app/documents', icon: FolderOpen },
-      { id: 'cloture', label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight },
-      { id: 'parametres', label: 'Paramètres', path: '/app/parametres', icon: Settings },
+      { id: 'cloture', label: 'Clôture d\'année', path: '/app/cloture-annee', icon: FlagTriangleRight, adminOnly: true },
+      { id: 'parametres', label: 'Paramètres', path: '/app/parametres', icon: Settings, adminOnly: true },
     ],
   },
 ]
@@ -118,7 +120,22 @@ export function moduleForPath(path: string): ModuleInfo | null {
   return null
 }
 
-/** Flat list de tous les items (pour la Command Palette §40). */
-export function allNavItems(): NavItem[] {
-  return NAV_SECTIONS.flatMap((s) => s.items)
+/** Vrai pour le rôle ADMIN (comparaison insensible à la casse). */
+export function isAdmin(role?: string | null): boolean {
+  return role?.toUpperCase() === 'ADMIN'
+}
+
+/** Navigation filtrée par rôle : les items `adminOnly` sont masqués pour un
+ *  utilisateur non administrateur. Les sections vides sont retirées. */
+export function navSectionsForRole(role?: string | null): NavSection[] {
+  const admin = isAdmin(role)
+  return NAV_SECTIONS.map((s) => ({
+    ...s,
+    items: s.items.filter((i) => admin || !i.adminOnly),
+  })).filter((s) => s.items.length > 0)
+}
+
+/** Flat list des items (pour la Command Palette §40), filtrée par rôle. */
+export function allNavItems(role?: string | null): NavItem[] {
+  return navSectionsForRole(role).flatMap((s) => s.items)
 }

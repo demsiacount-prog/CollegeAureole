@@ -89,6 +89,21 @@ export interface ClotureExecuterResponse {
   rapport: RapportCloture
 }
 
+export interface EleveBloquantCloture {
+  matricule: string
+  nom: string
+  prenom: string
+  statut_passage: string
+}
+
+/** Corps structuré de la réponse 409 de `POST /api/cloture/executer` lorsque
+ *  des élèves sont encore en attente de décision. */
+export interface ClotureBloquantsErreur {
+  message: string
+  eleves: EleveBloquantCloture[]
+  nb_bloquants: number
+}
+
 export interface ClotureAlerte {
   id: number
   id_annee_scolaire: number

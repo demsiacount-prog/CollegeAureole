@@ -22,6 +22,17 @@ class AnneeScolaireCreate(AnneeScolaireBase):
     active: bool = False
 
 
+class AnneeScolaireUpdate(AnneeScolaireBase):
+    """Corps du PUT /api/anneesScolaires/{id}.
+
+    `active` est optionnel : omis (ou null), l'état courant est conservé.
+    Passé à `true`, l'année est activée (les autres sont désactivées).
+    Passé à `false`, seul le refus de désactiver l'année active est possible ;
+    sur une année inactive c'est un no-op.
+    """
+    active: bool | None = None
+
+
 class AnneeScolaireResponse(AnneeScolaireBase):
     id: int
     active: bool

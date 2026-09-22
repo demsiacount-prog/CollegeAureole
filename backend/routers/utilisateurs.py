@@ -88,6 +88,10 @@ def modifier_statut_utilisateur(
         str(utilisateur_id),
     )
     utilisateur.actif = payload.actif
+    if payload.actif:
+        # Réactiver un compte lève également le verrouillage éventuel.
+        utilisateur.tentatives_echouees = 0
+        utilisateur.verrouille_jusqua = None
     db.commit()
     db.refresh(utilisateur)
     return utilisateur
@@ -106,6 +110,9 @@ def reinitialiser_mot_de_passe(
         str(utilisateur_id),
     )
     utilisateur.mot_de_passe = hash_password(payload.nouveau_mot_de_passe)
+    # La réinitialisation par un admin lève le verrouillage (compteur d'échecs, date).
+    utilisateur.tentatives_echouees = 0
+    utilisateur.verrouille_jusqua = None
     db.commit()
     return None
 

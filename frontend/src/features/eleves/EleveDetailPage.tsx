@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { Pencil, GraduationCap, Cake, User, ClipboardList, UserX, FileText, CreditCard, Files } from 'lucide-react'
+import { Pencil, GraduationCap, Cake, User, ClipboardList, UserX, FileText, CreditCard, Files, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Tabs } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { InfoSection, InfoField } from '@/components/ui/InfoGrid'
 import { formatDate, formatMontant, formatMoyenne } from '@/lib/format'
@@ -18,6 +19,7 @@ import { fetchDossierEleve, updateEleve } from './api'
 import { EleveFormDrawer } from './EleveFormDrawer'
 import InscriptionFormDrawer from '@/features/inscriptions/InscriptionFormDrawer'
 import { createInscription } from '@/features/inscriptions/api'
+import { deletePaiement } from '@/features/paiements/api'
 import { DocumentsTab } from '@/features/documents/DocumentsTab'
 import { useDocuments } from '@/features/documents/hooks'
 import type { DossierEleve, InscriptionDetail, AbsenceEleve, BulletinEleve } from './types'
@@ -323,38 +325,78 @@ function BulletinsTab({ bulletins }: { bulletins: BulletinEleve[] }) {
 }
 
 function PaiementsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }) {
+  const qc = useQueryClient()
+  const [deleting, setDeleting] = useState<{ id: number; label: string } | null>(null)
+
+  const deleteMut = useMutation({
+    mutationFn: deletePaiement,
+    onSuccess: () => {
+      toast('Paiement supprimé.')
+      qc.invalidateQueries({ queryKey: ['eleve-dossier'] })
+      setDeleting(null)
+    },
+    onError: (err) => toast(extractErrorMessage(err), 'error'),
+  })
+
   const paiements = inscriptions.flatMap((insc) => insc.paiements)
   if (paiements.length === 0) return <EmptyState message="Aucun paiement enregistré pour cet élève." />
   const sorted = [...paiements].sort((a, b) => b.date.localeCompare(a.date))
   return (
-    <TableContainer>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-left">Code</TableHead>
-            <TableHead className="text-right">Montant</TableHead>
-            <TableHead className="text-right">Mode</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((p) => (
-            <TableRow key={p.id}>
-              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
-                {formatDate(p.date)}
-              </TableCell>
-              <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
-                {p.code_paiement ?? '—'}
-              </TableCell>
-              <TableCell className="text-right font-medium text-[var(--ink)]">
-                {formatMontant(p.montant)}
-              </TableCell>
-              <TableCell className="text-right text-[var(--ink-dim)]">{p.mode ?? '—'}</TableCell>
+    <>
+      <TableContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-left">Code</TableHead>
+              <TableHead className="text-right">Montant</TableHead>
+              <TableHead className="text-right">Mode</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
+                  {formatDate(p.date)}
+                </TableCell>
+                <TableCell className="font-[var(--font-mono)] text-[11.5px] text-[var(--ink-dim)]">
+                  {p.code_paiement ?? '—'}
+                </TableCell>
+                <TableCell className="text-right font-medium text-[var(--ink)]">
+                  {formatMontant(p.montant)}
+                </TableCell>
+                <TableCell className="text-right text-[var(--ink-dim)]">{p.mode ?? '—'}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="icon"
+                    tone="danger"
+                    size="icon"
+                    onClick={() => setDeleting({ id: p.id, label: `${formatDate(p.date)} — ${formatMontant(p.montant)}` })}
+                    aria-label="Supprimer ce paiement"
+                  >
+                    <Trash2 strokeWidth={1.75} className="size-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          if (deleting) deleteMut.mutate(deleting.id)
+        }}
+        title="Supprimer ce paiement ?"
+        description={`Êtes-vous sûr de vouloir supprimer le paiement ${deleting?.label} ? Un trop-perçu éventuel sera recalculé en conséquence.`}
+        confirmLabel="Supprimer"
+        variant="danger"
+        isLoading={deleteMut.isPending}
+      />
+    </>
   )
 }
 
@@ -389,9 +431,7 @@ function InscriptionsTab({ inscriptions }: { inscriptions: InscriptionDetail[] }
             <Stat label="Absences" value={String(insc.nb_absences)} />
             <Stat label="Montant payé" value={formatMontant(insc.montant_paye)} />
             <Stat label="Reste à payer" value={formatMontant(insc.reste_a_payer)} />
-            {insc.credit_disponible > 0 && (
-              <Stat label="Crédit disponible" value={formatMontant(insc.credit_disponible)} />
-            )}
+            <Stat label="Crédit disponible (trop-perçu)" value={formatMontant(insc.credit_disponible)} />
           </div>
         </Card>
       )

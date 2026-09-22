@@ -13,7 +13,7 @@ export interface Bulletin {
   matricule_eleve: string
   id_trimestre: number
   id_classe: number
-  moyenne_generale: number
+  moyenne_generale: number | null
   rang: number | null
   appreciation: string | null
   statut: 'BROUILLON' | 'PUBLIE'
@@ -61,6 +61,18 @@ export interface BulletinGenerateClasseInput {
 export interface BulletinPublierInput {
   id_classe: number
   id_trimestre: number
+}
+
+export interface BulletinErreurGenerer {
+  matricule_eleve: string
+  motif: string
+}
+
+export interface BulletinGenerationClasse {
+  bulletins: Bulletin[]
+  erreurs: BulletinErreurGenerer[]
+  nb_succes: number
+  nb_erreurs: number
 }
 
 export interface BulletinAnnuelLigne {

@@ -38,6 +38,14 @@ class SeanceUpdate(BaseModel):
     heure_debut: Optional[time] = None
     heure_fin: Optional[time] = None
 
+    @model_validator(mode="after")
+    def verifier_horaires(self):
+        # Mise à jour partielle : on ne se prononce que si les deux bornes sont
+        # fournies, pour laisser l'endpoint fusionner champs modifiés + existants.
+        if self.heure_debut is not None and self.heure_fin is not None and self.heure_fin <= self.heure_debut:
+            raise ValueError("Heure de fin invalide")
+        return self
+
 
 class SeanceResponse(SeanceBase):
     id: int

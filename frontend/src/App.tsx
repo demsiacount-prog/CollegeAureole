@@ -5,10 +5,14 @@ import { AuthProvider } from '@/auth/AuthContext'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { ServerGate } from '@/components/ServerGate'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
+import { AdminRoute } from '@/auth/AdminRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import { LoginPage } from '@/pages/LoginPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { ChangePasswordPage } from '@/pages/ChangePasswordPage'
 import SetupWizard from '@/pages/SetupWizard'
 import { NotFoundPage } from '@/pages/StatusPages'
 import { api } from '@/lib/api'
@@ -29,6 +33,7 @@ const loadSeanceList = () => import('@/features/seances/SeanceListPage')
 const loadBulletinList = () => import('@/features/bulletins/BulletinListPage')
 const loadBulletinDetail = () => import('@/features/bulletins/BulletinDetailPage')
 const loadPaiementList = () => import('@/features/paiements/PaiementListPage')
+const loadEcheancier = () => import('@/features/paiements/EcheancierPage')
 const loadDepenseList = () => import('@/features/depenses/DepenseListPage')
 const loadParametres = () => import('@/features/parametres/ParametresPage')
 const loadResultatList = () => import('@/features/resultats/ResultatListPage')
@@ -52,6 +57,7 @@ const SeanceListPage = lazy(loadSeanceList)
 const BulletinListPage = lazy(loadBulletinList)
 const BulletinDetailPage = lazy(loadBulletinDetail)
 const PaiementListPage = lazy(loadPaiementList)
+const EcheancierPage = lazy(loadEcheancier)
 const DepenseListPage = lazy(loadDepenseList)
 const ParametresPage = lazy(loadParametres)
 const ResultatListPage = lazy(loadResultatList)
@@ -105,6 +111,8 @@ export default function App() {
           <ToastContainer />
           <Routes>
             <Route path="/connexion" element={<LoginPage />} />
+            <Route path="/connexion/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
+            <Route path="/reinitialiser" element={<ResetPasswordPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/app" element={<AppLayout />}>
@@ -130,11 +138,14 @@ export default function App() {
                 <Route path="resultats" element={<SuspenseRoute><ResultatListPage /></SuspenseRoute>} />
 
                 <Route path="paiements" element={<SuspenseRoute><PaiementListPage /></SuspenseRoute>} />
+                <Route path="paiements/echeances/:idInscription" element={<SuspenseRoute><EcheancierPage /></SuspenseRoute>} />
                 <Route path="depenses" element={<SuspenseRoute><DepenseListPage /></SuspenseRoute>} />
+                <Route path="mot-de-passe" element={<ChangePasswordPage />} />
 
-                <Route path="parametres" element={<SuspenseRoute><ParametresPage /></SuspenseRoute>} />
-
-                <Route path="cloture-annee" element={<SuspenseRoute><CloturePage /></SuspenseRoute>} />
+                <Route element={<AdminRoute />}>
+                  <Route path="parametres" element={<SuspenseRoute><ParametresPage /></SuspenseRoute>} />
+                  <Route path="cloture-annee" element={<SuspenseRoute><CloturePage /></SuspenseRoute>} />
+                </Route>
               </Route>
             </Route>
 

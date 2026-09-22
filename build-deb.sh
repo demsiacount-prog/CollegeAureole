@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_SRC="$SCRIPT_DIR/backend"
 BUILD_DIR="/tmp/college-aureole-deb"
+VERSION="${APP_VERSION:-$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "1.0.0")}"
 PKG_DIR="$BUILD_DIR/opt/college-aureole/backend"
 
 echo ">> Construction du .deb College Aureole..."
@@ -29,7 +30,7 @@ python3 -m venv "$PKG_DIR/venv"
 # Fichiers DEBIAN
 cat > "$BUILD_DIR/DEBIAN/control" <<CTRL
 Package: college-aureole-serveur
-Version: 1.0.0
+Version: $VERSION
 Architecture: amd64
 Maintainer: College Aureole <contact@college-aureole.local>
 Depends: python3, python3-venv, python3-pip, postgresql, postgresql-client
@@ -49,6 +50,13 @@ DB_NAME="collegeaureole"
 DB_USER="collegeaureole"
 
 log() { echo "[college-aureole] $1"; }
+
+# ── 0. Détection mise à jour (préserver .env et uploads existants) ──
+IS_UPGRADE=false
+if [ "$1" = "configure" ] && [ -f "$ENV_FILE" ]; then
+    IS_UPGRADE=true
+    log "Mise à jour détectée. Fichier .env et uploads existants conservés."
+fi
 
 # ── 1. Utilisateur dedie ──
 if ! getent group college-aureole >/dev/null 2>&1; then
@@ -85,7 +93,7 @@ if command -v pg_config >/dev/null 2>&1; then
 fi
 
 # ── 6. Fichier .env ──
-if [ ! -f "$ENV_FILE" ]; then
+if [ ! -f "$ENV_FILE" ] && [ "$IS_UPGRADE" = "false" ]; then
     JWT_SECRET=$(openssl rand -hex 32)
     DB_PASS="college_$(openssl rand -hex 6)"
     cat > "$ENV_FILE" <<ENVEOF
@@ -204,8 +212,9 @@ chmod -R go=rX "$BUILD_DIR/opt" "$BUILD_DIR/etc"
 
 # Construire le .deb
 echo ">> Construction du .deb..."
-dpkg-deb --root-owner-group --build "$BUILD_DIR" "$SCRIPT_DIR/dist/college-aureole-serveur_1.0.0_amd64.deb"
+ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
+dpkg-deb --root-owner-group --build "$BUILD_DIR" "$SCRIPT_DIR/dist/college-aureole-serveur_${VERSION}_${ARCH}.deb"
 
 echo ""
-echo ">> .deb cree : $SCRIPT_DIR/dist/college-aureole-serveur_1.0.0_amd64.deb"
-echo ">> Installer : sudo dpkg -i $SCRIPT_DIR/dist/college-aureole-serveur_1.0.0_amd64.deb"
+echo ">> .deb créé : $SCRIPT_DIR/dist/college-aureole-serveur_${VERSION}_${ARCH}.deb"
+echo ">> Installer : sudo dpkg -i $SCRIPT_DIR/dist/college-aureole-serveur_${VERSION}_${ARCH}.deb"

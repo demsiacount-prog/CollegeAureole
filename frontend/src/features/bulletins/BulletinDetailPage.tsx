@@ -103,7 +103,7 @@ export default function BulletinDetailPage() {
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
               <span className="text-3xl font-medium text-[var(--ink)]">{formatMoyenne(bulletin.moyenne_generale, bareme)}</span>
-              <Badge tone={getMoyenneTone(bulletin.moyenne_generale, bareme)}>
+              <Badge tone={bulletin.moyenne_generale != null ? getMoyenneTone(bulletin.moyenne_generale, bareme) : 'neutral'}>
                 {bulletin.moyenne_generale != null ? appreciation(bulletin.moyenne_generale, bareme) : '—'}
               </Badge>
             </div>

@@ -4,6 +4,7 @@ from typing import List
 from database import get_db
 import models
 import schemas
+from schemas.annees_scolaires import AnneeScolaireUpdate
 from security import get_current_user, require_admin
 from periodes import generer_periodes_par_defaut
 from services.protections import verifier_annee_scolaire
@@ -54,7 +55,7 @@ def get_annee_scolaire(annee_id: int, db: Session = Depends(get_db)):
 @router.put("/{annee_id}", response_model=schemas.AnneeScolaireResponse)
 def update_annee_scolaire(
     annee_id: int,
-    payload: schemas.AnneeScolaireCreate,
+    payload: AnneeScolaireUpdate,
     db: Session = Depends(get_db),
     _admin: models.Utilisateurs = Depends(require_admin),
 ):
@@ -69,9 +70,31 @@ def update_annee_scolaire(
     ).first()
     if doublon:
         raise HTTPException(status_code=400, detail="Année scolaire déjà existante")
-    if payload.active and not annee.active:
-        db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
-    for key, value in payload.model_dump().items():
+
+    # Pas de chevauchement incohérent avec une autre année scolaire.
+    conflit = db.query(models.AnneesScolaires).filter(
+        models.AnneesScolaires.id != annee_id,
+        models.AnneesScolaires.date_debut <= payload.date_fin,
+        models.AnneesScolaires.date_fin >= payload.date_debut,
+    ).first()
+    if conflit:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Période chevauchante avec l'année scolaire « {conflit.libelle} » "
+                f"({conflit.date_debut} → {conflit.date_fin})"
+            ),
+        )
+
+    donnees = payload.model_dump(exclude_unset=True)
+    if "active" in donnees:
+        if donnees["active"] is True and not annee.active:
+            # Activation : les autres années passent inactives, cette année devient active.
+            db.query(models.AnneesScolaires).update({models.AnneesScolaires.active: False})
+        elif donnees["active"] is False and annee.active:
+            # Ne pas casser l'année active : la désactivation passe par /activer ou /cloturer.
+            raise HTTPException(status_code=409, detail="Impossible de désactiver l'année scolaire active")
+    for key, value in donnees.items():
         setattr(annee, key, value)
     db.commit()
     db.refresh(annee)

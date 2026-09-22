@@ -2,18 +2,20 @@ import { api } from '@/lib/api'
 import type {
   Bulletin, BulletinDetailFull, BulletinAnnuel,
   BulletinGenerateClasseInput, BulletinPublierInput,
+  BulletinGenerationClasse, BulletinErreurGenerer,
 } from './types'
 
 export type {
   Bulletin, BulletinDetailFull, BulletinAnnuel,
   BulletinGenerateClasseInput, BulletinPublierInput,
+  BulletinGenerationClasse, BulletinErreurGenerer,
 }
 
 export async function fetchBulletins(params?: {
   id_classe?: number
   id_trimestre?: number
   matricule_eleve?: string
-  annee_id?: number
+  id_annee_scolaire?: number
 }): Promise<Bulletin[]> {
   const res = await api.get<Bulletin[]>('/api/bulletins/', { params: { ...params, limit: 500 } })
   return res.data
@@ -24,8 +26,8 @@ export async function fetchBulletinDetail(id: number): Promise<BulletinDetailFul
   return res.data
 }
 
-export async function genererBulletinClasse(body: BulletinGenerateClasseInput): Promise<Bulletin[]> {
-  const res = await api.post<Bulletin[]>('/api/bulletins/generer-classe', body)
+export async function genererBulletinClasse(body: BulletinGenerateClasseInput): Promise<BulletinGenerationClasse> {
+  const res = await api.post<BulletinGenerationClasse>('/api/bulletins/generer-classe', body)
   return res.data
 }
 

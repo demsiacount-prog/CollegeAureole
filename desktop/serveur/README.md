@@ -44,9 +44,10 @@ L'utilisateur final lance simplement l'application : elle se connecte
    - (re)génère le fichier `.env` (connexion base + clé JWT aléatoire),
    - crée la règle de pare-feu pour le port choisi,
    - installe et démarre le **service Windows** « College Aureole - Serveur »
-     (avec dépendance sur le service PostgreSQL, redémarrage auto si la base
-     n'est pas encore prête),
-   - installe le **client** + un raccourci « College Aureole » sur le Bureau,
+     (mode Manuel, dépendance sur le service PostgreSQL, redémarrage auto si la
+     base n'est pas encore prête),
+   - installe le **client**, les deux **fichiers du lanceur** et le raccourci
+     « College Aureole » sur le Bureau,
    - vérifie le démarrage (`/api/health`) et affiche l'adresse finale.
 3. **Vérification** : ouvrir
    `http://localhost:<port>/api/health` → doit répondre
@@ -54,8 +55,23 @@ L'utilisateur final lance simplement l'application : elle se connecte
 
 ## Utilisation (rôle utilisateur final)
 
-Double-cliquer sur le raccourci « College Aureole » sur le Bureau : le serveur
-local est détecté automatiquement. Aucune configuration requise.
+Double-cliquer sur le raccourci « College Aureole » : rien ne tourne au boot,
+c'est le **lanceur** qui démarre alors :
+
+1. le **service PostgreSQL** (mode Manuel),
+2. le **service** « College Aureole - Serveur » (mode Manuel),
+3. attend que `/api/health` réponde (max ~20 s),
+4. ouvre l'application.
+
+> Note : démarrer un service requiert les droits administrateur. Si le compte
+> utilisé n'est pas administrateur, clic droit sur le raccourci →
+> « Exécuter en tant qu'administrateur ».
+>
+> Pour que **PostgreSQL** lui aussi ne démarre qu'au double-clic (et non au
+> boot), passer son service en Manuel : `services.msc` →
+> service `postgresql-x64-16` → Propriétés → Démarrage : Manuel. Le lanceur
+> le démarrera à la demande (et le service College Aureole, dont il dépend
+> via WinSW, le démarrera aussi automatiquement).
 
 ## Mises à jour
 

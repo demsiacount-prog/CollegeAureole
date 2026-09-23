@@ -11,8 +11,10 @@ installé à côté par l'installeur NSIS (%BASE% = répertoire du service).
   <executable>%BASE%\college-aureole-serveur.exe</executable>
   <workingdirectory>%BASE%</workingdirectory>
 
-  <startmode>Automatic</startmode>
-  <delayedautostart>true</delayedautostart>
+  <!-- Mode Manuel : le lanceur (raccourci Bureau) demarre le service a la
+       demande. La base (PostgreSQL) est aussi en mode Manuel et est demarree
+       par le lanceur avant ce service. -->
+  <startmode>Manual</startmode>
 
   <!-- Redémarre automatiquement en cas de crash (10 s puis 60 s) -->
   <onfailure action="restart" delay="10 sec"/>

@@ -10,6 +10,11 @@
 ; Prérequis : PostgreSQL installé ET configuré AVANT l'installation (rôle +
 ; base `collegeaureole` créés). L'installeur vérifie la connexion en pré-vol.
 ;
+; Services (PostgreSQL + serveur) en mode Manuel : rien ne démarre au boot.
+; Le raccourci « College Aureole » déclenche le lanceur (VBS → PowerShell
+; masqué) qui démarre la base et le service, attend /api/health puis ouvre
+; le client.
+;
 ; Build :  makensis tout-en-un.nsi
 ;
 ; Flow :
@@ -18,8 +23,8 @@
 ;   3. Page PostgreSQL (utilisateur + mot de passe)
 ;   4. Dossier d'installation
 ;   5. Vérification pré-vol de la connexion à la base `collegeaureole`
-;   6. Serveur (service WinSW)
-;   7. Client : copie de l'exécutable portable + raccourci Bureau/Menu
+;   6. Serveur (service WinSW, dépendance PostgreSQL, démarrage auto différé)
+;   7. Client : copie de l'exécutable portable + lanceur + raccourcis
 ;   8. Vérification finale (healthcheck HTTP + adresse)
 ;   9. Fin
 ; ─────────────────────────────────────────────────────────────────────────────
@@ -206,6 +211,11 @@ Section "Serveur" SectionServeur
   File "paquetage\college-aureole-service.exe"
   File "paquetage\college-aureole-serveur.xml"
 
+  ; Lanceur au double-clic : démarre PostgreSQL + le service serveur puis
+  ; lance le client (services en mode Manuel, rien ne tourne au boot).
+  File "lanceur-college-aureole.ps1"
+  File "demarrer-college-aureole.vbs"
+
   ; WinSW exige que le fichier de configuration XML porte EXACTEMENT le même
   ; nom de base que l'exécutable du service (college-aureole-service.exe →
   ; college-aureole-service.xml). Le fichier livré s'appelle
@@ -273,10 +283,13 @@ Section "Client" SectionClient
     Abort
   ${EndIf}
 
-  ; Raccourci Bureau + Menu Démarrer
+  ; Raccourci Bureau + Menu Démarrer → le lanceur VBS (démarre PostgreSQL et
+  ; le serveur si besoin, puis ouvre le client). Icône = celle du client.
   CreateDirectory "$SMPROGRAMS\College Aureole"
-  CreateShortcut "$DESKTOP\College Aureole.lnk" "$INSTDIR\client\College Aureole.exe"
-  CreateShortcut "$SMPROGRAMS\College Aureole\College Aureole.lnk" "$INSTDIR\client\College Aureole.exe"
+  CreateShortcut "$DESKTOP\College Aureole.lnk" \
+    "$SYSDIR\wscript.exe" '"$INSTDIR\demarrer-college-aureole.vbs"' "$INSTDIR\client\College Aureole.exe" 0
+  CreateShortcut "$SMPROGRAMS\College Aureole\College Aureole.lnk" \
+    "$SYSDIR\wscript.exe" '"$INSTDIR\demarrer-college-aureole.vbs"' "$INSTDIR\client\College Aureole.exe" 0
 SectionEnd
 
 ; ------------------------------------------------------------
@@ -425,6 +438,8 @@ Section "Uninstall"
   Delete "$INSTDIR\college-aureole-service.exe"
   Delete "$INSTDIR\college-aureole-service.xml"
   Delete "$INSTDIR\.env"
+  Delete "$INSTDIR\lanceur-college-aureole.ps1"
+  Delete "$INSTDIR\demarrer-college-aureole.vbs"
   RMDir /r "$INSTDIR\uploads"
 
   ; Client + raccourcis

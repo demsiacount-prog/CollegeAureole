@@ -332,11 +332,8 @@ export default function SetupWizard() {
     <div className="min-h-screen bg-[var(--base)] text-[var(--ink)]">
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* ── Brand panel ─────────────────────────────────────────── */}
-        <section className="relative hidden flex-col justify-between overflow-hidden border-r border-[var(--border)] bg-gradient-to-br from-[var(--surface)] via-[var(--base)] to-[var(--base)] p-12 lg:flex">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[var(--mod-res)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[var(--mod-res)]/10 blur-3xl" />
-
-          <div className="relative flex items-center gap-3">
+        <section className="hidden flex-col justify-between border-r border-[var(--border)] bg-[var(--base)] p-12 lg:flex">
+          <div className="flex items-center gap-3">
             {etLogo && (
               <img
                 src={urlAbsolue(etLogo)}
@@ -345,7 +342,7 @@ export default function SetupWizard() {
               />
             ) }
             <div>
-              <p className="text-xl font-semibold text-[var(--halo)]">
+              <p className="font-[var(--font-serif)] text-xl font-semibold text-[var(--halo)]">
                 {etNom.trim()}
               </p>
               <p className="text-xs text-[var(--ink-dim)]">
@@ -354,8 +351,8 @@ export default function SetupWizard() {
             </div>
           </div>
 
-          <div className="relative">
-            <h1 className="mb-4 max-w-md text-4xl font-semibold leading-tight tracking-tight">
+          <div>
+            <h1 className="mb-4 max-w-md font-[var(--font-serif)] text-3xl font-semibold leading-tight">
               Prêt à piloter votre établissement&nbsp;?
             </h1>
             <p className="max-w-md text-sm leading-relaxed text-[var(--ink-dim)]">
@@ -365,7 +362,7 @@ export default function SetupWizard() {
             </p>
           </div>
 
-          <p className="relative text-xs text-[var(--ink-faint)]">
+          <p className="text-xs text-[var(--ink-faint)]">
             © {new Date().getFullYear()} — Tous droits réservés.
           </p>
         </section>
@@ -387,7 +384,7 @@ export default function SetupWizard() {
                 </span>
               )}
               <div>
-                <p className="text-base font-semibold text-[var(--halo)]">
+                <p className="font-[var(--font-serif)] text-base font-semibold text-[var(--halo)]">
                   {etNom.trim()}
                 </p>
                 <p className="text-xs text-[var(--ink-dim)]">
@@ -407,7 +404,7 @@ export default function SetupWizard() {
                 <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success)] text-white">
                   <CheckCircle2 className="size-7" />
                 </span>
-                <h2 className="text-xl font-semibold text-[var(--ink)]">
+                <h2 className="font-[var(--font-serif)] text-xl font-semibold text-[var(--ink)]">
                   Déjà configuré
                 </h2>
                 <p className="mt-1 text-sm text-[var(--ink-dim)]">
@@ -432,7 +429,7 @@ export default function SetupWizard() {
                     <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger)] text-white">
                       <XCircle className="size-7" />
                     </span>
-                    <h2 className="text-xl font-semibold text-[var(--ink)]">
+                    <h2 className="font-[var(--font-serif)] text-xl font-semibold text-[var(--ink)]">
                       Échec de l’initialisation
                     </h2>
                     <p className="mt-2 text-sm text-[var(--ink-dim)]">
@@ -456,7 +453,7 @@ export default function SetupWizard() {
                     <span className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success)] text-white">
                       <CheckCircle2 className="size-7" />
                     </span>
-                    <h2 className="text-xl font-semibold text-[var(--ink)]">
+                    <h2 className="font-[var(--font-serif)] text-xl font-semibold text-[var(--ink)]">
                       Initialisation terminée
                     </h2>
                     <p className="mt-2 text-sm text-[var(--ink-dim)]">
@@ -489,7 +486,7 @@ export default function SetupWizard() {
                         <Loader2 className="size-8 animate-spin text-[var(--action)]" />
                       </span>
                     </div>
-                    <h2 className="text-xl font-semibold text-[var(--ink)]">
+                    <h2 className="font-[var(--font-serif)] text-xl font-semibold text-[var(--ink)]">
                       Initialisation en cours
                     </h2>
                     <p className="mt-2 min-h-5 text-sm text-[var(--ink-dim)]">
@@ -514,10 +511,10 @@ export default function SetupWizard() {
                 <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-card)]">
                   <div className="mb-5 flex items-start justify-between">
                     <div>
-                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--action-w)] text-[var(--action)]">
+                      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--action)] text-white">
                         <GraduationCap className="h-4 w-4" />
                       </div>
-                      <h2 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+                      <h2 className="font-[var(--font-serif)] text-2xl font-semibold tracking-tight text-[var(--ink)]">
                         {formStep === 1 && 'Configuration initiale'}
                         {formStep === 2 && 'Compte administrateur'}
                         {formStep === 3 && 'Année scolaire'}
@@ -782,7 +779,7 @@ export default function SetupWizard() {
                         />
 
                         <div className="flex flex-col gap-1.5">
-                          <label htmlFor="setup-password" className="text-sm font-medium text-[var(--ink-dim)]">
+                          <label htmlFor="setup-password" className="text-sm font-medium text-[var(--ink)]">
                             Mot de passe
                           </label>
                           <div className="relative">
@@ -832,7 +829,7 @@ export default function SetupWizard() {
                         >
                         <div className="grid grid-cols-2 gap-3">
                           <div className="flex flex-col gap-1.5">
-                            <label htmlFor="date-debut" className="text-sm font-medium text-[var(--ink-dim)]">
+                            <label htmlFor="date-debut" className="text-sm font-medium text-[var(--ink)]">
                               Rentrée
                             </label>
                             <input
@@ -853,7 +850,7 @@ export default function SetupWizard() {
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5">
-                            <label htmlFor="date-fin" className="text-sm font-medium text-[var(--ink-dim)]">
+                            <label htmlFor="date-fin" className="text-sm font-medium text-[var(--ink)]">
                               Fin d’année
                             </label>
                             <input

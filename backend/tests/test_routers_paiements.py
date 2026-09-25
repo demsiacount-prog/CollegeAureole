@@ -216,9 +216,11 @@ class TestTropPerçuTraçable:
         stats = client.get("/api/paiements/stats", headers=auth_headers).json()
         assert stats["total_encaisse"] == 13000.0
 
-    def test_modifier_paiement_echeance_soldee_excedent_en_credit(self, client, auth_headers, db_session):
-        """Augmenter un paiement au-delà du montant_du n'écrase pas l'excédent :
-        il est versé au crédit disponible."""
+    def test_modifier_paiement_depassant_la_cap_refuse(self, client, auth_headers, db_session):
+        """Augmenter un paiement au-delà du montant_du est refusé : l'excédent
+        doit être enregistré comme un versement sans échéance (crédit), jamais
+        scellé dans un paiement plafonné qui corromprait le crédit à sa
+        suppression."""
         _, _, _, inscription = _seed_base(db_session)
         ech = _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
         db_session.commit()
@@ -232,17 +234,70 @@ class TestTropPerçuTraçable:
             models.Paiements.id_echeance == ech.id,
         ).first()
         resp = client.put(f"/api/paiements/{paiement.id}", json={"montant": 15000}, headers=auth_headers)
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["montant"] == 15000.0
+        assert resp.status_code == 400
 
         db_session.expire_all()
         ech = db_session.get(models.Echeances, ech.id)
-        assert ech.montant_paye == 10000.0  # plafonné à montant_du
+        assert ech.montant_paye == 10000.0
         assert ech.statut == "SOLDE"
         inscription = db_session.get(models.Inscriptions, inscription.id)
-        assert inscription.credit_disponible == 5000.0  # l'excédent n'est pas perdu
+        assert inscription.credit_disponible == 0.0  # aucun surplus créé
         stats = client.get("/api/paiements/stats", headers=auth_headers).json()
-        assert stats["total_encaisse"] == 15000.0
+        assert stats["total_encaisse"] == 10000.0
+
+    def test_suppression_trop_percu_consomme_refuse(self, client, auth_headers, db_session):
+        """Supprimer un trop-perçu déjà consommé (crédit utilisé sur des
+        échéances) est refusé au lieu de silencieusement casser le total."""
+        _, _, _, inscription = _seed_base(db_session)
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 15000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert inscription.credit_disponible == 5000.0
+        # Le crédit (5000) + 3000 d'espèces couvrent le 2e mois → crédit à 0.
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Novembre")
+        db_session.commit()
+        resp = client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 3000,
+            "date": "2024-10-15", "mode": "ESPECES",
+        }, headers=auth_headers)
+        assert resp.status_code == 201
+        assert resp.json()["credit_disponible"] == 0.0
+
+        trop_percu = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance.is_(None),
+        ).first()
+        assert trop_percu is not None
+        resp = client.delete(f"/api/paiements/{trop_percu.id}", headers=auth_headers)
+        assert resp.status_code == 400
+
+    def test_modification_trop_percu_consomme_refuse(self, client, auth_headers, db_session):
+        """Réduire un trop-perçu déjà consommé dont le crédit est épuisé est
+        refusé (pas de clamp silencieux qui ferait perdre de l'argent)."""
+        _, _, _, inscription = _seed_base(db_session)
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Octobre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 15000,
+            "date": "2024-10-05", "mode": "ESPECES",
+        }, headers=auth_headers)
+        _echeance(db_session, inscription, "EN_ATTENTE", 10000, 0, mois="Novembre")
+        db_session.commit()
+        client.post("/api/paiements/", json={
+            "id_inscription": inscription.id, "montant": 3000,
+            "date": "2024-10-15", "mode": "ESPECES",
+        }, headers=auth_headers)
+
+        trop_percu = db_session.query(models.Paiements).filter(
+            models.Paiements.id_inscription == inscription.id,
+            models.Paiements.id_echeance.is_(None),
+        ).first()
+        assert trop_percu is not None
+        resp = client.put(f"/api/paiements/{trop_percu.id}", json={"montant": 1000}, headers=auth_headers)
+        assert resp.status_code == 400
 
 
 class TestEcheancesReportées:
@@ -336,3 +391,85 @@ class TestRecuPaiement:
     def test_recu_404_inconnu(self, client, auth_headers):
         resp = client.get("/api/paiements/999999/recu", headers=auth_headers)
         assert resp.status_code == 404
+
+
+class TestRelances:
+    def _seed(self, db):
+        annee = models.AnneesScolaires(
+            libelle="2024-2025", date_debut=date(2024, 10, 1), date_fin=date(2025, 6, 30), active=True
+        )
+        db.add(annee)
+        db.flush()
+        ancienne = models.AnneesScolaires(
+            libelle="2023-2024", date_debut=date(2023, 10, 1), date_fin=date(2024, 6, 30), active=False
+        )
+        db.add(ancienne)
+        db.flush()
+        classe = models.Classes(niveau="1ère Année", nom="1ère Année A", frais_inscription=0, mensualite=0)
+        db.add(classe)
+        db.flush()
+        tuteur = models.Tuteurs(
+            nom="T", prenom="T", email="t@relance.com",
+            telephone="010200300", adresse="Bamako", profession="M",
+        )
+        db.add(tuteur)
+        db.flush()
+
+        def _eleve():
+            e = models.Eleves(
+                nom="E", prenom="E",
+                date_de_naissance=date(2013, 1, 1), lieu_de_naissance="Bamako",
+                sexe="M", tuteur_id=tuteur.id, classe_id=classe.id,
+            )
+            db.add(e)
+            db.flush()
+            return e
+
+        e1 = _eleve()
+        e2 = _eleve()
+        insc_act = models.Inscriptions(
+            matricule_eleve=e1.matricule, id_classe=classe.id, id_annee_scolaire=annee.id,
+            date_inscription=date(2024, 10, 1), montant_total=0,
+        )
+        db.add(insc_act)
+        db.flush()
+        insc_old = models.Inscriptions(
+            matricule_eleve=e2.matricule, id_classe=classe.id, id_annee_scolaire=ancienne.id,
+            date_inscription=date(2023, 10, 1), montant_total=0,
+        )
+        db.add(insc_old)
+        db.flush()
+
+        source = models.Echeances(
+            id_inscription=insc_old.id, id_classe=classe.id, type_echeance="MENSUALITE",
+            mois="Octobre", date_echeance=date(2023, 10, 5), montant_du=5000, montant_paye=0,
+            statut="REPORTE",
+        )
+        db.add(source)
+        db.flush()
+        db.add(models.Echeances(
+            id_inscription=insc_act.id, id_classe=classe.id, type_echeance="MENSUALITE",
+            mois="Septembre", date_echeance=date(2025, 9, 5), montant_du=4000, montant_paye=0,
+            statut="REPORTE", id_echeance_origine=source.id,
+        ))
+        db.add(models.Echeances(
+            id_inscription=insc_act.id, id_classe=classe.id, type_echeance="MENSUALITE",
+            mois="Octobre", date_echeance=date(2024, 10, 5), montant_du=3000, montant_paye=0,
+            statut="EN_ATTENTE",
+        ))
+        db.commit()
+        return insc_act
+
+    def test_relances_limitees_a_l_annee_active_et_payables(self, client, auth_headers, db_session):
+        """Seules les échéances payables et dépassées d'inscriptions de l'année
+        active remontent : ni l'impayé d'une ancienne année, ni une échéance
+        REPORTE source (non payable)."""
+        insc_act = self._seed(db_session)
+        resp = client.get("/api/paiements/relances", headers=auth_headers)
+        assert resp.status_code == 200
+        relances = resp.json()
+        assert len(relances) == 2
+        matricules = sorted(r["matricule_eleve"] for r in relances)
+        assert matricules == [insc_act.matricule_eleve, insc_act.matricule_eleve]
+        montants = sorted(r["montant_du"] for r in relances)
+        assert montants == [3000.0, 4000.0]

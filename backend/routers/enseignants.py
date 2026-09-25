@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/enseignants", tags=["Enseignants"], dependencies
 # ─── CRUD de base ─────────────────────────────────────────────────────────────
 @router.post("/", response_model=schemas.EnseignantResponse, status_code=status.HTTP_201_CREATED)
 def create_enseignant(enseignant: schemas.EnseignantCreate, db: Session = Depends(get_db)):
-    if db.query(models.Enseignants).filter(models.Enseignants.email == enseignant.email).first():
+    if enseignant.email and db.query(models.Enseignants).filter(models.Enseignants.email == enseignant.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     nouveau_prof = models.Enseignants(**enseignant.model_dump())
     db.add(nouveau_prof)
@@ -66,10 +66,12 @@ def update_enseignant(matricule: str, enseignant_update: schemas.EnseignantCreat
     db_ens = db.query(models.Enseignants).filter(models.Enseignants.matricule == matricule).first()
     if not db_ens:
         raise HTTPException(status_code=404, detail="Enseignant introuvable")
-    email_existant = db.query(models.Enseignants).filter(
-        models.Enseignants.email == enseignant_update.email,
-        models.Enseignants.matricule != matricule
-    ).first()
+    email_existant = None
+    if enseignant_update.email:
+        email_existant = db.query(models.Enseignants).filter(
+            models.Enseignants.email == enseignant_update.email,
+            models.Enseignants.matricule != matricule
+        ).first()
     if email_existant:
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     for key, value in enseignant_update.model_dump().items():

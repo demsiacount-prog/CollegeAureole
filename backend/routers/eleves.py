@@ -38,7 +38,7 @@ def _inscrire_eleve(db: Session, matricule: str, id_classe: Optional[int], annee
     Idempotent : si une inscription existe déjà pour (élève, année), son
     id_classe est simplement mis à jour pour éviter les doublons.
     """
-    from routers.inscriptions import _generer_echeances, _synchroniser_classe_eleve
+    from routers.inscriptions import _appliquer_changement_classe, _generer_echeances, _synchroniser_classe_eleve
 
     annee_id = _resoudre_annee_inscription(db, annee_scolaire_id)
     existante = (
@@ -54,6 +54,7 @@ def _inscrire_eleve(db: Session, matricule: str, id_classe: Optional[int], annee
         # la classe actuelle de l'élève (pré-inscription) ne vide pas l'inscription.
         if id_classe is not None and existante.id_classe != id_classe:
             existante.id_classe = id_classe
+            _appliquer_changement_classe(db, existante)
         return existante
 
     inscription = models.Inscriptions(
@@ -301,7 +302,14 @@ def _construire_inscription_enrichie(db: Session, inscription: models.Inscriptio
         )
 
     montant_paye = sum((e.montant_paye or 0.0) for e in inscription.echeances)
-    reste_a_payer = sum(e.reste_a_payer for e in inscription.echeances)
+    # Le reste dû ne compte que les échéances payables. Les échéances REPORTE
+    # sources (id_echeance_origine NULL) ont vu leur impayé transféré vers les
+    # échéances REPORTE portées : les compter serait un double comptage.
+    reste_a_payer = sum(
+        e.reste_a_payer
+        for e in inscription.echeances
+        if e.statut in ("EN_ATTENTE", "PARTIEL") or (e.statut == "REPORTE" and e.id_echeance_origine is not None)
+    )
 
     base = schemas.InscriptionResponse.model_validate(inscription).model_dump()
     return schemas.InscriptionDetailResponse(

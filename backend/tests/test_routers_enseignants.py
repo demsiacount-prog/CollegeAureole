@@ -29,6 +29,21 @@ class TestCreation:
         resp = _creer_enseignant(client, auth_headers, email="dup@ex.com")
         assert resp.status_code == 400
 
+    def test_email_facultatif(self, client, auth_headers):
+        resp = _creer_enseignant(client, auth_headers, email="")
+        assert resp.status_code == 201
+        assert resp.json()["email"] is None
+
+    def test_plusieurs_sans_email(self, client, auth_headers):
+        r1 = _creer_enseignant(client, auth_headers, email="")
+        r2 = _creer_enseignant(client, auth_headers, email="")
+        assert r1.status_code == 201
+        assert r2.status_code == 201
+
+    def test_email_invalide_refuse(self, client, auth_headers):
+        resp = _creer_enseignant(client, auth_headers, email="pas-un-email")
+        assert resp.status_code == 422
+
     def test_matricule_auto_generé(self, client, auth_headers):
         e1 = _creer_enseignant(client, auth_headers, email="e1@ex.com").json()
         e2 = _creer_enseignant(client, auth_headers, email="e2@ex.com").json()
@@ -81,6 +96,20 @@ class TestModification:
         )
         assert resp.status_code == 200
         assert resp.json()["nom"] == "Nouveau"
+
+    def test_effacer_email(self, client, auth_headers):
+        created = _creer_enseignant(client, auth_headers).json()
+        resp = client.put(
+            f"/api/enseignants/{created['matricule']}",
+            json={
+                "nom": "X", "prenom": "X",
+                "email": "", "telephone": "+22376000000",
+                "adresse": "", "specialite": "X",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email"] is None
 
     def test_modifier_email_doublon_400(self, client, auth_headers):
         e1 = _creer_enseignant(client, auth_headers, email="e1@ex.com").json()

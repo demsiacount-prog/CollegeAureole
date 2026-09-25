@@ -18,7 +18,7 @@ class ClasseBase(BaseModel):
 
 
 class ClasseCreate(ClasseBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class ClasseResponse(ClasseBase):

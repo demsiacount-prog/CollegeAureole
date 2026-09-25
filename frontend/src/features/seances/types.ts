@@ -34,3 +34,5 @@ export interface SeanceCreateInput {
   heure_debut: string
   heure_fin: string
 }
+
+export type SeanceUpdateInput = Omit<SeanceCreateInput, 'id_annee_scolaire'>

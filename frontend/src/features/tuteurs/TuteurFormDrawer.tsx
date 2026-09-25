@@ -24,6 +24,7 @@ const emptyForm: TuteurCreateInput = {
   email: '',
   adresse: '',
   profession: '',
+  lien_parente: '',
 }
 
 export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
@@ -44,6 +45,7 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
         email: tuteur.email ?? '',
         adresse: tuteur.adresse ?? '',
         profession: tuteur.profession ?? '',
+        lien_parente: tuteur.lien_parente ?? '',
       })
     } else {
       setForm(emptyForm)
@@ -57,10 +59,15 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
       setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const mutation = useMutation({
-    mutationFn: () =>
-      isEdit
-        ? updateTuteur(tuteur!.id, form)
-        : createTuteur(form),
+    mutationFn: () => {
+      const body: TuteurCreateInput = {
+        ...form,
+        lien_parente: form.lien_parente?.trim() || null,
+      }
+      return isEdit
+        ? updateTuteur(tuteur!.id, body)
+        : createTuteur(body)
+    },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['tuteurs'] })
       toast(isEdit ? 'Tuteur modifié.' : 'Tuteur créé.')
@@ -144,6 +151,10 @@ export function TuteurFormDrawer({ open, onClose, tuteur, onCreated }: Props) {
           set('profession')(e)
           if (errors.profession) setErrors((prev) => ({ ...prev, profession: undefined }))
         }} placeholder="ex. Enseignant" required error={errors.profession} />
+        <Input label="Lien de parenté" value={form.lien_parente ?? ''} onChange={(e) => {
+          set('lien_parente')(e)
+          if (errors.lien_parente) setErrors((prev) => ({ ...prev, lien_parente: undefined }))
+        }} placeholder="ex. Père, Mère, Tuteur légal" error={errors.lien_parente} />
         <Input label="Adresse" value={form.adresse} onChange={(e) => {
           set('adresse')(e)
           if (errors.adresse) setErrors((prev) => ({ ...prev, adresse: undefined }))

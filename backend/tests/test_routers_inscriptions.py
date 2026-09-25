@@ -203,6 +203,40 @@ class TestDossierComplet:
         assert eleve["date_acte"] == "2025-03-10"
         assert eleve["delivre_par"] == "Mairie de Bamako"
 
+    def test_dossier_complet_persiste_infos_parents(self, client, auth_headers):
+        cl = _creer_classe(client, auth_headers).json()
+        annee = _creer_annee(client, auth_headers).json()
+        resp = client.post("/api/inscriptions/dossier-complet", json={
+            "tuteur": {
+                "nom": "Nouveau", "prenom": "Tuteur",
+                "email": "parents@ex.com",
+                "telephone": "+22376000002",
+                "adresse": "Bamako", "profession": "M",
+            },
+            "eleve": {
+                "nom": "Élève", "prenom": "Nouveau",
+                "date_de_naissance": "2012-01-01",
+                "lieu_de_naissance": "Bamako", "sexe": "M",
+                "nom_pere": "Père",
+                "prenom_pere": "Jean",
+                "fonction_pere": "Commerçant",
+                "nom_mere": "Mère",
+                "prenom_mere": "Marie",
+                "fonction_mere": "Ménagère",
+            },
+            "classe_id": cl["id"],
+            "id_annee_scolaire": annee["id"],
+        }, headers=auth_headers)
+        assert resp.status_code == 201
+        matricule = resp.json()["matricule_eleve"]
+        eleve = client.get(f"/api/eleves/{matricule}", headers=auth_headers).json()
+        assert eleve["nom_pere"] == "Père"
+        assert eleve["prenom_pere"] == "Jean"
+        assert eleve["fonction_pere"] == "Commerçant"
+        assert eleve["nom_mere"] == "Mère"
+        assert eleve["prenom_mere"] == "Marie"
+        assert eleve["fonction_mere"] == "Ménagère"
+
     def test_tuteur_manquant_400(self, client, auth_headers):
         cl = _creer_classe(client, auth_headers).json()
         annee = _creer_annee(client, auth_headers).json()
@@ -356,6 +390,82 @@ class TestChangementClasse:
         # 1er mois : 5000 versés pour une mensualité recalibrée à 1000 → 4000 de crédit.
         assert body["credit_disponible"] == 4000.0
 
+    def test_changement_classe_preserve_une_reportee_portee(self, client, auth_headers, db_session):
+        """Un impayé REPORTE porté (dette héritée d'une année antérieure) garde
+        son montant lors d'un changement de classe : le recalcul ne vaut que
+        pour les échéances de l'année courante."""
+        t = _creer_tuteur(client, auth_headers).json()
+        cl_a = _creer_classe(client, auth_headers, frais=50000, mensualite=10000).json()
+        cl_b = _creer_classe(client, auth_headers, frais=20000, mensualite=5000).json()
+        annee = _creer_annee(client, auth_headers).json()
+        eleve = _creer_eleve(db_session, t["id"])
+        insc = client.post("/api/inscriptions/", json={
+            "matricule_eleve": eleve.matricule,
+            "id_classe": cl_a["id"], "id_annee_scolaire": annee["id"],
+            "date_inscription": "2025-12-01",
+        }, headers=auth_headers).json()
+        inner = db_session.get(models.Inscriptions, insc["id"])
+
+        annee_old = models.AnneesScolaires(
+            libelle="2024-2025", date_debut=date(2024, 10, 1), date_fin=date(2025, 6, 30),
+            active=False,
+        )
+        db_session.add(annee_old)
+        db_session.flush()
+        ancienne = models.Inscriptions(
+            matricule_eleve=eleve.matricule, id_classe=cl_a["id"],
+            id_annee_scolaire=annee_old.id, date_inscription=date(2024, 10, 1),
+            montant_total=7000,
+        )
+        db_session.add(ancienne)
+        db_session.flush()
+        source = models.Echeances(
+            id_inscription=ancienne.id, id_classe=cl_a["id"], type_echeance="MENSUALITE",
+            mois="Octobre", date_echeance=date(2024, 10, 5), montant_du=7000,
+            montant_paye=0, statut="REPORTE",
+        )
+        db_session.add(source)
+        db_session.flush()
+        # Reportée portée sur l'inscription actuelle (mois non facturé,
+        # inscription en décembre : pas de collision sur l'unicité).
+        db_session.add(models.Echeances(
+            id_inscription=inner.id, id_classe=cl_a["id"], type_echeance="MENSUALITE",
+            mois="Octobre", date_echeance=date(2025, 10, 5), montant_du=7000,
+            montant_paye=0, statut="REPORTE", id_echeance_origine=source.id,
+        ))
+        db_session.commit()
+
+        resp = client.put(f"/api/inscriptions/{insc['id']}", json={"id_classe": cl_b["id"]}, headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        # INSCRIPTION 20000 + 7 mensualités × 5000 + reportée conservée 7000.
+        assert resp.json()["montant_total"] == 20000 + 7 * 5000 + 7000
+
+        echeances = client.get(f"/api/paiements/echeances/{insc['id']}", headers=auth_headers).json()
+        portee = next(e for e in echeances if e["mois"] == "Octobre")
+        assert portee["montant_du"] == 7000.0
+        assert portee["statut"] == "REPORTE"
+        assert portee["id_classe"] == cl_b["id"]
+
+
+class TestPreInscription:
+    def test_pre_inscription_sans_classe(self, client, auth_headers, db_session):
+        """Une inscription sans classe (id_classe None) est acceptée : pas
+        d'échéancier facturé, montant_total à zéro, échéances soldées."""
+        t = _creer_tuteur(client, auth_headers).json()
+        annee = _creer_annee(client, auth_headers).json()
+        eleve = _creer_eleve(db_session, t["id"])
+        resp = client.post("/api/inscriptions/", json={
+            "matricule_eleve": eleve.matricule,
+            "id_annee_scolaire": annee["id"],
+        }, headers=auth_headers)
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["id_classe"] is None
+        assert body["montant_total"] == 0.0
+        echeances = client.get(f"/api/paiements/echeances/{body['id']}", headers=auth_headers).json()
+        assert len(echeances) >= 1
+        assert all(e["statut"] == "SOLDE" for e in echeances)
+
 
 class TestSuppressionAvecRemise:
     def test_suppression_bloquee_si_remise(self, client, auth_headers, db_session):
@@ -454,6 +564,11 @@ class TestReporterImpayes:
         ech_portee = db_session.get(models.Echeances, ech_portee.id)
         assert ech_attente.statut == "REPORTE"
         assert ech_portee.statut == "REPORTE"
+        # C3 : le crédit consommé pour couvrir un impayé est compté payé sur
+        # l'échéance reportée (sinon la dette semble encore due sur l'ancienne
+        # inscription).
+        assert ech_attente.montant_paye == 3000.0
+        assert ech_portee.montant_paye == 0.0
 
         reportees = db_session.query(models.Echeances).filter(
             models.Echeances.id_inscription == nouvelle.id,
@@ -495,3 +610,8 @@ class TestReporterImpayes:
         assert nouvelle.montant_total == 0.0
         ancienne = db_session.get(models.Inscriptions, ancienne.id)
         assert ancienne.credit_disponible == 0.0
+        # C3 : l'échéance couverte par le crédit est bien réputée payée.
+        ech_octobre = db_session.query(models.Echeances).filter(
+            models.Echeances.id_inscription == ancienne.id
+        ).first()
+        assert ech_octobre.montant_paye == 5000.0

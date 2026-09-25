@@ -320,8 +320,14 @@ def _stats_direction(db: Session) -> dict:
     )
 
     # ── 8. TOTAL DES PAIEMENTS DE L'ANNÉE SCOLAIRE ACTIVE (carte "Paiements de l'année") ──
+    # Pour rester cohérent avec le reste du tableau de bord, seuls les paiements
+    # rattachés aux INSCRIPTIONS de l'année active (dans sa fenêtre de dates)
+    # comptent : les versements pour des inscriptions d'années antérieures
+    # (impayés d'une autre année) n'appartiennent pas à la carte courante.
     paiements_annee = (
         db.query(func.coalesce(func.sum(models.Paiements.montant), 0.0))
+        .join(models.Inscriptions, models.Inscriptions.id == models.Paiements.id_inscription)
+        .filter(models.Inscriptions.id_annee_scolaire == annee_active.id)
         .filter(models.Paiements.date >= date_debut_annee)
         .filter(models.Paiements.date <= date_fin_annee)
         .scalar() or 0.0

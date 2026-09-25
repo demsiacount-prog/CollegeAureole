@@ -98,6 +98,7 @@ export default function TuteurDetailPage() {
                   <InfoField label="Email" value={tuteur.email} />
                   <InfoField label="Téléphone" value={tuteur.telephone} />
                   <InfoField label="Profession" value={tuteur.profession} />
+                  <InfoField label="Lien de parenté" value={tuteur.lien_parente || '—'} />
                   <InfoField label="Adresse" value={tuteur.adresse} />
                   <InfoField label="Inscrit le" value={formatDate(tuteur.created_at)} />
                 </InfoSection>

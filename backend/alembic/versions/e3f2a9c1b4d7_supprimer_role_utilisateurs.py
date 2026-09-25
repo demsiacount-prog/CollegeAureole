@@ -27,22 +27,20 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
 
-    # 1) Nettoyage : ne conserve que les comptes administrateurs (PostgreSQL
-    #    dispose d'un enum natif, SQLite d'un VARCHAR + CHECK : on compare en
-    #    tant que texte dans les deux cas).
+    # 1) Nettoyage : ne conserve que les comptes administrateurs.
     op.execute("DELETE FROM utilisateurs WHERE role <> 'ADMIN'")
 
     # 2) La colonne role n'a plus de raison d'être.
     op.drop_column('utilisateurs', 'role')
 
-    # 3) PostgreSQL : suppression du type enum natif désormais orphelin.
+    # 3) Suppression du type enum natif désormais orphelin.
     if dialect == "postgresql":
         op.execute("DROP TYPE IF EXISTS roleutilisateur")
 
 
 def downgrade() -> None:
-    """Rétablit une colonne role (valeur par défaut ADMIN) sans enum natif sur
-    PostgreSQL (utilisateur unique)."""
+    """Rétablit une colonne role (valeur par défaut ADMIN) sans enum natif
+    (utilisateur unique)."""
     bind = op.get_bind()
     dialect = bind.dialect.name
 

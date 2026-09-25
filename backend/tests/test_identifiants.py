@@ -22,9 +22,9 @@ from identifiants import (
 # ─── Fixtures ──────────────────────────────────────────────────────────────────
 @pytest.fixture()
 def fake_connection():
-    """Connexion simulée avec un dialecte SQLite-like."""
+    """Connexion simulée avec le dialecte PostgreSQL."""
     conn = MagicMock()
-    conn.dialect.name = "sqlite"
+    conn.dialect.name = "postgresql"
     return conn
 
 
@@ -37,28 +37,17 @@ def fake_session():
 
 
 @pytest.fixture()
-def db_session():
-    """Session SQLAlchemy réelle en SQLite mémoire."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
-    from sqlalchemy.pool import StaticPool
-    from database import Base
+def db_session_avec_annee(db_session):
+    """Session de test avec une année scolaire active pour les tests de résolution."""
     from models import AnneesScolaires
 
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    annee = AnneesScolaires(
+        libelle="2025-2026", date_debut=date(2025, 9, 1),
+        date_fin=date(2026, 6, 30), active=True,
     )
-    Base.metadata.create_all(engine)
-    with Session(bind=engine) as s:
-        # Insérer une année scolaire active pour les tests de résolution
-        annee = AnneesScolaires(
-            libelle="2025-2026", date_debut=date(2025, 9, 1),
-            date_fin=date(2026, 6, 30), active=True,
-        )
-        s.add(annee)
-        s.commit()
-        s.refresh(annee)
-        yield s
+    db_session.add(annee)
+    db_session.commit()
+    return db_session
 
 
 # ─── Tests prochain_numero ─────────────────────────────────────────────────────
@@ -169,45 +158,35 @@ class TestAnneeCreation:
 
 # ─── Tests resoudre_annee ──────────────────────────────────────────────────────
 class TestResoudreAnnee:
-    def test_avec_id_annee_scolaire(self, db_session):
+    def test_avec_id_annee_scolaire(self, db_session_avec_annee):
         """Retourne l'année de début de l'année scolaire donnée."""
         from models.annees_scolaires import AnneesScolaires
 
-        annee = db_session.query(AnneesScolaires).first()
-        result = resoudre_annee(db_session.connection(), annee.id)
+        annee = db_session_avec_annee.query(AnneesScolaires).first()
+        result = resoudre_annee(db_session_avec_annee.connection(), annee.id)
         assert result == 25  # 2025 % 100
 
-    def test_sans_id_et_avec_annee_active(self, db_session):
+    def test_sans_id_et_avec_annee_active(self, db_session_avec_annee):
         """Sans id, utilise l'année active."""
-        result = resoudre_annee(db_session.connection())
+        result = resoudre_annee(db_session_avec_annee.connection())
         assert result == 25
 
-    def test_sans_id_sans_annee_active(self):
+    def test_sans_id_sans_annee_active(self, db_session):
         """Sans id et sans année active, utilise l'année courante."""
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import Session
-        from sqlalchemy.pool import StaticPool
-        from database import Base
-
-        engine = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-        )
-        Base.metadata.create_all(engine)
-        with Session(bind=engine) as s:
-            result = resoudre_annee(s.connection())
-            assert result == annee_creation()
+        result = resoudre_annee(db_session.connection())
+        assert result == annee_creation()
 
 
 # ─── Tests annee_scolaire_pour_date ────────────────────────────────────────────
 class TestAnneeScolairePourDate:
-    def test_date_dans_la_plage(self, db_session):
+    def test_date_dans_la_plage(self, db_session_avec_annee):
         """Une date dans la plage de l'année scolaire retourne son année."""
-        result = annee_scolaire_pour_date(db_session.connection(), date(2026, 1, 15))
+        result = annee_scolaire_pour_date(db_session_avec_annee.connection(), date(2026, 1, 15))
         assert result == 25  # L'année 2025-2026 commence en 2025
 
-    def test_date_hors_plage(self, db_session):
+    def test_date_hors_plage(self, db_session_avec_annee):
         """Une date hors de toute plage retourne l'année courante."""
-        result = annee_scolaire_pour_date(db_session.connection(), date(2023, 6, 1))
+        result = annee_scolaire_pour_date(db_session_avec_annee.connection(), date(2023, 6, 1))
         assert result == annee_creation()
 
 

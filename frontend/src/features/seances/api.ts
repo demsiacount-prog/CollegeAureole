@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
-import type { Seance, SeanceDetail, SeanceCreateInput } from './types'
+import type { Seance, SeanceDetail, SeanceCreateInput, SeanceUpdateInput } from './types'
 
-export type { Seance, SeanceDetail, SeanceCreateInput }
+export type { Seance, SeanceDetail, SeanceCreateInput, SeanceUpdateInput }
 
 export async function fetchSeances(anneeScolaireId?: number): Promise<SeanceDetail[]> {
   const params: Record<string, number> = {}
@@ -15,7 +15,7 @@ export async function createSeance(body: SeanceCreateInput): Promise<Seance> {
   return res.data
 }
 
-export async function updateSeance(id: number, body: SeanceCreateInput): Promise<Seance> {
+export async function updateSeance(id: number, body: SeanceUpdateInput): Promise<Seance> {
   const res = await api.put<Seance>(`/api/seances/${id}`, body)
   return res.data
 }

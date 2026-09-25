@@ -9,7 +9,7 @@ class SalleBase(BaseModel):
 
 
 class SalleCreate(SalleBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class SalleResponse(SalleBase):

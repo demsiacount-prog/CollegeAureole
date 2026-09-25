@@ -233,6 +233,8 @@ from typing import Literal
 class StatutPassageRequest(BaseModel):
     statut: Literal["EN_ATTENTE", "ADMIS", "RECALE", "EXCLU"]
 
+    model_config = {"extra": "forbid"}
+
 
 @router.put("/statut/{inscription_id}", response_model=schemas.InscriptionResponse)
 def modifier_statut_passage(inscription_id: int, payload: StatutPassageRequest, db: Session = Depends(get_db)):

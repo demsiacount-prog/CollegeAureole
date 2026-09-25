@@ -29,14 +29,13 @@ class InscriptionBase(BaseModel):
     id_annee_scolaire: int
     statut: StatutInscription = "Inscrit"
     nb_redoublements: int = Field(default=0, ge=0, le=20)
-    montant_total: float = Field(default=0.0, ge=0)
     date_inscription: date = Field(default_factory=date.today)
     date_fin: Optional[date] = None
     observation: Optional[str] = Field(default=None, max_length=500)
 
 
 class InscriptionCreate(InscriptionBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class InscriptionUpdate(BaseModel):
@@ -45,9 +44,10 @@ class InscriptionUpdate(BaseModel):
     statut_passage: Optional[StatutPassage] = None
     diplome: Optional[bool] = None
     nb_redoublements: Optional[int] = Field(default=None, ge=0, le=20)
-    montant_total: Optional[float] = Field(default=None, ge=0)
     date_fin: Optional[date] = None
     observation: Optional[str] = Field(default=None, max_length=500)
+
+    model_config = {"extra": "forbid"}
 
 
 class InscriptionResponse(InscriptionBase):
@@ -56,6 +56,7 @@ class InscriptionResponse(InscriptionBase):
     statut_passage: StatutPassage = "EN_ATTENTE"
     diplome: bool = False
     credit_disponible: float = 0.0
+    montant_total: float = 0.0
     eleve_nom: Optional[str] = None
     eleve_prenom: Optional[str] = None
     model_config = {"from_attributes": True}
@@ -83,6 +84,8 @@ class PassageAnneeRequest(BaseModel):
     matricules_redoublants: List[str] = []
     matricules_exclus: List[str] = []
 
+    model_config = {"extra": "forbid"}
+
 
 class DossierCompletEleve(BaseModel):
     nom: str = Field(min_length=1, max_length=100)
@@ -99,6 +102,14 @@ class DossierCompletEleve(BaseModel):
     jugement_suppletif: Optional[str] = Field(default=None, max_length=100)
     date_acte: Optional[date] = None
     delivre_par: Optional[str] = Field(default=None, max_length=200)
+    nom_pere: Optional[str] = Field(default=None, max_length=100)
+    prenom_pere: Optional[str] = Field(default=None, max_length=100)
+    fonction_pere: Optional[str] = Field(default=None, max_length=100)
+    nom_mere: Optional[str] = Field(default=None, max_length=100)
+    prenom_mere: Optional[str] = Field(default=None, max_length=100)
+    fonction_mere: Optional[str] = Field(default=None, max_length=100)
+
+    model_config = {"extra": "forbid"}
 
 
 class DossierCompletCreate(BaseModel):
@@ -108,6 +119,8 @@ class DossierCompletCreate(BaseModel):
     classe_id: int
     id_annee_scolaire: int
     observation: Optional[str] = Field(default=None, max_length=500)
+
+    model_config = {"extra": "forbid"}
 
 
 class PassageAnneeResponse(BaseModel):

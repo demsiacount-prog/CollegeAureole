@@ -14,6 +14,7 @@ class PaiementResponse(PaiementBase):
     id: int
     code_paiement: Optional[str] = None
     id_inscription: int
+    id_echeance: Optional[int] = None
     # Le DB historique contient des paiements à montant 0 (échéances déjà
     # soldées passées en file EN_ATTENTE/PARTIEL) : on ne bloque pas la
     # lecture. La création reste strictement > 0.

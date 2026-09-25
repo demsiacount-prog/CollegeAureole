@@ -12,6 +12,8 @@ class AffectationCoursClasseInput(BaseModel):
     id_classe: int
     coefficient: float = Field(1.0, gt=0, description="Coefficient de la matière pour CETTE classe")
 
+    model_config = {"extra": "forbid"}
+
 
 class AffectationCoursClasseResponse(BaseModel):
     id_classe: int
@@ -30,6 +32,8 @@ class CoursBase(BaseModel):
 class CoursCreate(CoursBase):
     affectations: List[AffectationCoursClasseInput] = []
     matricule_enseignant: Optional[str] = None
+
+    model_config = {"extra": "forbid"}
 
 
 class CoursResponse(CoursBase):

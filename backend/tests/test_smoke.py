@@ -9,7 +9,7 @@ def test_health_check(client):
     assert body["database"] == "connected"
 
 
-def test_health_check_msqlite_database_connected(client):
+def test_health_check_database_connected(client):
     resp = client.get("/api/health")
     assert resp.json()["database"] == "connected"
 

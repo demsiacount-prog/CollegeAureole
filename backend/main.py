@@ -33,6 +33,7 @@ from routers import (
     etablissement,
     import_export,
     utilisateurs,
+    finances,
 )
 from database import SessionLocal
 from exceptions import AureoleException
@@ -173,6 +174,7 @@ app.include_router(setup.router)
 app.include_router(etablissement.router)
 app.include_router(import_export.router)
 app.include_router(utilisateurs.router)
+app.include_router(finances.router)
 
 
 # Fichiers téléversés (logos, …) servis en statique depuis le même serveur.

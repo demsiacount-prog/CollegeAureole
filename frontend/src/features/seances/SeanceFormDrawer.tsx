@@ -10,14 +10,14 @@ import { fetchClasses } from '@/features/classes/api'
 import { fetchSalles } from '@/features/salles/api'
 import { fetchAnneesScolaires } from '@/features/annees_scolaires/api'
 import { required, heureFinApresDebut, validateFields, hasErrors, type Errors } from '@/lib/validation'
-import type { SeanceCreateInput } from './types'
+import type { SeanceCreateInput, SeanceUpdateInput } from './types'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as const
 
 interface Props {
   open: boolean
   onClose: () => void
-  onSubmit: (data: SeanceCreateInput) => void
+  onSubmit: (data: SeanceCreateInput | SeanceUpdateInput) => void
   initial?: SeanceCreateInput | null
 }
 
@@ -92,15 +92,25 @@ export default function SeanceFormDrawer({ open, onClose, onSubmit, initial }: P
     })
     setErrors(errs)
     if (hasErrors(errs)) return
-    onSubmit({
-      id_cours: Number(idCours),
-      id_classe: Number(idClasse),
-      id_annee_scolaire: Number(idAnneeScolaire),
-      id_salle: idSalle ? Number(idSalle) : null,
-      jour_semaine: jour as import('./types').JourSemaine,
-      heure_debut: heureDebut,
-      heure_fin: heureFin,
-    })
+    const payload: SeanceCreateInput | SeanceUpdateInput = initial
+      ? {
+          id_cours: Number(idCours),
+          id_classe: Number(idClasse),
+          id_salle: idSalle ? Number(idSalle) : null,
+          jour_semaine: jour as import('./types').JourSemaine,
+          heure_debut: heureDebut,
+          heure_fin: heureFin,
+        }
+      : {
+          id_cours: Number(idCours),
+          id_classe: Number(idClasse),
+          id_annee_scolaire: Number(idAnneeScolaire),
+          id_salle: idSalle ? Number(idSalle) : null,
+          jour_semaine: jour as import('./types').JourSemaine,
+          heure_debut: heureDebut,
+          heure_fin: heureFin,
+        }
+    onSubmit(payload)
   }
 
   return (

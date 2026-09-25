@@ -106,23 +106,43 @@ class TestSuppression:
 
     def test_supprimer_avec_notes_409(self, client, auth_headers, db_session):
         """Un cours avec des notes ne peut pas être supprimé."""
+        from datetime import date
+
         from models.classes import Classes
         from models.cours import Cours
+        from models.eleves import Eleves
+        from models.enseignants import Enseignants
         from models.notes import Notes
+        from models.tuteurs import Tuteurs
 
         cl = Classes(niveau="7ème Année", nom="A")
         db_session.add(cl)
         db_session.flush()
+        tuteur = Tuteurs(
+            nom="T", prenom="T", email="t@x.com",
+            telephone="+22376000000", adresse="B", profession="M",
+        )
+        db_session.add(tuteur)
+        db_session.flush()
+        eleve = Eleves(
+            nom="E", prenom="E", date_de_naissance=date(2012, 1, 1),
+            lieu_de_naissance="B", sexe="M", tuteur_id=tuteur.id,
+        )
+        db_session.add(eleve)
+        db_session.flush()
+        enseignant = Enseignants(
+            nom="N", prenom="P", telephone="+22376000000", adresse="B", specialite="S",
+        )
+        db_session.add(enseignant)
+        db_session.flush()
         cours = Cours(nom="M", description="", volume_horaire=1)
         db_session.add(cours)
         db_session.flush()
-        # Créer une note liée
-        note = Notes(
-            matricule_eleve="EL9900001", id_cours=cours.id,
-            id_classe=cl.id, matricule_enseignant="ENS9900001",
+        db_session.add(Notes(
+            matricule_eleve=eleve.matricule, id_cours=cours.id,
+            id_classe=cl.id, matricule_enseignant=enseignant.matricule,
             note=12.0,
-        )
-        db_session.add(note)
+        ))
         db_session.commit()
         resp = client.delete(f"/api/cours/{cours.id}", headers=auth_headers)
         assert resp.status_code == 409

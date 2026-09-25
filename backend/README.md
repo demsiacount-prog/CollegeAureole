@@ -150,7 +150,7 @@ redirige `/api` et `/uploads` vers le backend via la proxy Vite).
 ## Sauvegardes (optionnel)
 
 La base vit dans PostgreSQL (`DATABASE_URL`). Une sauvegarde cohérente se fait via
-`pg_dump` (ou `VACUUM INTO` si la base est déplacée en SQLite). En multi-poste
+`pg_dump`. En multi-poste
 hors réseau, la synchronisation par classeurs Excel (`/api/import-export/...`)
 reste le moyen de converger les données entre postes.
 
@@ -181,7 +181,8 @@ le mot de passe du compte admin à la première connexion.
    worker). En multi-workers, externalisez le compteur (Redis) ou acceptez
    cette dilution.
 7. **Exécuter les tests** : `cd backend && ./venv/bin/python -m pytest`
-   (suite isolée, SQLite en mémoire, aucun impact sur les données de dev).
+   (suite isolée sur une base PostgreSQL de test `collegeaureole_test`,
+    aucun impact sur les données de dev).
 
 ## Modèle d'autorisation (RBAC)
 

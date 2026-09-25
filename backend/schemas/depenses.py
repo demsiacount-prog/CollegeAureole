@@ -5,7 +5,8 @@ from typing import Optional, Literal
 
 CategorieDepense = Literal[
     "SALAIRES","FOURNITURES","ENTRETIEN","ELECTRICITE","EAU",
-    "COMMUNICATION","TRANSPORT","ALIMENTATION","MATERIEL","AUTRE"
+    "COMMUNICATION","TRANSPORT","ALIMENTATION","MATERIEL","AUTRE",
+    "CHARGES","MAINTENANCE"
 ]
 
 class DepenseBase(BaseModel):
@@ -16,7 +17,7 @@ class DepenseBase(BaseModel):
     description: Optional[str] = Field(default=None, max_length=500)
 
 class DepenseCreate(DepenseBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 class DepenseUpdate(BaseModel):
     libelle:     Optional[str]             = None
@@ -24,6 +25,8 @@ class DepenseUpdate(BaseModel):
     categorie:   Optional[CategorieDepense] = None
     date:        Optional[date]            = None
     description: Optional[str]            = None
+
+    model_config = {"extra": "forbid"}
 
 class DepenseResponse(DepenseBase):
     id: int

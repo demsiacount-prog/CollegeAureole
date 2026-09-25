@@ -16,13 +16,15 @@ class AbsenceBase(BaseModel):
 
 
 class AbsenceCreate(AbsenceBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class AbsenceJustifierRequest(BaseModel):
     justifiee: bool
     motif: Optional[str] = Field(default=None, max_length=500)
     utilisateur_id: Optional[int] = None  # à remplacer par l'utilisateur authentifié une fois l'auth en place
+
+    model_config = {"extra": "forbid"}
 
 
 class AbsenceResponse(AbsenceBase):

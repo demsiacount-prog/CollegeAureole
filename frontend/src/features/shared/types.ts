@@ -93,7 +93,7 @@ export interface Enseignant {
   matricule: string
   nom: string
   prenom: string
-  email: string
+  email: string | null
   telephone: string
   adresse: string
   specialite: string
@@ -123,6 +123,7 @@ export interface Paiement {
   id: number
   code_paiement: string | null
   id_inscription: number
+  id_echeance: number | null
   date: string
   montant: number
   mode: string | null

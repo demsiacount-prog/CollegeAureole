@@ -10,6 +10,8 @@ from pydantic import BaseModel, EmailStr, Field
 class MotDePasseOublieRequest(BaseModel):
     email: EmailStr
 
+    model_config = {"extra": "forbid"}
+
 
 class MotDePasseOublieResponse(BaseModel):
     """Toujours la même forme ; seul `email_envoye` varie selon le SMTP."""
@@ -20,6 +22,8 @@ class MotDePasseOublieResponse(BaseModel):
 class ReinitialiserMotDePasseRequest(BaseModel):
     jeton: str = Field(min_length=1, max_length=256)
     nouveau_mot_de_passe: str = Field(min_length=8, max_length=128)
+
+    model_config = {"extra": "forbid"}
 
 
 class ReinitialiserMotDePasseResponse(BaseModel):

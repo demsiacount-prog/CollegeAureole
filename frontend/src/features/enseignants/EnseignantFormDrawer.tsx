@@ -91,7 +91,7 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
       prenom: required(form.prenom, 'Le prénom'),
       nom: required(form.nom, 'Le nom'),
       specialite: required(form.specialite, 'La spécialité'),
-      email: required(form.email, "L'e-mail") ?? email(form.email),
+      email: email(form.email),
       telephone: required(form.telephone, 'Le téléphone') ?? phone(form.telephone),
       adresse: required(form.adresse, "L'adresse"),
     })
@@ -171,13 +171,12 @@ export default function EnseignantFormDrawer({ open, onClose, enseignant }: Prop
           <Input
             label="E-mail"
             type="email"
-            placeholder="ex. mamadou.conde@ecole.ml"
+            placeholder="ex. mamadou.conde@ecole.ml (facultatif)"
             value={form.email}
             onChange={(e) => {
               set('email')(e)
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
             }}
-            required
             error={errors.email}
           />
           <Input

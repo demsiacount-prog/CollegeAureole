@@ -46,6 +46,7 @@ from schemas.dossierEnseignants import (
 from schemas.echeances import PaiementEcheanceCreate, PaiementUpdate, EcheanceResponse, RelanceResponse, PaiementResultResponse
 from schemas.remises import RemiseCreate, RemiseResponse, PaiementGroupeCreate
 from schemas.depenses import DepenseCreate, DepenseUpdate, DepenseResponse
+from schemas.finances import RecapitulatifLocal, RecapitulatifFinancier
 from schemas.cloture import (
     CloturePreviewResponse, NouvelleAnneePayload,
     ClotureExecuterPayload, ClotureExecuterResponse,

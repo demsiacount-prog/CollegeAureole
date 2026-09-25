@@ -5,7 +5,7 @@ documents et les fichiers téléversés (uploads/), et qui n'avait AUCUN pendant
 d'import symétrique : une base corrompue ou supprimée par erreur était
 irrécupérable sans intervention SQL manuelle.
 
-Format d'archive ZIP autonome (fonctionne sur SQLite comme PostgreSQL) :
+Format d'archive ZIP autonome (PostgreSQL) :
     ├─ donnees.xlsx          → un onglet par table (hors BLOB documents)
     ├─ documents/<id>_<nom>  → contenu binaire des pièces jointes
     ├─ uploads/…             → fichiers téléversés (logos, photos…)

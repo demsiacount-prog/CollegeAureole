@@ -12,23 +12,33 @@ class UtilisateurConnexion(BaseModel):
     email: EmailStr
     mot_de_passe: str
 
+    model_config = {"extra": "forbid"}
+
 
 class UtilisateurChangerMotDePasse(BaseModel):
     ancien_mot_de_passe: str = Field(min_length=1)
     nouveau_mot_de_passe: str = Field(..., min_length=8)
+
+    model_config = {"extra": "forbid"}
 
 
 class UtilisateurCreate(UtilisateurBase):
     mot_de_passe: str = Field(..., min_length=8)
     role: str = Field(default="ADMIN", min_length=1, max_length=30)
 
+    model_config = {"extra": "forbid"}
+
 
 class UtilisateurStatutUpdate(BaseModel):
     actif: bool
 
+    model_config = {"extra": "forbid"}
+
 
 class UtilisateurReinitialiserMotDePasse(BaseModel):
     nouveau_mot_de_passe: str = Field(..., min_length=8)
+
+    model_config = {"extra": "forbid"}
 
 
 class UtilisateurResponse(UtilisateurBase):

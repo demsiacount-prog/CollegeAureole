@@ -209,6 +209,7 @@ export default function PaiementListPage() {
                   <TableHead>Inscription</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                   <TableHead>Mode</TableHead>
+                  <TableHead>Échéance</TableHead>
                   <TableHead className="hidden lg:table-cell">Observation</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -242,6 +243,13 @@ export default function PaiementListPage() {
                           <Badge tone={MODE_COLORS[p.mode] as 'success' | 'warning' | 'info' | 'neutral' | 'danger' ?? 'neutral'}>
                             {p.mode}
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {p.id_echeance != null ? (
+                          <Badge tone="neutral">Éch. #{p.id_echeance}</Badge>
+                        ) : (
+                          <span className="text-xs text-[var(--ink-faint)]">—</span>
                         )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell max-w-[200px] truncate text-xs text-[var(--ink-faint)]">

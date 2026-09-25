@@ -50,9 +50,13 @@ class NouvelleAnneePayload(BaseModel):
     date_debut: date
     date_fin: date
 
+    model_config = {"extra": "forbid"}
+
 
 class ClotureExecuterPayload(BaseModel):
     nouvelle_annee: NouvelleAnneePayload
+
+    model_config = {"extra": "forbid"}
 
 
 class EleveCloture(BaseModel):

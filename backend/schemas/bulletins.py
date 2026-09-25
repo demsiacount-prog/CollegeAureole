@@ -43,15 +43,21 @@ class BulletinGenerateRequest(BaseModel):
     matricule_eleve: str = Field(min_length=1, max_length=20)
     id_trimestre: int
 
+    model_config = {"extra": "forbid"}
+
 
 class BulletinGenerateClasseRequest(BaseModel):
     id_classe: int
     id_trimestre: int
 
+    model_config = {"extra": "forbid"}
+
 
 class BulletinPublierRequest(BaseModel):
     id_classe: int
     id_trimestre: int
+
+    model_config = {"extra": "forbid"}
 
 
 class BulletinEleveResponse(BaseModel):

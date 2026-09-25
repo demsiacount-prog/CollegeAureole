@@ -21,6 +21,8 @@ class AnneeScolaireBase(BaseModel):
 class AnneeScolaireCreate(AnneeScolaireBase):
     active: bool = False
 
+    model_config = {"extra": "forbid"}
+
 
 class AnneeScolaireUpdate(AnneeScolaireBase):
     """Corps du PUT /api/anneesScolaires/{id}.
@@ -31,6 +33,8 @@ class AnneeScolaireUpdate(AnneeScolaireBase):
     sur une année inactive c'est un no-op.
     """
     active: bool | None = None
+
+    model_config = {"extra": "forbid"}
 
 
 class AnneeScolaireResponse(AnneeScolaireBase):

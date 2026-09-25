@@ -99,6 +99,7 @@ class TestStatsDirectionAnneeActive:
     def test_sans_annee_active_retourne_409(self, client, auth_headers, db_session):
         _seed(db_session)
         # Retire l'année active : aucune fenêtre possible.
+        db_session.query(models.Inscriptions).delete()
         db_session.query(models.AnneesScolaires).delete()
         db_session.commit()
 

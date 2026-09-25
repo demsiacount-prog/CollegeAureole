@@ -18,7 +18,7 @@ class Enseignants(Base):
     matricule = Column(String, primary_key=True)
     nom = Column(String, nullable=False, index=True)
     prenom = Column(String, nullable=False, index=True)
-    email = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=True, unique=True)
     telephone = Column(String, nullable=False)
     adresse = Column(String, nullable=False)
     specialite = Column(String, nullable=False)

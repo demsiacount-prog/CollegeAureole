@@ -44,6 +44,8 @@ class RemiseParEcheance(BaseModel):
     montant: float = Field(gt=0)
     motif: Optional[str] = Field(default=None, max_length=500)
 
+    model_config = {"extra": "forbid"}
+
 
 class PaiementEcheanceCreate(BaseModel):
     """Enregistrer un paiement sur une inscription.
@@ -55,6 +57,8 @@ class PaiementEcheanceCreate(BaseModel):
     mode:           Optional[ModePaiement] = None
     observation:    Optional[str] = Field(default=None, max_length=500)
     remises:        Optional[Dict[int, RemiseParEcheance]] = None
+
+    model_config = {"extra": "forbid"}
 
 
 class PaiementResultResponse(BaseModel):
@@ -72,3 +76,5 @@ class PaiementUpdate(BaseModel):
     montant:        Optional[float] = Field(default=None, gt=0)
     mode:           Optional[ModePaiement] = None
     observation:    Optional[str] = Field(default=None, max_length=500)
+
+    model_config = {"extra": "forbid"}

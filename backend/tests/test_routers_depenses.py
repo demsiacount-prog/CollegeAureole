@@ -135,22 +135,24 @@ class TestAnneeCloturee:
         }, headers=auth_headers)
         assert resp.status_code == 201
 
-    def test_modification_refusee_sur_annee_cloturee(self, client, auth_headers, db_session):
+    def test_modification_permise_sur_annee_cloturee(self, client, auth_headers, db_session):
+        """Les dépenses restent corrigibles même sur une année clôturée
+        (elles ne sont pas liées à une inscription : pas de gel comptable)."""
         self._creer_annee_cloturee(db_session)
         created = client.post("/api/depenses/", json={
             "libelle": "D1", "montant": 10000, "date": "2025-01-15",
         }, headers=auth_headers).json()
         resp = client.put(f"/api/depenses/{created['id']}", json={"montant": 5000}, headers=auth_headers)
-        assert resp.status_code == 409
-        assert "clôturée" in resp.json()["detail"]
+        assert resp.status_code == 200
+        assert resp.json()["montant"] == 5000
 
-    def test_suppression_refusee_sur_annee_cloturee(self, client, auth_headers, db_session):
+    def test_suppression_permise_sur_annee_cloturee(self, client, auth_headers, db_session):
         self._creer_annee_cloturee(db_session)
         created = client.post("/api/depenses/", json={
             "libelle": "D1", "montant": 10000, "date": "2025-01-15",
         }, headers=auth_headers).json()
         resp = client.delete(f"/api/depenses/{created['id']}", headers=auth_headers)
-        assert resp.status_code == 409
+        assert resp.status_code == 204
 
     def test_montant_zero_ou_negatif_refuse_en_update(self, client, auth_headers):
         created = client.post("/api/depenses/", json={

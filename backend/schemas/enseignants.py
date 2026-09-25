@@ -1,12 +1,15 @@
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 
 
 class EnseignantBase(BaseModel):
     nom: str = Field(min_length=1, max_length=100)
     prenom: str = Field(min_length=1, max_length=100)
-    email: EmailStr
+    # Email facultatif : la plupart des enseignants maliens n'ont pas d'adresse
+    # e-mail. '' (champ laissé vide) et None signifient « pas d'e-mail » et
+    # sont stockés NULL en base. Le format n'est contrôlé que si une valeur est fournie.
+    email: Optional[EmailStr] = None
     telephone: str = Field(min_length=8, max_length=30, pattern=r"^\+?[\d\s\-()]{7,}$")
     adresse: str = Field(default="", max_length=300)
     specialite: str = Field(min_length=1, max_length=100)
@@ -29,9 +32,16 @@ class EnseignantBase(BaseModel):
     diplome: Optional[str] = Field(default=None, max_length=150)
     observations: Optional[str] = Field(default=None, max_length=300)
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normaliser_email(cls, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return str(value).strip()
+
 
 class EnseignantCreate(EnseignantBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class EnseignantResponse(EnseignantBase):

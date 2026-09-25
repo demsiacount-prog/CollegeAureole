@@ -57,6 +57,8 @@ class DocumentUpdate(BaseModel):
     nom: Optional[str] = None
     categorie: Optional[str] = None
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class DocumentListeResponse(DocumentRead):
     """Vue enrichie pour la page globale « Documents scolaires » (rétro)."""

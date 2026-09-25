@@ -106,6 +106,35 @@ class TestModification:
         assert resp.status_code == 200
         assert resp.json()["nom"] == "NouveauNom"
 
+    def test_modifier_conserve_lien_parente_omis(self, client, auth_headers):
+        """Un PUT qui n'envoie pas lien_parente ne doit PAS l'écraser à NULL :
+        seuls les champs réellement envoyés sont mis à jour (exclude_unset)."""
+        created = client.post("/api/tuteurs/", json={
+            **TUTEUR_DATA, "lien_parente": "Père",
+        }, headers=auth_headers).json()
+        assert created["lien_parente"] == "Père"
+
+        resp = client.put(
+            f"/api/tuteurs/{created['id']}",
+            json={**TUTEUR_DATA, "nom": "Renommé"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["nom"] == "Renommé"
+        assert resp.json()["lien_parente"] == "Père"
+
+    def test_modifier_peut_effacer_lien_parente_explicitement(self, client, auth_headers):
+        created = client.post("/api/tuteurs/", json={
+            **TUTEUR_DATA, "lien_parente": "Mère",
+        }, headers=auth_headers).json()
+        resp = client.put(
+            f"/api/tuteurs/{created['id']}",
+            json={**TUTEUR_DATA, "lien_parente": None},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["lien_parente"] is None
+
     def test_modifier_tuteur_importe_aux_champs_vides(self, client, auth_headers, db_session):
         """Un tuteur importé (email/téléphone vides en base) DOIT rester
         modifiable : renvoyer '' ne doit pas être bloqué par la validation."""

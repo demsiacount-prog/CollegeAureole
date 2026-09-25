@@ -19,6 +19,8 @@ class EtablissementUpdate(BaseModel):
     type_ecole: str | None = Field(default=None, max_length=50)
     mode: str | None = Field(default=None, max_length=50)
 
+    model_config = {"extra": "forbid"}
+
 
 class EtablissementResponse(EtablissementUpdate):
     id: int
@@ -53,6 +55,8 @@ class EtablissementInfrastructuresPayload(BaseModel):
     armoires: int | None = _int_field()
     tableaux: int | None = _int_field()
     mobilier_divers: int | None = _int_field()
+
+    model_config = {"extra": "forbid"}
 
 
 class EtablissementInfrastructuresResponse(EtablissementInfrastructuresPayload):

@@ -1,8 +1,7 @@
 """Génération des identifiants de type {PRÉFIXE}{année}{n°}.
 
 Compteur calculé côté application par MAX(n° existant pour le préfixe) + 1 :
-robuste aux suppressions (contrairement à COUNT(*) + 1) et cohérent entre
-SQLite et PostgreSQL. Deux familles de numérotation :
+robuste aux suppressions (contrairement à COUNT(*) + 1). Deux familles de numérotation :
 
 - globale (enseignants, tuteurs, classes, cours, salles) : année de création,
   compteur jamais réinitialisé ;

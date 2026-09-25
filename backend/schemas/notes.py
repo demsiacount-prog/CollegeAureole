@@ -28,6 +28,9 @@ class NoteCreate(NoteBase):
     matricule_enseignant: str
     id_trimestre: int  # Requis : toute note doit être rattachée à une période (verrou globale par trimestre)
 
+    model_config = {"extra": "forbid"}
+
+
 class NotePatch(BaseModel):
     """Mise à jour partielle (Type D — sauvegarde auto à chaque blur)."""
     note: Optional[float] = Field(default=None, ge=0.0, le=100.0)
@@ -38,12 +41,16 @@ class NotePatch(BaseModel):
     matricule_enseignant: Optional[str] = None
     id_trimestre: Optional[int] = None
 
+    model_config = {"extra": "forbid"}
+
 class NoteBulkItem(NoteCreate):
     """Élément du lot (Type D — Enregistrer tout) : `id` présent → mise à jour, sinon création."""
     id: Optional[int] = None
 
 class NoteBulkRequest(BaseModel):
     notes: list[NoteBulkItem]
+
+    model_config = {"extra": "forbid"}
 
 class NoteBulkResponse(BaseModel):
     notes: list["NoteResponse"]

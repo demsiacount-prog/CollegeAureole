@@ -64,7 +64,7 @@ def update_tuteur(tuteur_id: int, tuteur_update: schemas.TuteurCreate, db: Sessi
     db_tuteur = db.query(models.Tuteurs).filter(models.Tuteurs.id == tuteur_id).first()
     if not db_tuteur:
         raise HTTPException(status_code=404, detail="Tuteur introuvable")
-    for key, value in tuteur_update.model_dump().items():
+    for key, value in tuteur_update.model_dump(exclude_unset=True).items():
         setattr(db_tuteur, key, value)
     db.commit()
     db.refresh(db_tuteur)

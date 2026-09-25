@@ -9,10 +9,13 @@ export type CategorieDepense =
   | 'ALIMENTATION'
   | 'MATERIEL'
   | 'AUTRE'
+  | 'CHARGES'
+  | 'MAINTENANCE'
 
 export const CATEGORIES: CategorieDepense[] = [
   'SALAIRES', 'FOURNITURES', 'ENTRETIEN', 'ELECTRICITE', 'EAU',
   'COMMUNICATION', 'TRANSPORT', 'ALIMENTATION', 'MATERIEL', 'AUTRE',
+  'CHARGES', 'MAINTENANCE',
 ]
 
 export const CATEGORIE_LABELS: Record<CategorieDepense, string> = {
@@ -26,6 +29,8 @@ export const CATEGORIE_LABELS: Record<CategorieDepense, string> = {
   ALIMENTATION: 'Alimentation',
   MATERIEL: 'Matériel',
   AUTRE: 'Autre',
+  CHARGES: 'Charges',
+  MAINTENANCE: 'Maintenance',
 }
 
 export interface Depense {

@@ -37,7 +37,7 @@ class TuteurBase(BaseModel):
         return _coordonnees_vide(value)
 
 class TuteurCreate(TuteurBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 class TuteurResponse(TuteurBase):
     id: int

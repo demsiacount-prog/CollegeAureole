@@ -43,7 +43,6 @@ export interface InscriptionCreateInput {
   id_annee_scolaire: number
   statut?: string
   nb_redoublements?: number
-  montant_total?: number
   date_inscription?: string
   observation?: string | null
 }

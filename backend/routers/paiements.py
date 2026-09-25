@@ -30,7 +30,10 @@ def _filtre_echeances_payables():
 
 
 def _mettre_a_jour_statut(echeance: models.Echeances):
-    if echeance.montant_paye <= 0:
+    if echeance.montant_du <= 0:
+        # Échéance entièrement remisée (montant ramené à zéro) : plus rien dû.
+        echeance.statut = "SOLDE"
+    elif echeance.montant_paye <= 0:
         # Un impayé reporté non entamé conserve son statut REPORTE.
         if echeance.statut == "REPORTE" or echeance.id_echeance_origine is not None:
             echeance.statut = "REPORTE"
@@ -60,7 +63,7 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, ob
     )
     if ids_echeances:
         query = query.filter(models.Echeances.id.in_(ids_echeances))
-    echeances_impayees = query.order_by(models.Echeances.date_echeance.asc()).all()
+    echeances_impayees = query.order_by(models.Echeances.date_echeance.asc()).with_for_update().all()
 
     paiements_crees, echeances_maj = [], []
 
@@ -121,8 +124,14 @@ def _distribuer_paiement(db, inscription, montant_verse, date_paiement, mode, ob
 
 
 @router.post("/", response_model=schemas.PaiementResultResponse, status_code=status.HTTP_201_CREATED)
-def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = Depends(get_db)):
-    inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == payload.id_inscription).first()
+def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = Depends(get_db),
+                         user=Depends(get_current_user)):
+    inscription = (
+        db.query(models.Inscriptions)
+        .filter(models.Inscriptions.id == payload.id_inscription)
+        .with_for_update()
+        .first()
+    )
     if not inscription:
         raise HTTPException(status_code=404, detail="Inscription introuvable")
     if inscription.annee_scolaire and inscription.annee_scolaire.cloturee:
@@ -167,6 +176,7 @@ def enregistrer_paiement(payload: schemas.PaiementEcheanceCreate, db: Session = 
                 montant=remise_data.montant,
                 motif=remise_data.motif,
                 date=payload.date,
+                utilisateur_id=user.id,
             )
             db.add(remise)
             db.flush()
@@ -281,10 +291,16 @@ def compter_paiements(
 
 @router.get("/relances", response_model=List[schemas.RelanceResponse])
 def get_echeances_en_retard(db: Session = Depends(get_db)):
-    """Échéances impayées dont la date est dépassée — base pour les relances
-    (email/SMS à brancher séparément). Chaque relance embarque l'élève, sa
-    classe et le contact de son tuteur."""
+    """Échéances impayées et dépassées de l'ANNÉE ACTIVE — base des relances
+    (email/SMS à brancher séparément). Toutes les échéances payables sont
+    concernées (en attente/partielles et REPORTE portées) ; chaque relance
+    embarque l'élève, sa classe et le contact de son tuteur."""
     aujourdhui = date_type.today()
+    inscriptions_annee_active = (
+        db.query(models.Inscriptions.id)
+        .join(models.AnneesScolaires, models.AnneesScolaires.id == models.Inscriptions.id_annee_scolaire)
+        .filter(models.AnneesScolaires.active.is_(True))
+    )
     echeances = (
         db.query(models.Echeances)
         .options(
@@ -292,7 +308,11 @@ def get_echeances_en_retard(db: Session = Depends(get_db)):
             joinedload(models.Echeances.inscription).joinedload(models.Inscriptions.eleve).joinedload(models.Eleves.tuteur),
             joinedload(models.Echeances.inscription).joinedload(models.Inscriptions.classe),
         )
-        .filter(models.Echeances.statut.in_(["EN_ATTENTE", "PARTIEL"]), models.Echeances.date_echeance < aujourdhui)
+        .filter(
+            models.Echeances.date_echeance < aujourdhui,
+            _filtre_echeances_payables(),
+            models.Echeances.id_inscription.in_(inscriptions_annee_active),
+        )
         .order_by(models.Echeances.date_echeance.asc())
         .all()
     )
@@ -439,17 +459,27 @@ def modifier_paiement(paiement_id: int, payload: schemas.PaiementUpdate, db: Ses
     if p.id_echeance:
         ech = db.query(models.Echeances).filter(models.Echeances.id == p.id_echeance).first()
         if ech:
-            nouveau_paye = max(ech.montant_paye + delta, 0.0)
-            # Un paiement ne peut pas rendre une échéance « sur-soldée » :
-            # l'excédent est versé au crédit disponible au lieu d'être perdu.
+            nouveau_paye = ech.montant_paye + delta
             if nouveau_paye > ech.montant_du:
-                if inscription:
-                    inscription.credit_disponible = (inscription.credit_disponible or 0.0) + (nouveau_paye - ech.montant_du)
-                nouveau_paye = ech.montant_du
+                raise HTTPException(
+                    status_code=400,
+                    detail="Le montant dépasse le montant dû de l'échéance : enregistrez l'excédent comme un versement sans échéance (crédit).",
+                )
+            if nouveau_paye < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="La réduction dépasse le montant déjà appliqué à l'échéance.",
+                )
             ech.montant_paye = nouveau_paye
             _mettre_a_jour_statut(ech)
     elif delta != 0 and inscription:
-        inscription.credit_disponible = max((inscription.credit_disponible or 0.0) + delta, 0.0)
+        credit_cible = (inscription.credit_disponible or 0.0) + delta
+        if credit_cible < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Impossible de réduire le trop-perçu : le crédit a déjà été consommé.",
+            )
+        inscription.credit_disponible = credit_cible
 
     for k, v in donnees.items():
         setattr(p, k, v)
@@ -472,14 +502,27 @@ def supprimer_paiement(paiement_id: int, db: Session = Depends(get_db)):
     if p.id_echeance:
         ech = db.query(models.Echeances).filter(models.Echeances.id == p.id_echeance).first()
         if ech:
-            ech.montant_paye = max(ech.montant_paye - p.montant, 0.0)
+            avant = ech.montant_paye
+            ech.montant_paye = max(avant - p.montant, 0.0)
+            # Anciens paiements plafonnés (comportement remplacé) : le surplus
+            # d'un paiement supérieur au payé de l'échéance avait été versé au
+            # crédit ; on le retire à la suppression pour ne rien laisser en
+            # l'air.
+            if avant < p.montant and inscription_verif:
+                surplus = p.montant - avant
+                inscription_verif.credit_disponible = max((inscription_verif.credit_disponible or 0.0) - surplus, 0.0)
             _mettre_a_jour_statut(ech)
     else:
         # Paiement sans échéance = surplus stocké en crédit : le supprimer
         # retire ce crédit (symétrique de modifier_paiement).
-        inscription = db.query(models.Inscriptions).filter(models.Inscriptions.id == p.id_inscription).first()
-        if inscription:
-            inscription.credit_disponible = max((inscription.credit_disponible or 0.0) - p.montant, 0.0)
+        if inscription_verif:
+            credit_cible = (inscription_verif.credit_disponible or 0.0) - p.montant
+            if credit_cible < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Impossible de supprimer le trop-perçu : le crédit a déjà été consommé.",
+                )
+            inscription_verif.credit_disponible = credit_cible
     db.delete(p)
     db.commit()
     return None

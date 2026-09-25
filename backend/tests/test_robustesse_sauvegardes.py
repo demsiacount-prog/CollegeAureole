@@ -1,5 +1,5 @@
 """Tests des correctifs de robustesse (sauvegardes, restauration, reset/purge
-protégés, durabilité SQLite, verifier_eleve, alertes de clôture, AUTO_CREATE)."""
+protégés, durabilité PostgreSQL, verifier_eleve, alertes de clôture, AUTO_CREATE)."""
 import io
 import os
 import zipfile
@@ -16,21 +16,6 @@ from services.sauvegardes import (
     construire_archive, construire_classeur_export, ecrire_sauvegarde,
     lister_sauvegardes, restaurer, sauvegarde_auto,
 )
-
-# ── Fix 5 : PRAGMA de durabilité ────────────────────────────────────────────
-
-
-def test_pragma_durabilite_database_py():
-    """database.py doit forcer FULL par défaut et journal WAL."""
-    import inspect
-    import database as module_database
-
-    contenu = inspect.getsource(module_database)
-    assert "synchronous=FULL" in contenu
-    assert "journal_mode=WAL" in contenu
-    assert "busy_timeout" in contenu
-    assert "SQLITE_SYNCHRONOUS" in contenu
-
 
 # ── Fix 6 : verifier_eleve ──────────────────────────────────────────────────
 
@@ -301,10 +286,9 @@ def test_import_refuse_sans_confirmation(client, auth_headers, jeu_donnees):
 def _moteurs_sur_bdd_test(monkeypatch, db_session):
     """Branche les moteurs internes de /api/setup sur la base de test.
 
-    En production reset/purge partagent un même fichier SQLite (engine app,
-    SessionLocal et moteur Alembic). En mémoire de test ce sont des bases
-    distinctes, ce qui fausserait le drop/recréation : on aligne donc
-    `setup.engine`/`SessionLocal`/`migrer_schema` sur la base du client.
+    En production reset/purge utilisent l'engine app, SessionLocal et le moteur
+    Alembic sur la base de dev. En test on les aligne sur la base de test pour
+    que le drop/recréation ne touche que le schéma de la base de test.
     """
     import routers.setup as setup
     from sqlalchemy.orm import Session

@@ -23,10 +23,6 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _est_sqlite() -> bool:
-    return op.get_bind().dialect.name == "sqlite"
-
-
 def upgrade() -> None:
     # État civil enseignant (fiches de renseignements doc6 / 1er cycle).
     op.add_column('enseignants', sa.Column('lieu_de_naissance', sa.String(), nullable=True))
@@ -56,15 +52,14 @@ def upgrade() -> None:
                             WHERE tuteurs.code_tuteur = documents.code_tuteur)
         """
     )
-    if not _est_sqlite():
-        op.create_foreign_key(
-            'fk_documents_matricule_enseignant', 'documents', 'enseignants',
-            ['matricule_enseignant'], ['matricule'], ondelete='SET NULL',
-        )
-        op.create_foreign_key(
-            'fk_documents_code_tuteur', 'documents', 'tuteurs',
-            ['code_tuteur'], ['code_tuteur'], ondelete='SET NULL',
-        )
+    op.create_foreign_key(
+        'fk_documents_matricule_enseignant', 'documents', 'enseignants',
+        ['matricule_enseignant'], ['matricule'], ondelete='SET NULL',
+    )
+    op.create_foreign_key(
+        'fk_documents_code_tuteur', 'documents', 'tuteurs',
+        ['code_tuteur'], ['code_tuteur'], ondelete='SET NULL',
+    )
 
     # Horodatage des infrastructures (une ligne par année scolaire).
     op.add_column(
@@ -81,9 +76,8 @@ def downgrade() -> None:
     op.drop_column('etablissement_infrastructures', 'updated_at')
     op.drop_column('etablissement_infrastructures', 'created_at')
 
-    if not _est_sqlite():
-        op.drop_constraint('fk_documents_code_tuteur', 'documents', type_='foreignkey')
-        op.drop_constraint('fk_documents_matricule_enseignant', 'documents', type_='foreignkey')
+    op.drop_constraint('fk_documents_code_tuteur', 'documents', type_='foreignkey')
+    op.drop_constraint('fk_documents_matricule_enseignant', 'documents', type_='foreignkey')
 
     op.drop_index(op.f('ix_enseignants_prenom'), table_name='enseignants')
     op.drop_index(op.f('ix_enseignants_nom'), table_name='enseignants')

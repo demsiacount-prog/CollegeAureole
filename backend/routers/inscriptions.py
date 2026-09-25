@@ -21,7 +21,7 @@ def _verifier_existence(db, matricule_eleve, id_annee_scolaire, id_classe):
         raise HTTPException(status_code=404, detail="Année scolaire introuvable")
     if annee.cloturee:
         raise HTTPException(status_code=409, detail="Année scolaire clôturée")
-    if not db.query(models.Classes).filter(models.Classes.id == id_classe).first():
+    if id_classe is not None and not db.query(models.Classes).filter(models.Classes.id == id_classe).first():
         raise HTTPException(status_code=404, detail="Classe introuvable")
 
 
@@ -69,6 +69,35 @@ def _generer_echeances(db: Session, inscription: models.Inscriptions):
     inscription.montant_total = frais_inscription + (mensualite * nb_mensualites)
 
 
+def _appliquer_changement_classe(db: Session, inscription: models.Inscriptions):
+    """Récalibre les échéances d'une inscription sur le tarif de sa nouvelle
+    classe. Les échéances soldées (montant figé) et les impayés REPORTE portés
+    (montant hérité d'une année antérieure, valeur due en classe ancienne)
+    conservent leur montant : seule la classe est mise à jour, afin de ne
+    jamais réécrire la dette ni effacer du payé."""
+    nouvelle_classe = db.query(models.Classes).filter(models.Classes.id == inscription.id_classe).first()
+    if not nouvelle_classe:
+        return
+    for echeance in inscription.echeances:
+        echeance.id_classe = inscription.id_classe
+        if echeance.statut == "SOLDE":
+            continue
+        if echeance.id_echeance_origine is not None and echeance.statut == "REPORTE":
+            continue
+        echeance.montant_du = (
+            nouvelle_classe.frais_inscription
+            if echeance.type_echeance == "INSCRIPTION"
+            else nouvelle_classe.mensualite
+        )
+        # Une baisse de tarif ne doit pas « annuler » du payé : l'excédent
+        # devient du crédit disponible au lieu d'être perdu.
+        if echeance.montant_paye > echeance.montant_du:
+            inscription.credit_disponible = (inscription.credit_disponible or 0.0) + (echeance.montant_paye - echeance.montant_du)
+            echeance.montant_paye = echeance.montant_du
+        _mettre_a_jour_statut(echeance)
+    inscription.montant_total = sum(e.montant_du for e in inscription.echeances)
+
+
 def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, nouvelle_inscription: models.Inscriptions):
     ancienne = db.query(models.Inscriptions).filter(
         models.Inscriptions.matricule_eleve == matricule_eleve,
@@ -93,6 +122,7 @@ def _reporter_impayes(db: Session, matricule_eleve: str, id_annee_origine: int, 
         # Le crédit non consommé sert d'abord à couvrir les impayés reportés.
         if credit > 0:
             couvert = min(credit, reste)
+            ech.montant_paye += couvert
             reste -= couvert
             credit -= couvert
         if reste <= 0:
@@ -332,27 +362,7 @@ def modifier_inscription(inscription_id: int, payload: schemas.InscriptionUpdate
         setattr(inscription, champ, valeur)
 
     if changement_classe:
-        nouvelle_classe = db.query(models.Classes).filter(models.Classes.id == inscription.id_classe).first()
-        if nouvelle_classe:
-            for echeance in inscription.echeances:
-                # L'échéance suit l'inscription dans la nouvelle classe.
-                echeance.id_classe = inscription.id_classe
-                # Les échéances déjà soldées conservent leur montant figé : seule
-                # la classe est mise à jour (pas de recalcul rétroactif).
-                if echeance.statut == "SOLDE":
-                    continue
-                echeance.montant_du = (
-                    nouvelle_classe.frais_inscription
-                    if echeance.type_echeance == "INSCRIPTION"
-                    else nouvelle_classe.mensualite
-                )
-                # Une baisse de tarif ne doit pas « annuler » du payé : l'excédent
-                # devient du crédit disponible au lieu d'être perdu.
-                if echeance.montant_paye > echeance.montant_du:
-                    inscription.credit_disponible = (inscription.credit_disponible or 0.0) + (echeance.montant_paye - echeance.montant_du)
-                    echeance.montant_paye = echeance.montant_du
-                _mettre_a_jour_statut(echeance)
-            inscription.montant_total = sum(e.montant_du for e in inscription.echeances)
+        _appliquer_changement_classe(db, inscription)
 
     _synchroniser_classe_eleve(db, inscription.matricule_eleve, inscription.statut, inscription.id_classe)
     db.commit()
@@ -405,7 +415,15 @@ def passage_annee(payload: schemas.PassageAnneeRequest, db: Session = Depends(ge
     if annee_dest.cloturee:
         raise HTTPException(status_code=409, detail="Année scolaire clôturée")
 
-    eleves = db.query(models.Eleves).filter(models.Eleves.classe_id == payload.id_classe_origine).all()
+    eleves = (
+        db.query(models.Eleves)
+        .join(models.Inscriptions, models.Inscriptions.matricule_eleve == models.Eleves.matricule)
+        .filter(
+            models.Inscriptions.id_annee_scolaire == payload.id_annee_scolaire_origine,
+            models.Inscriptions.id_classe == payload.id_classe_origine,
+        )
+        .all()
+    )
     nb_creees, nb_redoublants, erreurs = 0, 0, []
 
     for eleve in eleves:

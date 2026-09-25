@@ -10,6 +10,8 @@ class RemiseCreate(BaseModel):
     motif: Optional[str] = Field(default=None, max_length=500)
     date: date
 
+    model_config = {"extra": "forbid"}
+
 
 class RemiseResponse(BaseModel):
     id: int
@@ -29,3 +31,5 @@ class PaiementGroupeCreate(BaseModel):
     date: date
     mode: Optional[ModePaiement] = None
     observation: Optional[str] = Field(default=None, max_length=500)
+
+    model_config = {"extra": "forbid"}

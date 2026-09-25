@@ -14,7 +14,7 @@ import { fetchClasses } from '@/features/classes/api'
 import { fetchEnseignants } from '@/features/enseignants/api'
 import { fetchSeances, createSeance, updateSeance, deleteSeance } from './api'
 import SeanceFormDrawer from './SeanceFormDrawer'
-import type { SeanceDetail, SeanceCreateInput } from './types'
+import type { SeanceDetail, SeanceCreateInput, SeanceUpdateInput } from './types'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 
@@ -59,7 +59,7 @@ export default function SeanceListPage() {
   })
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: SeanceCreateInput }) => updateSeance(id, data),
+    mutationFn: ({ id, data }: { id: number; data: SeanceUpdateInput }) => updateSeance(id, data),
     onSuccess: () => { toast('Séance modifiée'); qc.invalidateQueries({ queryKey: ['seances'] }); setDrawerOpen(false); setEditing(null) },
     onError: (e) => toast(extractErrorMessage(e), 'error'),
   })
@@ -80,11 +80,11 @@ export default function SeanceListPage() {
     setDrawerOpen(true)
   }
 
-  function handleFormSubmit(data: SeanceCreateInput) {
+  function handleFormSubmit(data: SeanceCreateInput | SeanceUpdateInput) {
     if (editing) {
       updateMut.mutate({ id: editing.id, data })
     } else {
-      createMut.mutate(data)
+      createMut.mutate(data as SeanceCreateInput)
     }
   }
 

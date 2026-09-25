@@ -22,6 +22,8 @@ class TrimestreBase(BaseModel):
 class TrimestreCreate(TrimestreBase):
     annee_scolaire_id: int
 
+    model_config = {"extra": "forbid"}
+
 
 class TrimestreResponse(TrimestreBase):
     id: int
@@ -38,6 +40,8 @@ class TrimestreDetailResponse(TrimestreResponse):
 
 class TrimestresGenererRequest(BaseModel):
     annee_scolaire_id: int
+
+    model_config = {"extra": "forbid"}
 
 
 class TrimestresGenererResponse(BaseModel):

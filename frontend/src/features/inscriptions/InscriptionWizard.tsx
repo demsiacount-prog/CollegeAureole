@@ -96,7 +96,7 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
         : validateFields({
             tuteurNom: required(form.tuteurNom, 'Le nom du tuteur'),
             tuteurPrenom: required(form.tuteurPrenom, 'Le prénom du tuteur'),
-            tuteurEmail: required(form.tuteurEmail, "L'e-mail") ?? email(form.tuteurEmail),
+            tuteurEmail: email(form.tuteurEmail),
             tuteurTelephone: required(form.tuteurTelephone, 'Le téléphone') ?? phone(form.tuteurTelephone),
             tuteurAdresse: required(form.tuteurAdresse, "L'adresse"),
             tuteurProfession: required(form.tuteurProfession, 'La profession'),
@@ -453,13 +453,12 @@ export default function InscriptionWizard({ onComplete, onCancel, canImport = tr
                         <Input
                           label="Email"
                           type="email"
-                          placeholder="amadou@email.com"
+                          placeholder="amadou@email.com (facultatif)"
                           value={form.tuteurEmail}
                           onChange={(e) => {
                             set('tuteurEmail', e.target.value)
                             if (errors.tuteurEmail) setErrors((prev) => ({ ...prev, tuteurEmail: undefined }))
                           }}
-                          required
                           error={errors.tuteurEmail}
                         />
                         <Input

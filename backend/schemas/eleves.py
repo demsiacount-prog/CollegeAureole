@@ -39,6 +39,8 @@ class EleveCreate(EleveBase):
     # sur l'élève (l'inscription reste la source). Repli : année active.
     annee_scolaire_id: Optional[int] = None
 
+    model_config = {"extra": "forbid"}
+
 
 class EleveUpdate(BaseModel):
     """Modification partielle d'un élève (PUT par matricule).
@@ -66,6 +68,8 @@ class EleveUpdate(BaseModel):
     prenom_mere: Optional[str] = Field(default=None, max_length=100)
     fonction_mere: Optional[str] = Field(default=None, max_length=100)
     classe_id: Optional[int] = None
+
+    model_config = {"extra": "forbid"}
 
 
 class EleveResponse(EleveBase):

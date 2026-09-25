@@ -27,7 +27,7 @@ class SeanceBase(BaseModel):
 
 
 class SeanceCreate(SeanceBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class SeanceUpdate(BaseModel):
@@ -45,6 +45,8 @@ class SeanceUpdate(BaseModel):
         if self.heure_debut is not None and self.heure_fin is not None and self.heure_fin <= self.heure_debut:
             raise ValueError("Heure de fin invalide")
         return self
+
+    model_config = {"extra": "forbid"}
 
 
 class SeanceResponse(SeanceBase):

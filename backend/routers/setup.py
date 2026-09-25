@@ -60,12 +60,16 @@ class EtablissementInput(BaseModel):
     academie: str | None = None
     cap: str | None = None
 
+    model_config = {"extra": "forbid"}
+
 
 class AdminInput(BaseModel):
     nom: str = Field(min_length=1)
     prenom: str = Field(min_length=1)
     email: EmailStr
     mot_de_passe: str = Field(min_length=8)
+
+    model_config = {"extra": "forbid"}
 
 
 class AnneeScolaireInput(BaseModel):
@@ -78,11 +82,15 @@ class AnneeScolaireInput(BaseModel):
             raise ValueError("Date de fin invalide")
         return self
 
+    model_config = {"extra": "forbid"}
+
 
 class SetupInput(BaseModel):
     etablissement: EtablissementInput
     admin: AdminInput
     annee_scolaire: AnneeScolaireInput | None = None
+
+    model_config = {"extra": "forbid"}
 
 
 # ─── Réponses ────────────────────────────────────────────────────────────────
@@ -195,6 +203,8 @@ def setup_progress():
 class ResetInput(BaseModel):
     confirm: bool = False
 
+    model_config = {"extra": "forbid"}
+
 
 @router.post("/reset")
 def reset_database(
@@ -229,6 +239,8 @@ def reset_database(
 
 class PurgeInput(BaseModel):
     confirm: bool = False
+
+    model_config = {"extra": "forbid"}
 
 
 # Valeur d'en-tête obligatoire pour toute réinitialisation de données.
